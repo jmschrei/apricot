@@ -14,6 +14,6 @@ As data set size increases, so to do the computational requirements to train mac
 
 ### Summarizing data sets by selecting examplars
 
-apricot allows you to select exemplar samples using facility location functions. These exemplars can be used for downstream analysis, visualization in the place of large data sets, or as another approach for selecting subsets for training machine learning models.
+apricot allows you to select exemplar samples using facility location functions in a much more principled manner than simple random selection would allow. These exemplars can be used for downstream analysis, visualization in the place of large data sets, as centroids in a greedy version of k-means clustering, or as another approach for selecting subsets for training machine learning models. 
 
 ![](img/facilitylocation.png)
