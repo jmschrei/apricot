@@ -70,6 +70,34 @@ class FacilityLocationSelection(object):
 			raise KeyError("Must be one of 'corr' or 'cosine' or a custom function.")
 
 	def fit_transform(self, X, y=None):
+		"""Perform selection and return the subset of the data set.
+
+		This method will take in a full data set and return the selected subset
+		according to the facility location function. The data will be returned in
+		the order that it was selected, with the first row corresponding to
+		the best first selection, the second row corresponding to the second
+		best selection, etc.
+
+		Parameters
+		----------
+		X : list or numpy.ndarray, shape=(n, d)
+			The data set to transform. Must be numeric.
+
+		y : list or numpy.ndarray, shape=(n,), optional
+			The labels to transform. If passed in this function will return
+			both the data and th corresponding labels for the rows that have
+			been selected.
+
+		Returns
+		-------
+		X_subset : numpy.ndarray, shape=(n_samples, d)
+			A subset of the data such that n_samples < n and n_samples is the
+			integer provided at initialization.
+
+		y_subset : numpy.ndarray, shape=(n_samples,)
+			The labels that match with the indices of the samples if y is
+			passed in.
+		"""
 
 		if not isinstance(X, (list, numpy.ndarray)):
 			raise ValueError("X must be either a list of lists or a 2D numpy array.")

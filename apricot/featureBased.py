@@ -113,6 +113,10 @@ class FeatureBasedSelection(object):
 		X_subset : numpy.ndarray, shape=(n_samples, d)
 			A subset of the data such that n_samples < n and n_samples is the
 			integer provided at initialization.
+
+		y_subset : numpy.ndarray, shape=(n_samples,)
+			The labels that match with the indices of the samples if y is
+			passed in.
 		"""
 
 		if not isinstance(X, (list, numpy.ndarray)):
