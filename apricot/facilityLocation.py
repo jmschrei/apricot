@@ -7,9 +7,11 @@ This code implements facility location functions.
 
 import numpy
 
+from .base import SubmodularSelection
+
 from tqdm import tqdm
 
-class FacilityLocationSelection(object):
+class FacilityLocationSelection(SubmodularSelection):
 	"""A facility location submodular selection algorithm.
 
 	NOTE: All ~pairwise~ values in your data must be positive for this 
@@ -47,14 +49,13 @@ class FacilityLocationSelection(object):
 		A function that takes in a data matrix and converts it to a square
 		symmetric matrix.
 
-	indices : numpy.array int
+	ranking : numpy.array int
 		The selected samples in the order of their gain.
 	"""
 
-	def __init__(self, n_samples=10, pairwise_func='corr', verbose=False, random_seed=None):
+	def __init__(self, n_samples=10, pairwise_func='corr', verbose=False):
 		self.n_samples = n_samples
 		self.verbose = verbose
-		self.random_seed = numpy.random.RandomState(random_seed)
 		
 		norm = lambda x: numpy.sum(x*x, axis=1).reshape(x.shape[0], 1)
 
@@ -69,7 +70,7 @@ class FacilityLocationSelection(object):
 		else:
 			raise KeyError("Must be one of 'corr' or 'cosine' or a custom function.")
 
-	def fit_transform(self, X, y=None):
+	def fit(self, X, y=None):
 		"""Perform selection and return the subset of the data set.
 
 		This method will take in a full data set and return the selected subset
@@ -90,13 +91,8 @@ class FacilityLocationSelection(object):
 
 		Returns
 		-------
-		X_subset : numpy.ndarray, shape=(n_samples, d)
-			A subset of the data such that n_samples < n and n_samples is the
-			integer provided at initialization.
-
-		y_subset : numpy.ndarray, shape=(n_samples,)
-			The labels that match with the indices of the samples if y is
-			passed in.
+		self : FacilityLocationSelection
+			The fit step returns itself.
 		"""
 
 		if not isinstance(X, (list, numpy.ndarray)):
@@ -105,23 +101,30 @@ class FacilityLocationSelection(object):
 			raise ValueError("X must have exactly two dimensions.")
 
 		X = numpy.array(X, dtype='float32')
+		X_pairwise = self.pairwise_func(X)
+		numpy.fill_diagonal(X_pairwise, 0)
 
 		n = X.shape[0]
 		mask = numpy.zeros(n, dtype=bool)
-		indices = []
+		ranks = []
 		
-		idx = self.random_seed.randint(n)
-		indices.append(idx)
-		mask[idx] = True
+		best_score, best_idx = 0., None
+
+		for idx in range(n):
+			score = X_pairwise[:,idx].sum()
+
+			if score > best_score:
+				best_score = score
+				best_idx = idx
+
+		ranks.append(best_idx)
+		mask[best_idx] = True
 
 		if self.verbose == True:
 			pbar = tqdm(total=self.n_samples)
 			pbar.update(1)
 		
-		X_pairwise = self.pairwise_func(X)
-		numpy.fill_diagonal(X_pairwise, 0)
 		score = X_pairwise[:,idx]
-
 
 		for i in range(self.n_samples-1):
 			best_gain = 0.
@@ -140,7 +143,7 @@ class FacilityLocationSelection(object):
 					best_score = score_i
 
 			score = best_score
-			indices.append(best_idx)
+			ranks.append(best_idx)
 			mask[best_idx] = True
 
 			if self.verbose == True:
@@ -149,9 +152,5 @@ class FacilityLocationSelection(object):
 		if self.verbose == True:
 			pbar.close()
 		
-		self.indices = numpy.array(indices)
-
-		if y is None:
-			return X[self.indices]
-		else:
-			return X[self.indices], y[self.indices]
+		self.ranking = numpy.array(ranks)
+		return self

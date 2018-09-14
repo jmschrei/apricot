@@ -8,12 +8,11 @@ algorithms.
 
 import numpy
 
-from .utils import PriorityQueue
+from .base import SubmodularSelection
 
 from tqdm import tqdm
 
-
-class FeatureBasedSelection(object):
+class FeatureBasedSelection(SubmodularSelection):
 	"""A feature based submodular selection algorithm.
 
 	NOTE: All values in your data must be positive for this selection to work.
@@ -61,21 +60,13 @@ class FeatureBasedSelection(object):
 		A concave function for transforming feature values, often referred to as
 		phi in the literature.
 
-	indices : numpy.array int
-		The selected samples in the order of their gain.
+	ranking : numpy.array int
+		The selected samples in the order of their gain with the first number in
+		the ranking corresponding to the index of the first sample that was
+		selected by the greedy procedure.
 	"""
 
 	def __init__(self, n_samples, concave_func='log', verbose=False):
-		self.pq = PriorityQueue()
-
-		if type(n_samples) != int:
-			raise ValueError("n_samples must be a positive integer.")
-		if n_samples < 1:
-			raise ValueError("n_samples must be a positive integer.")
-
-		self.n_samples = n_samples
-		self.verbose = verbose
-		
 		if concave_func == 'log':
 			self.concave_func = lambda X: numpy.log(X + 1)
 		elif concave_func == 'sqrt':
@@ -88,8 +79,10 @@ class FeatureBasedSelection(object):
 			self.concave_func = concave_func
 		else:
 			raise KeyError("Must be one of 'log', 'sqrt', 'min', 'inverse', or a custom function.")
-	
-	def fit_transform(self, X, y=None):
+
+		super(FeatureBasedSelection, self).__init__(n_samples, verbose)
+
+	def fit(self, X, y=None):
 		"""Perform selection and return the subset of the data set.
 
 		This method will take in a full data set and return the selected subset
@@ -110,35 +103,32 @@ class FeatureBasedSelection(object):
 
 		Returns
 		-------
-		X_subset : numpy.ndarray, shape=(n_samples, d)
-			A subset of the data such that n_samples < n and n_samples is the
-			integer provided at initialization.
-
-		y_subset : numpy.ndarray, shape=(n_samples,)
-			The labels that match with the indices of the samples if y is
-			passed in.
+		self : FeatureBasedSelection
+			The fit step returns itself.
 		"""
 
 		if not isinstance(X, (list, numpy.ndarray)):
 			raise ValueError("X must be either a list of lists or a 2D numpy array.")
 		if isinstance(X, numpy.ndarray) and len(X.shape) != 2:
 			raise ValueError("X must have exactly two dimensions.")
- 
-		X = numpy.array(X)
+ 		if numpy.min(X) < 0.0:
+			raise ValueError("X cannot contain negative values.")
 
-		mask = numpy.zeros(X.shape[0], dtype=bool)
+		X = numpy.array(X, dtype='float32')
+
+		mask = numpy.zeros(X.shape[0], dtype='int8')
 		indices = []
-		
-		current_values = numpy.zeros(X.shape[1])
-		current_concave_values = numpy.zeros(X.shape[1])
 		
 		for i in range(X.shape[0]):
 			score = numpy.sum(self.concave_func(X[i]))
 			self.pq.add(i, -score)
 		
 		gain, idx = self.pq.pop()
-		mask[idx] = True
+		mask[idx] = 1
 		indices.append(idx)
+
+		current_values = X[idx]
+		current_concave_values = self.concave_func(X[idx])
 
 		if self.verbose == True:
 			pbar = tqdm(total=self.n_samples)
@@ -165,7 +155,6 @@ class FeatureBasedSelection(object):
 				if gain > best_gain:
 					best_gain = gain
 					best_idx = idx
-			
 
 			indices.append(best_idx)
 			mask[best_idx] = True
@@ -178,8 +167,5 @@ class FeatureBasedSelection(object):
 		if self.verbose == True:
 			pbar.close()
 
-		self.indices = numpy.array(indices, dtype='int32')
-
-		if y is None:
-			return X[self.indices]
-		return X[self.indices], y[self.indices]
+		self.ranking = numpy.array(indices, dtype='int32')
+		return self
