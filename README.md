@@ -10,13 +10,13 @@ apricot is a package for the greedy selection of representative subsets of data 
 
 #### Fast subset selection for machine learning models
 
-As data set size increases, so to do the computational requirements to train machine learning models. apricot allows you to select a diverse set of samples that train machine learning models well, with higher accuracy and consistency than randomly selecting a subset would. When using a feature based function on the 20 newsgroups data set, one can train a logistic regression model using only 100 samples and get the same performance as using all 1,187 potential samples, much better than using random sampling.
+As data set size increases, so to do the computational requirements to train machine learning models. apricot allows you to select a diverse set of samples that train machine learning models well, with higher accuracy and more consistency than randomly selecting a subset would. When using a feature based function on the 20 newsgroups data set, one can train a logistic regression model using only 100 samples and get the same performance as using all 1,187 potential samples, much better than using random sampling.
 
 ![](img/20newsgroups.png)
 
 #### Summarizing data sets by selecting examplars
 
-apricot allows you to select exemplar samples using facility location functions in a much more principled manner than simple random selection would allow. These exemplars can be used for downstream analysis, visualization in the place of large data sets, as centroids in a greedy version of k-means clustering, or as another approach for selecting subsets for training machine learning models. 
+apricot allows you to select exemplar samples from your data sets using facility location functions in a much more principled manner than simple random selection would allow. These exemplars can be used for downstream analysis, visualization in the place of large data sets, as centroids in a greedy version of k-means clustering, or as another approach for selecting subsets for training machine learning models. 
 
 ![](img/facilitylocation.gif)
 
