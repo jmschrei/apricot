@@ -11,6 +11,22 @@ from .base import SubmodularSelection
 
 from tqdm import tqdm
 
+from numba import njit
+from numba import prange
+
+dtypes = 'int64(float64[:,:], float64[:], float64[:], int8[:])'
+
+@njit(dtypes, nogil=True, parallel=True)
+def select_next(X, gains, current_values, mask):
+	for idx in prange(X.shape[0]):
+		if mask[idx] == 1:
+			continue
+
+		a = numpy.maximum(X[:,idx], current_values)
+		gains[idx] = (a - current_values).sum()
+
+	return numpy.argmax(gains)
+
 class FacilityLocationSelection(SubmodularSelection):
 	"""A facility location submodular selection algorithm.
 
@@ -53,9 +69,8 @@ class FacilityLocationSelection(SubmodularSelection):
 		The selected samples in the order of their gain.
 	"""
 
-	def __init__(self, n_samples=10, pairwise_func='corr', verbose=False):
-		self.n_samples = n_samples
-		self.verbose = verbose
+	def __init__(self, n_samples=10, pairwise_func='corr', n_greedy_samples=250, verbose=False):
+		self.n_greedy_samples = n_greedy_samples
 		
 		norm = lambda x: numpy.sum(x*x, axis=1).reshape(x.shape[0], 1)
 
@@ -69,6 +84,8 @@ class FacilityLocationSelection(SubmodularSelection):
 			self.pairwise_func = pairwise_func
 		else:
 			raise KeyError("Must be one of 'corr' or 'cosine' or a custom function.")
+
+		super(FacilityLocationSelection, self).__init__(n_samples, verbose)
 
 	def fit(self, X, y=None):
 		"""Perform selection and return the subset of the data set.
@@ -100,51 +117,63 @@ class FacilityLocationSelection(SubmodularSelection):
 		if isinstance(X, numpy.ndarray) and len(X.shape) != 2:
 			raise ValueError("X must have exactly two dimensions.")
 
-		X = numpy.array(X, dtype='float32')
+		if self.verbose == True:
+			pbar = tqdm(total=self.n_samples)
+			pbar.update(1)
+
+		X = numpy.array(X, dtype='float64')
 		X_pairwise = self.pairwise_func(X)
 		numpy.fill_diagonal(X_pairwise, 0)
 
 		n = X.shape[0]
-		mask = numpy.zeros(n, dtype=bool)
-		ranks = []
+		mask = numpy.zeros(n, dtype='int8')
+		ranking = []
 		
 		best_score, best_idx = 0., None
-
-		for idx in range(n):
-			score = X_pairwise[:,idx].sum()
-
-			if score > best_score:
-				best_score = score
-				best_idx = idx
-
-		ranks.append(best_idx)
-		mask[best_idx] = True
-
-		if self.verbose == True:
-			pbar = tqdm(total=self.n_samples)
-			pbar.update(1)
+		current_values = numpy.zeros(n, dtype='float64')
 		
-		score = X_pairwise[:,idx]
+		for i in range(self.n_greedy_samples):
+			gains = numpy.zeros(n, dtype='float64')
 
-		for i in range(self.n_samples-1):
+			best_idx = select_next(X_pairwise, gains, current_values, mask)			
+
+			ranking.append(best_idx)
+			mask[best_idx] = 1
+			current_values = numpy.maximum(X_pairwise[:, best_idx], current_values)
+
+			if self.verbose == True:
+				pbar.update(1)
+
+		for idx, gain in enumerate(gains):
+			if mask[idx] != 1:
+				self.pq.add(idx, -gain) 
+
+
+		for i in range(self.n_greedy_samples, self.n_samples):
 			best_gain = 0.
 			best_idx = None
 			
-			for j in range(n):
-				if mask[j] == True:
-					continue
+			while True:
+				prev_gain, idx = self.pq.pop()
+				prev_gain = -prev_gain
 				
-				score_i = numpy.maximum(X_pairwise[:,j], score)
-				gain = (score_i - score).sum()
+				if best_gain >= prev_gain:
+					self.pq.add(idx, -prev_gain)
+					self.pq.remove(best_idx)
+					break
 				
-				if gain >= best_gain:
+				a = numpy.maximum(X_pairwise[:, idx], current_values)
+				gain = (a - current_values).sum()
+				
+				self.pq.add(idx, -gain)
+				
+				if gain > best_gain:
 					best_gain = gain
-					best_idx = j
-					best_score = score_i
+					best_idx = idx
 
-			score = best_score
-			ranks.append(best_idx)
+			ranking.append(best_idx)
 			mask[best_idx] = True
+			current_values = numpy.maximum(X_pairwise[:, best_idx], current_values)
 
 			if self.verbose == True:
 				pbar.update(1)
@@ -152,5 +181,5 @@ class FacilityLocationSelection(SubmodularSelection):
 		if self.verbose == True:
 			pbar.close()
 		
-		self.ranking = numpy.array(ranks)
+		self.ranking = numpy.array(ranking)
 		return self
