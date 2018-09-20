@@ -53,8 +53,10 @@ class FacilityLocationSelection(SubmodularSelection):
 		The method for converting a data matrix into a square symmetric matrix
 		of pairwise similarities. If a string, can be any of the following:
 
+			'euclidean' : The negative euclidean distance
 			'corr' : The squared correlation matrix
 			'cosine' : The normalized dot product of the matrix
+			'precomputed' : User passes in a NxN matrix of distances themselves
 
 	Attributes
 	----------
@@ -69,7 +71,8 @@ class FacilityLocationSelection(SubmodularSelection):
 		The selected samples in the order of their gain.
 	"""
 
-	def __init__(self, n_samples=10, pairwise_func='corr', n_greedy_samples=250, verbose=False):
+	def __init__(self, n_samples=10, pairwise_func='euclidean', n_greedy_samples=250, 
+		verbose=False):
 		self.n_greedy_samples = n_greedy_samples
 		
 		norm = lambda x: numpy.sum(x*x, axis=1).reshape(x.shape[0], 1)
@@ -80,10 +83,13 @@ class FacilityLocationSelection(SubmodularSelection):
 			self.pairwise_func = lambda X: numpy.dot(X, X.T) / (norm(X).dot(norm(X).T))
 		elif pairwise_func == 'euclidean':
 			self.pairwise_func = lambda X: -(-2 * numpy.dot(X, X.T) + norm(X)).T + norm(X)
+		elif pairwise_func == 'precomputed':
+			self.pairwise_func = pairwise_func
 		elif callable(pairwise_func):
 			self.pairwise_func = pairwise_func
 		else:
-			raise KeyError("Must be one of 'corr' or 'cosine' or a custom function.")
+			raise KeyError("Must be one of 'euclidean', 'corr', 'cosine', 'precomputed'" \
+				" or a custom function.")
 
 		super(FacilityLocationSelection, self).__init__(n_samples, verbose)
 
@@ -122,8 +128,12 @@ class FacilityLocationSelection(SubmodularSelection):
 			pbar.update(1)
 
 		X = numpy.array(X, dtype='float64')
-		X_pairwise = self.pairwise_func(X)
-		numpy.fill_diagonal(X_pairwise, 0)
+
+		if self.pairwise_func == 'precomputed':
+			X_pairwise = X
+		else:
+			X_pairwise = self.pairwise_func(X)
+			numpy.fill_diagonal(X_pairwise, 0)
 
 		n = X.shape[0]
 		mask = numpy.zeros(n, dtype='int8')
