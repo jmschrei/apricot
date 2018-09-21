@@ -6,6 +6,7 @@ This code implements facility location functions.
 """
 
 import numpy
+import scipy
 
 from .base import SubmodularSelection
 
@@ -15,6 +16,7 @@ from numba import njit
 from numba import prange
 
 dtypes = 'int64(float64[:,:], float64[:], float64[:], int8[:])'
+sdtypes = 'int64(float64[:], int32[:], int32[:], float64[:], float64[:], int8[:])'
 
 @njit(dtypes, nogil=True, parallel=True)
 def select_next(X, gains, current_values, mask):
@@ -26,6 +28,33 @@ def select_next(X, gains, current_values, mask):
 		gains[idx] = (a - current_values).sum()
 
 	return numpy.argmax(gains)
+
+#@njit(sdtypes, nogil=True, parallel=True)
+def select_next_sparse(X_data, X_indices, X_indptr, gains, current_values, mask):
+	for idx in prange(X_indptr.shape[0] - 1):
+		if mask[idx] == 1:
+			continue
+
+		start = X_indptr[idx]
+		end = X_indptr[idx+1]
+
+		if start == end:
+			continue
+
+		print start, end
+		print X_indices[start:end]
+		print X_data[start_end]
+		print current_values
+		print "\n\n\n"
+
+		indices = X_indices[start:end]
+		a = numpy.maximum(X_data[start:end], current_values[indices])
+		gains[idx] = (a - current_values[indices]).sum()
+
+	print gains
+	LJSjsllj
+	return numpy.argmax(gains)
+
 
 class FacilityLocationSelection(SubmodularSelection):
 	"""A facility location submodular selection algorithm.
@@ -82,7 +111,7 @@ class FacilityLocationSelection(SubmodularSelection):
 		elif pairwise_func == 'cosine':
 			self.pairwise_func = lambda X: numpy.dot(X, X.T) / (norm(X).dot(norm(X).T))
 		elif pairwise_func == 'euclidean':
-			self.pairwise_func = lambda X: -(-2 * numpy.dot(X, X.T) + norm(X)).T + norm(X)
+			self.pairwise_func = lambda X: -((-2 * numpy.dot(X, X.T) + norm(X)).T + norm(X))
 		elif pairwise_func == 'precomputed':
 			self.pairwise_func = pairwise_func
 		elif callable(pairwise_func):
@@ -118,8 +147,8 @@ class FacilityLocationSelection(SubmodularSelection):
 			The fit step returns itself.
 		"""
 
-		if not isinstance(X, (list, numpy.ndarray)):
-			raise ValueError("X must be either a list of lists or a 2D numpy array.")
+		if not isinstance(X, (list, numpy.ndarray, scipy.sparse.csr_matrix)):
+			raise ValueError("X must be either a list of lists or a 2D numpy array or a csr sparse matrx.")
 		if isinstance(X, numpy.ndarray) and len(X.shape) != 2:
 			raise ValueError("X must have exactly two dimensions.")
 
@@ -127,29 +156,45 @@ class FacilityLocationSelection(SubmodularSelection):
 			pbar = tqdm(total=self.n_samples)
 			pbar.update(1)
 
-		X = numpy.array(X, dtype='float64')
+		sparse = isinstance(X, scipy.sparse.csr_matrix)
 
 		if self.pairwise_func == 'precomputed':
 			X_pairwise = X
+			if sparse:
+				current_values = numpy.min(X_pairwise, axis=1).toarray()[:,0].astype('float64')
+			else:
+				current_values = numpy.min(X_pairwise, axis=1).astype('float64')
 		else:
+			X = numpy.array(X, dtype='float64')
 			X_pairwise = self.pairwise_func(X)
 			numpy.fill_diagonal(X_pairwise, 0)
+			current_values = numpy.min(X_pairwise, axis=1).astype('float64')
 
 		n = X.shape[0]
 		mask = numpy.zeros(n, dtype='int8')
 		ranking = []
 		
 		best_score, best_idx = 0., None
-		current_values = numpy.zeros(n, dtype='float64')
 		
 		for i in range(self.n_greedy_samples):
 			gains = numpy.zeros(n, dtype='float64')
 
-			best_idx = select_next(X_pairwise, gains, current_values, mask)			
+			if sparse:
+				best_idx = select_next_sparse(X_pairwise.data, 
+					X_pairwise.indices, X_pairwise.indptr, gains,
+					current_values, mask)
+
+				current_values = numpy.maximum(X_pairwise[best_idx].toarray()[0], 
+					current_values)
+
+			else:
+				best_idx = select_next(X_pairwise, gains, current_values, mask)			
+
+				current_values = numpy.maximum(X_pairwise[best_idx], 
+					current_values)
 
 			ranking.append(best_idx)
 			mask[best_idx] = 1
-			current_values = numpy.maximum(X_pairwise[:, best_idx], current_values)
 
 			if self.verbose == True:
 				pbar.update(1)
@@ -157,7 +202,6 @@ class FacilityLocationSelection(SubmodularSelection):
 		for idx, gain in enumerate(gains):
 			if mask[idx] != 1:
 				self.pq.add(idx, -gain) 
-
 
 		for i in range(self.n_greedy_samples, self.n_samples):
 			best_gain = 0.
