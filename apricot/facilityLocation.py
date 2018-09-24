@@ -24,35 +24,26 @@ def select_next(X, gains, current_values, mask):
 		if mask[idx] == 1:
 			continue
 
-		a = numpy.maximum(X[:,idx], current_values)
+		a = numpy.maximum(X[idx], current_values)
 		gains[idx] = (a - current_values).sum()
 
 	return numpy.argmax(gains)
 
-#@njit(sdtypes, nogil=True, parallel=True)
+@njit(sdtypes, nogil=True, parallel=True)
 def select_next_sparse(X_data, X_indices, X_indptr, gains, current_values, mask):
-	for idx in prange(X_indptr.shape[0] - 1):
+	for idx in range(X_indptr.shape[0] - 1):
 		if mask[idx] == 1:
 			continue
 
 		start = X_indptr[idx]
 		end = X_indptr[idx+1]
 
-		if start == end:
-			continue
+		for i in range(start, end):
+			j = X_indices[i]
 
-		print start, end
-		print X_indices[start:end]
-		print X_data[start_end]
-		print current_values
-		print "\n\n\n"
+			if X_data[i] > current_values[j]:
+				gains[idx] += X_data[i] - current_values[j]
 
-		indices = X_indices[start:end]
-		a = numpy.maximum(X_data[start:end], current_values[indices])
-		gains[idx] = (a - current_values[indices]).sum()
-
-	print gains
-	LJSjsllj
 	return numpy.argmax(gains)
 
 
@@ -100,14 +91,14 @@ class FacilityLocationSelection(SubmodularSelection):
 		The selected samples in the order of their gain.
 	"""
 
-	def __init__(self, n_samples=10, pairwise_func='euclidean', n_greedy_samples=250, 
+	def __init__(self, n_samples=10, pairwise_func='euclidean', n_greedy_samples=1, 
 		verbose=False):
-		self.n_greedy_samples = n_greedy_samples
+		self.pairwise_func_name = pairwise_func
 		
 		norm = lambda x: numpy.sum(x*x, axis=1).reshape(x.shape[0], 1)
 
 		if pairwise_func == 'corr':
-			self.pairwise_func = lambda X: numpy.corrcoef(X, rowvar=True)
+			self.pairwise_func = lambda X: numpy.corrcoef(X, rowvar=True) ** 2.
 		elif pairwise_func == 'cosine':
 			self.pairwise_func = lambda X: numpy.dot(X, X.T) / (norm(X).dot(norm(X).T))
 		elif pairwise_func == 'euclidean':
@@ -120,7 +111,8 @@ class FacilityLocationSelection(SubmodularSelection):
 			raise KeyError("Must be one of 'euclidean', 'corr', 'cosine', 'precomputed'" \
 				" or a custom function.")
 
-		super(FacilityLocationSelection, self).__init__(n_samples, verbose)
+		super(FacilityLocationSelection, self).__init__(n_samples, 
+			n_greedy_samples, verbose)
 
 	def fit(self, X, y=None):
 		"""Perform selection and return the subset of the data set.
@@ -147,61 +139,58 @@ class FacilityLocationSelection(SubmodularSelection):
 			The fit step returns itself.
 		"""
 
-		if not isinstance(X, (list, numpy.ndarray, scipy.sparse.csr_matrix)):
-			raise ValueError("X must be either a list of lists or a 2D numpy array or a csr sparse matrx.")
-		if isinstance(X, numpy.ndarray) and len(X.shape) != 2:
-			raise ValueError("X must have exactly two dimensions.")
+		f = self.pairwise_func
+		csr = scipy.sparse.csr_matrix
+
+		if isinstance(X, csr) and f != "precomputed":
+			raise ValueError("Must passed in a precomputed sparse " \
+				"similarity  matrix or a dense feature matrix.")
+		if f == 'precomputed' and X.shape[0] != X.shape[1]:
+			raise ValueError("Precomputed similarity matrices " \
+				"must be square and symmetric.")
 
 		if self.verbose == True:
-			pbar = tqdm(total=self.n_samples)
-			pbar.update(1)
+			self.pbar = tqdm(total=self.n_samples)
+			self.pbar.update(1)
 
-		sparse = isinstance(X, scipy.sparse.csr_matrix)
+		self.sparse = isinstance(X, scipy.sparse.csr_matrix)
 
 		if self.pairwise_func == 'precomputed':
 			X_pairwise = X
-			if sparse:
-				current_values = numpy.min(X_pairwise, axis=1).toarray()[:,0].astype('float64')
-			else:
-				current_values = numpy.min(X_pairwise, axis=1).astype('float64')
 		else:
 			X = numpy.array(X, dtype='float64')
 			X_pairwise = self.pairwise_func(X)
-			numpy.fill_diagonal(X_pairwise, 0)
-			current_values = numpy.min(X_pairwise, axis=1).astype('float64')
 
-		n = X.shape[0]
-		mask = numpy.zeros(n, dtype='int8')
-		ranking = []
-		
-		best_score, best_idx = 0., None
-		
+		return super(FacilityLocationSelection, self).fit(X_pairwise, y)
+
+	def _greedy_select(self, X_pairwise):
+		"""Select elements in a naive greedy manner."""
+
 		for i in range(self.n_greedy_samples):
-			gains = numpy.zeros(n, dtype='float64')
-
-			if sparse:
-				best_idx = select_next_sparse(X_pairwise.data, 
-					X_pairwise.indices, X_pairwise.indptr, gains,
-					current_values, mask)
-
-				current_values = numpy.maximum(X_pairwise[best_idx].toarray()[0], 
-					current_values)
-
+			gains = numpy.zeros(X_pairwise.shape[0], dtype='float64')
+		
+			if not self.sparse:
+				best_idx = select_next(X_pairwise, gains, self.current_values,
+					self.mask)
+				self.current_values = numpy.maximum(X_pairwise[best_idx], 
+					self.current_values)
 			else:
-				best_idx = select_next(X_pairwise, gains, current_values, mask)			
+				best_idx = select_next_sparse(X_pairwise.data,
+					X_pairwise.indices, X_pairwise.indptr, gains,
+					self.current_values, self.mask)
+				self.current_values = numpy.maximum(
+					X_pairwise[best_idx].toarray()[0], self.current_values)
 
-				current_values = numpy.maximum(X_pairwise[best_idx], 
-					current_values)
-
-			ranking.append(best_idx)
-			mask[best_idx] = 1
+			self.ranking.append(best_idx)
+			self.mask[best_idx] = 1
 
 			if self.verbose == True:
-				pbar.update(1)
+				self.pbar.update(1)
 
-		for idx, gain in enumerate(gains):
-			if mask[idx] != 1:
-				self.pq.add(idx, -gain) 
+		return gains
+
+	def _lazy_greedy_select(self, X_pairwise):
+		"""Select elements from a dense matrix in a lazy greedy manner."""
 
 		for i in range(self.n_greedy_samples, self.n_samples):
 			best_gain = 0.
@@ -216,24 +205,44 @@ class FacilityLocationSelection(SubmodularSelection):
 					self.pq.remove(best_idx)
 					break
 				
-				a = numpy.maximum(X_pairwise[:, idx], current_values)
-				gain = (a - current_values).sum()
-				
+				if not self.sparse:
+					a = numpy.maximum(X_pairwise[:, idx], 
+						self.current_values)
+
+					gain = (a - self.current_values).sum()
+				else:
+					gain = 0.
+					start = X_pairwise.indptr[idx]
+					end = X_pairwise.indptr[idx+1]
+
+					for k in range(start, end):
+						j = X_pairwise.indices[k]
+
+						if X_pairwise.data[k] > self.current_values[j]:
+							gain += (X_pairwise.data[k] - 
+								self.current_values[j])
+
 				self.pq.add(idx, -gain)
 				
 				if gain > best_gain:
 					best_gain = gain
 					best_idx = idx
 
-			ranking.append(best_idx)
-			mask[best_idx] = True
-			current_values = numpy.maximum(X_pairwise[:, best_idx], current_values)
+			self.ranking.append(best_idx)
+			self.mask[best_idx] = True
+
+			if not self.sparse:
+				self.current_values = numpy.maximum(X_pairwise[best_idx],
+					self.current_values)
+			else:
+				start = X_pairwise.indptr[best_idx]
+				end = X_pairwise.indptr[best_idx+1]
+
+				for k in range(start, end):
+					j = X_pairwise.indices[k]
+					self.current_values[j] = max(X_pairwise.data[k], 
+						self.current_values[j])
 
 			if self.verbose == True:
-				pbar.update(1)
+				self.pbar.update(1)
 
-		if self.verbose == True:
-			pbar.close()
-		
-		self.ranking = numpy.array(ranking)
-		return self

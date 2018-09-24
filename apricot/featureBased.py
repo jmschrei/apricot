@@ -7,6 +7,7 @@ algorithms.
 """
 
 import numpy
+import scipy
 
 from .base import SubmodularSelection
 
@@ -45,7 +46,7 @@ def select_inv_next(X, gains, current_values, current_concave_values, mask):
 		if mask[idx] == 1:
 			continue
 
-		a = 1. / (1. + current_values + X[idx])
+		a = (current_values + X[idx]) / (1. + current_values + X[idx])
 		gains[idx] = (a - current_concave_values).sum()
 
 	return numpy.argmax(gains)
@@ -56,7 +57,7 @@ def select_min_next(X, gains, current_values, current_concave_values, mask):
 		if mask[idx] == 1:
 			continue
 
-		a = numpy.fmin(current_values, X[idx])
+		a = numpy.fmin(current_values + X[idx], numpy.ones(X.shape[1]))
 		gains[idx] = (a - current_concave_values).sum()
 
 	return numpy.argmax(gains)
@@ -110,7 +111,7 @@ class FeatureBasedSelection(SubmodularSelection):
 			'log' : log(1 + X)
 			'sqrt' : sqrt(X)
 			'min' : min(X, 1)
-			'inverse' : 1 / (1 + X)
+			'inverse' : X / (1 + X)
 
 	verbose : bool
 		Whether to print output during the selection process.
@@ -136,7 +137,6 @@ class FeatureBasedSelection(SubmodularSelection):
 	def __init__(self, n_samples, concave_func='sqrt', n_greedy_samples=3, 
 		verbose=False):
 		self.concave_func_name = concave_func
-		self.n_greedy_samples = n_greedy_samples
 
 		if concave_func == 'log':
 			self.concave_func = lambda X: numpy.log(X + 1)
@@ -145,13 +145,13 @@ class FeatureBasedSelection(SubmodularSelection):
 		elif concave_func == 'min':
 			self.concave_func = lambda X: numpy.fmin(X, numpy.ones_like(X))
 		elif concave_func == 'inverse':
-			self.concave_func = lambda X: 1. / (1. + X)
+			self.concave_func = lambda X: X / (1. + X)
 		elif callable(concave_func):
 			self.concave_func = concave_func
 		else:
 			raise KeyError("Must be one of 'log', 'sqrt', 'min', 'inverse', or a custom function.")
 
-		super(FeatureBasedSelection, self).__init__(n_samples, verbose)
+		super(FeatureBasedSelection, self).__init__(n_samples, n_greedy_samples, verbose)
 
 	def fit(self, X, y=None):
 		"""Perform selection and return the subset of the data set.
@@ -178,55 +178,43 @@ class FeatureBasedSelection(SubmodularSelection):
 			The fit step returns itself.
 		"""
 
-		if not isinstance(X, (list, numpy.ndarray)):
-			raise ValueError("X must be either a list of lists or a 2D numpy array.")
-		if isinstance(X, numpy.ndarray) and len(X.shape) != 2:
-			raise ValueError("X must have exactly two dimensions.")
- 		if numpy.min(X) < 0.0:
-			raise ValueError("X cannot contain negative values.")
+		return super(FeatureBasedSelection, self).fit(X, y)
 
-		if self.verbose == True:
-			pbar = tqdm(total=self.n_samples)
+	def _greedy_select(self, X):
+		"""Select elements in a naive greedy manner."""
 
-		X = numpy.array(X, dtype='float64')
-		n, d = X.shape
+		concave_funcs = {
+			'sqrt': select_sqrt_next,
+			'log': select_log_next,
+			'inverse': select_inv_next,
+			'min': select_min_next
+		}
 
-		mask = numpy.zeros(X.shape[0], dtype='int8')
-		ranking = []
+		concave_func = concave_funcs.get(self.concave_func_name, 
+			select_custom_next)
 
-		current_values = numpy.zeros(d, dtype='float64')
-		current_concave_values = numpy.zeros(d, dtype='float64')
-		
 		for i in range(self.n_greedy_samples):
-			gains = numpy.zeros(n, dtype='float64')
-
-			if self.concave_func_name == 'sqrt':
-				best_idx = select_sqrt_next(X, gains, current_values, 
-					current_concave_values, mask)
-			elif self.concave_func_name == 'log':
-				best_idx = select_log_next(X, gains, current_values, 
-					current_concave_values, mask)
-			elif self.concave_func_name == 'inverse':
-				best_idx = select_inv_next(X, gains, current_values, 
-					current_concave_values, mask)
-			elif self.concave_func_name == 'min':
-				best_idx = select_min_next(X, gains, current_values, 
-					current_concave_values, mask)
+			gains = numpy.zeros(X.shape[0], dtype='float64')
+			
+			if self.concave_func_name in concave_funcs:
+				best_idx = concave_func(X, gains, self.current_values,
+					self.current_concave_values, self.mask)
 			else:
 				best_idx = select_custom_next(X, gains, current_values, 
-					current_concave_values, mask, self.concave_func)			
+					current_concave_values, mask, self.concave_func)
 
-			ranking.append(best_idx)
-			mask[best_idx] = True
-			current_values += X[best_idx]
-			current_concave_values = self.concave_func(current_values)
+			self.ranking.append(best_idx)
+			self.mask[best_idx] = True
+			self.current_values += X[best_idx]
+			self.current_concave_values = self.concave_func(self.current_values)
 
 			if self.verbose == True:
-				pbar.update(1)
+				self.pbar.update(1)
 
-		for idx, gain in enumerate(gains):
-			if mask[idx] != 1:
-				self.pq.add(idx, -gain)
+		return gains
+
+	def _lazy_greedy_select(self, X):
+		"""Select elements from a dense matrix in a lazy greedy manner."""
 
 		for i in range(self.n_greedy_samples, self.n_samples):
 			best_gain = 0.
@@ -241,8 +229,8 @@ class FeatureBasedSelection(SubmodularSelection):
 					self.pq.remove(best_idx)
 					break
 				
-				a = self.concave_func(current_values + X[idx])
-				gain = (a - current_concave_values).sum()
+				a = self.concave_func(self.current_values + X[idx])
+				gain = (a - self.current_concave_values).sum()
 				
 				self.pq.add(idx, -gain)
 				
@@ -250,16 +238,10 @@ class FeatureBasedSelection(SubmodularSelection):
 					best_gain = gain
 					best_idx = idx
 
-			ranking.append(best_idx)
-			mask[best_idx] = True
-			current_values += X[best_idx]
-			current_concave_values = self.concave_func(current_values)
+			self.ranking.append(best_idx)
+			self.mask[best_idx] = True
+			self.current_values += X[best_idx]
+			self.current_concave_values = self.concave_func(self.current_values)
 
 			if self.verbose == True:
-				pbar.update(1)
-
-		if self.verbose == True:
-			pbar.close()
-
-		self.ranking = numpy.array(ranking, dtype='int32')
-		return self
+				self.pbar.update(1)

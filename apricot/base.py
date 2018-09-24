@@ -6,6 +6,9 @@ This file contains code that implements the core of the submodular selection
 algorithms.
 """
 
+import numpy
+import scipy
+
 from .utils import PriorityQueue
 
 from tqdm import tqdm
@@ -49,7 +52,7 @@ class SubmodularSelection(object):
 		selected by the greedy procedure.
 	"""
 
-	def __init__(self, n_samples, verbose=False):
+	def __init__(self, n_samples, n_greedy_samples=1, verbose=False):
 		self.pq = PriorityQueue()
 
 		if type(n_samples) != int:
@@ -57,9 +60,21 @@ class SubmodularSelection(object):
 		if n_samples < 1:
 			raise ValueError("n_samples must be a positive integer.")
 
+		if type(n_greedy_samples) != int:
+			raise ValueError("n_greedy_samples must be a positive integer")
+		if n_greedy_samples < 1:
+			raise ValueError("n_greedy_samples must be a positive integer.")
+		if n_greedy_samples > n_samples:
+			raise ValueError("n_samples must be larger than n_greedy_samples")
+
+		if verbose not in (True, False):
+			raise ValueError("verbosity must be True or False")
+
 		self.n_samples = n_samples
+		self.n_greedy_samples = n_greedy_samples
 		self.verbose = verbose
 		self.ranking = None
+		self.sparse = None
 	
 	def fit(self, X, y=None):
 		"""Fit a ranking to the data set of the top n_sample elements.
@@ -84,6 +99,50 @@ class SubmodularSelection(object):
 		self : SubmodularSelection
 		"""
 
+		allowed_dtypes = list, numpy.ndarray, scipy.sparse.csr_matrix
+
+		if not isinstance(X, allowed_dtypes):
+			raise ValueError("X must be either a list of lists, a 2D numpy " \
+				"array, or a scipy.sparse.csr_matrix.")
+		if isinstance(X, numpy.ndarray) and len(X.shape) != 2:
+			raise ValueError("X must have exactly two dimensions.")
+ 		if numpy.min(X) < 0.0 and numpy.max(X) > 0.:
+			raise ValueError("X cannot contain negative values or must be entirely "\
+				"negative values.")
+
+		if self.verbose == True:
+			self.pbar = tqdm(total=self.n_samples)
+
+		self.current_values = numpy.zeros(X.shape[1], dtype='float64')
+		self.current_values += numpy.min(X)
+		self.current_concave_values = numpy.zeros(X.shape[1])
+
+		self.mask = numpy.zeros(X.shape[0], dtype='int8')
+		self.ranking = []
+		
+		# Select using the greedy algorithm first returning the gains from
+		# the last round of selection.
+		gains = self._greedy_select(X)
+
+		# Populate the priority queue following greedy selection
+		if self.n_greedy_samples < self.n_samples:
+			for idx, gain in enumerate(gains):
+				if self.mask[idx] != 1:
+					self.pq.add(idx, -gain) 
+
+			# Now select remaining elements using the lazy greedy algorithm.
+			self._lazy_greedy_select(X)
+
+		if self.verbose == True:
+			self.pbar.close()
+		
+		self.ranking = numpy.array(self.ranking)
+		return self
+
+	def _greedy_select(self, X):
+		raise NotImplementedError
+
+	def _lazy_greedy_select(self, X):
 		raise NotImplementedError
 
 	def transform(self, X, y=None):
