@@ -12,7 +12,7 @@ from numpy.testing import assert_array_almost_equal
 digits_data = load_digits()
 X_digits = digits_data.data
 
-norm = lambda x: numpy.sum(x*x, axis=1).reshape(x.shape[0], 1)
+norm = lambda x: numpy.sqrt((x*x).sum(axis=1)).reshape(x.shape[0], 1)
 cosine = lambda x: numpy.dot(x, x.T) / (norm(x).dot(norm(x).T))
 
 X_digits_sparse = scipy.sparse.csr_matrix(cosine(X_digits))
@@ -35,14 +35,14 @@ digits_euclidean_ranking = [945, 392, 1507, 793, 1417, 1039, 97, 1107, 1075,
 	762, 1294, 1588, 732, 1387, 1568, 1026, 1156, 79, 1222, 1414, 864, 1549, 
 	1236, 213, 411, 151, 233, 924, 126, 345, 1421, 1562]
 
-digits_cosine_ranking = [1058, 1626, 526, 1331, 367, 672, 668, 330, 1032, 685, 
-	1656, 1099, 1369, 1195, 539, 403, 473, 1406, 1235, 1547, 1498, 482, 1508, 
-	527, 557, 583, 1118, 50, 1311, 1309, 1253, 1389, 153, 47, 1356, 1266, 579, 
-	1056, 569, 1481, 1717, 1183, 289, 1285, 1681, 151, 828, 1664, 994, 369, 
-	908, 573, 1326, 549, 1473, 1777, 691, 1077, 1486, 737, 857, 1484, 946, 
-	1029, 194, 299, 524, 43, 1645, 1628, 1123, 911, 279, 1612, 940, 127, 1072, 
-	1196, 504, 941, 1400, 245, 384, 280, 1412, 690, 1288, 1769, 1514, 54, 25, 
-	999, 966, 103, 83, 1595, 752, 12, 813, 1152]
+digits_cosine_ranking = [424, 615, 1545, 1385, 1399, 1482, 1539, 1075, 331, 493, 
+	885, 236, 345, 1282, 1051, 823, 537, 1788, 1549, 834, 1634, 1009, 1718, 655, 
+	1474, 1292, 1185, 396, 1676, 2, 183, 533, 1536, 438, 1276, 305, 1353, 620, 
+	1026, 983, 162, 1012, 384, 91, 227, 798, 1291, 1655, 1485, 1206, 410, 556, 
+	1161, 29, 1320, 1295, 164, 514, 1294, 1711, 579, 938, 517, 1682, 1325, 1222, 
+	82, 959, 520, 1066, 943, 1556, 762, 898, 732, 1086, 881, 1588, 1470, 1568, 1678, 
+	948, 1364, 62, 937, 1156, 1168, 241, 573, 347, 908, 1628, 1442, 126, 815, 411, 
+	1257, 151, 23, 696]
 
 def test_digits_corr_small_greedy():
 	model = FacilityLocationSelection(10, 'corr', 10)
@@ -195,27 +195,27 @@ def test_digits_cosine_large_truncated_pivot():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:100], digits_cosine_ranking)
 
-def test_digits_euclidean_small_precomputed_greedy():
+def test_digits_cosine_small_precomputed_greedy():
 	model = FacilityLocationSelection(10, 'precomputed', 10)
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking, digits_cosine_ranking[:10])
 
-def test_digits_euclidean_small_precomputed_pivot():
+def test_digits_cosine_small_precomputed_pivot():
 	model = FacilityLocationSelection(10, 'precomputed', 5)
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking, digits_cosine_ranking[:10])
 
-def test_digits_euclidean_small_precomputed_pq():
+def test_digits_cosine_small_precomputed_pq():
 	model = FacilityLocationSelection(10, 'precomputed', 1)
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking, digits_cosine_ranking[:10])
 
-def test_digits_euclidean_small_precomputed_truncated():
+def test_digits_cosine_small_precomputed_truncated():
 	model = FacilityLocationSelection(15, 'precomputed', 1)
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking[:10], digits_cosine_ranking[:10])
 
-def test_digits_euclidean_small_precomputed_truncated_pivot():
+def test_digits_cosine_small_precomputed_truncated_pivot():
 	model = FacilityLocationSelection(15, 'precomputed', 5)
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking[:10], digits_cosine_ranking[:10])

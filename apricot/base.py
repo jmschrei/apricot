@@ -7,11 +7,11 @@ algorithms.
 """
 
 import numpy
-import scipy
 
 from .utils import PriorityQueue
 
 from tqdm import tqdm
+from scipy.sparse import csr_matrix
 
 class SubmodularSelection(object):
 	"""The base selection object.
@@ -99,7 +99,7 @@ class SubmodularSelection(object):
 		self : SubmodularSelection
 		"""
 
-		allowed_dtypes = list, numpy.ndarray, scipy.sparse.csr_matrix
+		allowed_dtypes = list, numpy.ndarray, csr_matrix
 
 		if not isinstance(X, allowed_dtypes):
 			raise ValueError("X must be either a list of lists, a 2D numpy " \

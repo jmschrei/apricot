@@ -6,7 +6,6 @@ This code implements facility location functions.
 """
 
 import numpy
-import scipy
 
 from .base import SubmodularSelection
 
@@ -14,6 +13,8 @@ from tqdm import tqdm
 
 from numba import njit
 from numba import prange
+
+from scipy.sparse import csr_matrix
 
 dtypes = 'int64(float64[:,:], float64[:], float64[:], int8[:])'
 sdtypes = 'int64(float64[:], int32[:], int32[:], float64[:], float64[:], int8[:])'
@@ -95,14 +96,15 @@ class FacilityLocationSelection(SubmodularSelection):
 		verbose=False):
 		self.pairwise_func_name = pairwise_func
 		
-		norm = lambda x: numpy.sum(x*x, axis=1).reshape(x.shape[0], 1)
+		norm = lambda x: numpy.sqrt((x*x).sum(axis=1)).reshape(x.shape[0], 1)
+		norm2 = lambda x: (x*x).sum(axis=1).reshape(x.shape[0], 1)
 
 		if pairwise_func == 'corr':
 			self.pairwise_func = lambda X: numpy.corrcoef(X, rowvar=True) ** 2.
 		elif pairwise_func == 'cosine':
-			self.pairwise_func = lambda X: numpy.dot(X, X.T) / (norm(X).dot(norm(X).T))
+			self.pairwise_func = lambda X: numpy.abs(numpy.dot(X, X.T) / (norm(X).dot(norm(X).T)))
 		elif pairwise_func == 'euclidean':
-			self.pairwise_func = lambda X: -((-2 * numpy.dot(X, X.T) + norm(X)).T + norm(X))
+			self.pairwise_func = lambda X: -((-2 * numpy.dot(X, X.T) + norm2(X)).T + norm2(X))
 		elif pairwise_func == 'precomputed':
 			self.pairwise_func = pairwise_func
 		elif callable(pairwise_func):
@@ -140,9 +142,8 @@ class FacilityLocationSelection(SubmodularSelection):
 		"""
 
 		f = self.pairwise_func
-		csr = scipy.sparse.csr_matrix
 
-		if isinstance(X, csr) and f != "precomputed":
+		if isinstance(X, csr_matrix) and f != "precomputed":
 			raise ValueError("Must passed in a precomputed sparse " \
 				"similarity  matrix or a dense feature matrix.")
 		if f == 'precomputed' and X.shape[0] != X.shape[1]:
@@ -153,7 +154,7 @@ class FacilityLocationSelection(SubmodularSelection):
 			self.pbar = tqdm(total=self.n_samples)
 			self.pbar.update(1)
 
-		self.sparse = isinstance(X, scipy.sparse.csr_matrix)
+		self.sparse = isinstance(X, csr_matrix)
 
 		if self.pairwise_func == 'precomputed':
 			X_pairwise = X

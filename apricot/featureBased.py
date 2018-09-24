@@ -7,7 +7,6 @@ algorithms.
 """
 
 import numpy
-import scipy
 
 from .base import SubmodularSelection
 
