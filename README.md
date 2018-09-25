@@ -12,11 +12,15 @@ If you get an error that looks like
 
 ```Inconsistency detected by ld.so: dl-version.c: 224: _dl_check_map_versions: Assertion `needed != NULL' failed!``` 
 
-or a segmentation fault when importing then you should try reinstalling numba through conda using 
+or a segmentation fault when importing apricot for the first time then you should try reinstalling numba through conda using 
 
 ```conda install numba```.
 
-The issue appears to be with a recent version of either numba or llvm. Downgrading to llvm 0.24.0 and numba 0.38.0 should resolve the issue.
+or
+
+```pip install numba==0.39.0```
+
+The issue appears to be with the most recent verson of numba, v0.40.0. Downgrading to numba v0.39.0 should solve the issue. 
 
 ### Usage
 
