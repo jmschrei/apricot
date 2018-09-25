@@ -65,6 +65,29 @@ These exemplars can be used for a variety of tasks, including selecting subsets 
 
 ![](img/facilitylocation.gif)
 
+#### scikit-learn integration
+
+Because apricot implements these functions in the style of a scikit-learn transformer, they can be dropped into current workflows. Clustering models that used to be defined as follows:
+
+```
+model = GaussianMixture(10)
+model.fit(X)
+```
+
+can now be turned into a pipeline without changing the rest of your code like such:
+
+```
+model = Pipeline([('selection', FacilityLocationSelection(25)),
+                  ('model', GaussianMixture(10))])
+model.fit(X)
+```
+
+sklearn does not currently allow transformers to modify the label vector y even though they can modify the data matrix X and so apricot cannot be dropped into pipelines for supervised models. However, if you are not constrained to use a pipeline then you can transform both the data matrix and the label vector together:
+
+```
+X_subset, y_subset = FacilityLocationSelection(100).fit_transform(X, y)
+model.fit(X_subset, y_subset)
+```
 
 #### When should I use submodular selection?
 
