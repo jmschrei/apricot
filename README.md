@@ -41,6 +41,8 @@ model = FacilityLocationSelection(1000).fit(X)
 X_reordered2 = X[model.ranking]
 ```
 
+Feature based functions can be used similarly.
+
 #### Feature based functions quickly select subsets for machine learning models
 
 Feature based methods work well when the features correspond to some notion of quantity or importance. For example, when the features are number of times a word appears in a document, or the strength of a signal at a sensor. These functions then attempt to select samples that show a diversity in the features which exhibit large values, ensuring that large values are seen in as many features as possible. When using a feature based function on the 20 newsgroups data set, one can train a logistic regression model using only 100 samples and get the same performance as using all 1,187 potential samples, much better than using random sampling.
@@ -49,7 +51,9 @@ Feature based methods work well when the features correspond to some notion of q
 
 #### Facility location functions work in a variety of situations
 
-Facility location functions are more general purpose and work in any situation in which a similarity can be defined over pairs of samples. These functions then attempt to identify samples that are representative of those samples who are least similar to the currently identified samples. These exemplars can be used for a variety of tasks, including selecting subsets for training machine learning models, visualization in the place of large data sets, or as centroids in a greedy version of k-means clustering. The animation below shows samples being selected according to facility location and compared to random selection, with facility location first selecting a sample that represents the entire data set, then selecting a sample that is in the largest cluster but near the second largest, and then the centers of local neighborhoods.
+Facility location functions are more general purpose and work in any situation in which a similarity can be defined over pairs of samples. These functions then attempt to identify samples that are representative of those samples who are least similar to the currently identified samples. However, because one needs to define a similarity between all pairs of samples, these algorithms take memory that is quadratic with the number of samples. However, apricot allows you to pass in a sparse matrix and gives corresponding speed gains when not all pairs of samples need to be considered.
+
+These exemplars can be used for a variety of tasks, including selecting subsets for training machine learning models, visualization in the place of large data sets, or as centroids in a greedy version of k-means clustering. The animation below shows samples being selected according to facility location and compared to random selection, with facility location first selecting a sample that represents the entire data set, then selecting a sample that is in the largest cluster but near the second largest, and then the centers of local neighborhoods.
 
 ![](img/facilitylocation.gif)
 
