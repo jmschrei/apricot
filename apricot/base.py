@@ -106,7 +106,7 @@ class SubmodularSelection(object):
 				"array, or a scipy.sparse.csr_matrix.")
 		if isinstance(X, numpy.ndarray) and len(X.shape) != 2:
 			raise ValueError("X must have exactly two dimensions.")
- 		if numpy.min(X) < 0.0 and numpy.max(X) > 0.:
+		if numpy.min(X) < 0.0 and numpy.max(X) > 0.:
 			raise ValueError("X cannot contain negative values or must be entirely "\
 				"negative values.")
 
@@ -119,7 +119,7 @@ class SubmodularSelection(object):
 
 		self.mask = numpy.zeros(X.shape[0], dtype='int8')
 		self.ranking = []
-		
+
 		# Select using the greedy algorithm first returning the gains from
 		# the last round of selection.
 		gains = self._greedy_select(X)
