@@ -43,6 +43,14 @@ X_reordered2 = X[model.ranking]
 
 Feature based functions can be used similarly.
 
+```
+import numpy
+from apricot import FeatureBasedSelection
+
+X = numpy.random.normal(20, 1, size=(1000, 25))
+X_subset = FeatureBasedSelection(100).fit_transform(X)
+```
+
 #### Feature based functions quickly select subsets for machine learning models
 
 Feature based methods work well when the features correspond to some notion of quantity or importance. For example, when the features are number of times a word appears in a document, or the strength of a signal at a sensor. These functions then attempt to select samples that show a diversity in the features which exhibit large values, ensuring that large values are seen in as many features as possible. When using a feature based function on the 20 newsgroups data set, one can train a logistic regression model using only 100 samples and get the same performance as using all 1,187 potential samples, much better than using random sampling.
