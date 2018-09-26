@@ -162,6 +162,10 @@ class FacilityLocationSelection(SubmodularSelection):
 			X = numpy.array(X, dtype='float64')
 			X_pairwise = self.pairwise_func(X)
 
+			if self.pairwise_func_name == 'euclidean':
+				eps = numpy.max(numpy.diag(X_pairwise))
+				X_pairwise -= numpy.eye(X.shape[0]) * eps
+
 		return super(FacilityLocationSelection, self).fit(X_pairwise, y)
 
 	def _greedy_select(self, X_pairwise):
