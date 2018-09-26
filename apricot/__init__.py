@@ -4,4 +4,4 @@
 from .featureBased import FeatureBasedSelection
 from .facilityLocation import FacilityLocationSelection
 
-__version__ = '0.2.3'
+__version__ = '0.2.4'
