@@ -50,6 +50,12 @@ class SubmodularSelection(object):
 		The selected samples in the order of their gain with the first number in
 		the ranking corresponding to the index of the first sample that was
 		selected by the greedy procedure.
+
+	gains : numpy.array float
+		The gain of each sample in the returned set when it was added to the
+		growing subset. The first number corresponds to the gain of the first
+		added sample, the second corresponds to the gain of the second added
+		sample, and so forth.
 	"""
 
 	def __init__(self, n_samples, n_greedy_samples=1, verbose=False):
@@ -74,6 +80,7 @@ class SubmodularSelection(object):
 		self.n_greedy_samples = n_greedy_samples
 		self.verbose = verbose
 		self.ranking = None
+		self.gains = None
 		self.sparse = None
 	
 	def fit(self, X, y=None):
@@ -119,6 +126,7 @@ class SubmodularSelection(object):
 
 		self.mask = numpy.zeros(X.shape[0], dtype='int8')
 		self.ranking = []
+		self.gains = []
 
 		# Select using the greedy algorithm first returning the gains from
 		# the last round of selection.

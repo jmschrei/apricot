@@ -131,6 +131,12 @@ class FeatureBasedSelection(SubmodularSelection):
 		The selected samples in the order of their gain with the first number in
 		the ranking corresponding to the index of the first sample that was
 		selected by the greedy procedure.
+
+	gains : numpy.array float
+		The gain of each sample in the returned set when it was added to the
+		growing subset. The first number corresponds to the gain of the first
+		added sample, the second corresponds to the gain of the second added
+		sample, and so forth.
 	"""
 
 	def __init__(self, n_samples, concave_func='sqrt', n_greedy_samples=3, 
@@ -203,6 +209,7 @@ class FeatureBasedSelection(SubmodularSelection):
 					current_concave_values, mask, self.concave_func)
 
 			self.ranking.append(best_idx)
+			self.gains.append(gains[best_idx])
 			self.mask[best_idx] = True
 			self.current_values += X[best_idx]
 			self.current_concave_values = self.concave_func(self.current_values)
@@ -238,6 +245,7 @@ class FeatureBasedSelection(SubmodularSelection):
 					best_idx = idx
 
 			self.ranking.append(best_idx)
+			self.gains.append(best_gain)
 			self.mask[best_idx] = True
 			self.current_values += X[best_idx]
 			self.current_concave_values = self.concave_func(self.current_values)

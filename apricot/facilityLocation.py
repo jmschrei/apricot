@@ -90,6 +90,12 @@ class FacilityLocationSelection(SubmodularSelection):
 
 	ranking : numpy.array int
 		The selected samples in the order of their gain.
+
+	gains : numpy.array float
+		The gain of each sample in the returned set when it was added to the
+		growing subset. The first number corresponds to the gain of the first
+		added sample, the second corresponds to the gain of the second added
+		sample, and so forth.
 	"""
 
 	def __init__(self, n_samples=10, pairwise_func='euclidean', n_greedy_samples=1, 
@@ -173,7 +179,7 @@ class FacilityLocationSelection(SubmodularSelection):
 
 		for i in range(self.n_greedy_samples):
 			gains = numpy.zeros(X_pairwise.shape[0], dtype='float64')
-		
+
 			if not self.sparse:
 				best_idx = select_next(X_pairwise, gains, self.current_values,
 					self.mask)
@@ -187,6 +193,7 @@ class FacilityLocationSelection(SubmodularSelection):
 					X_pairwise[best_idx].toarray()[0], self.current_values)
 
 			self.ranking.append(best_idx)
+			self.gains.append(gains[best_idx])
 			self.mask[best_idx] = 1
 
 			if self.verbose == True:
@@ -234,6 +241,7 @@ class FacilityLocationSelection(SubmodularSelection):
 					best_idx = idx
 
 			self.ranking.append(best_idx)
+			self.gains.append(best_gain)
 			self.mask[best_idx] = True
 
 			if not self.sparse:
