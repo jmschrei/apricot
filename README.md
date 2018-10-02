@@ -59,11 +59,15 @@ X_subset = FeatureBasedSelection(100).fit_transform(X)
 
 #### Feature based functions quickly select subsets for machine learning models
 
+```FeatureBasedSelection(n_samples, concave_func='sqrt', n_greedy_samples=3, verbose=False)```
+
 Feature based methods work well when the features correspond to some notion of quantity or importance. For example, when the features are number of times a word appears in a document, or the strength of a signal at a sensor. These functions then attempt to select samples that show a diversity in the features which exhibit large values, ensuring that large values are seen in as many features as possible. When using a feature based function on the 20 newsgroups data set, one can train a logistic regression model using only 100 samples and get the same performance as using all 1,187 potential samples, much better than using random sampling.
 
 ![](img/20newsgroups.png)
 
 #### Facility location functions work in a variety of situations
+
+```FacilityLocationSelection(n_samples, pairwise_func='euclidean', n_greedy_samples=1, verbose=False)```
 
 Facility location functions are more general purpose and work in any situation in which a similarity can be defined over pairs of samples. These functions then attempt to identify samples that are representative of those samples who are least similar to the currently identified samples. However, because one needs to define a similarity between all pairs of samples, these algorithms take memory that is quadratic with the number of samples. However, apricot allows you to pass in a sparse matrix and gives corresponding speed gains when not all pairs of samples need to be considered.
 
