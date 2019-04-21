@@ -174,6 +174,9 @@ class FacilityLocationSelection(SubmodularSelection):
 
 		return super(FacilityLocationSelection, self).fit(X_pairwise, y)
 
+	def _initialize_with_subset(self, X_pairwise, initial_subset):
+		pass
+
 	def _greedy_select(self, X_pairwise):
 		"""Select elements in a naive greedy manner."""
 

@@ -25,15 +25,20 @@ class SubmodularSelection(object):
 	n_samples : int
 		The number of samples to return.
 
-	concave_func : str or callable
-		The type of concave function to apply to the feature values. You can
-		pass in your own function to apply. Otherwise must be one of the
-		following:
+	n_greedy_samples : int
+		The number of samples to perform the naive greedy algorithm on
+		before switching to the lazy greedy algorithm. The lazy greedy
+		algorithm is faster once features begin to saturate, but is slower
+		in the initial few selections. This is, in part, because the naive
+		greedy algorithm is parallelized whereas the lazy greedy
+		algorithm currently is not.
 
-			'log' : log(1 + X)
-			'sqrt' : sqrt(X)
-			'min' : min(X, 1)
-			'inverse' : 1 / (1 + X)
+	initial_subset : list, numpy.ndarray or None
+		If provided, this should be a list of indices into the data matrix
+		to use as the initial subset, or a group of examples that may not be
+		in the provided data should beused as the initial subset. If indices, 
+		the provided array should be one-dimensional. If a group of examples,
+		the data should be 2 dimensional.
 
 	verbose : bool
 		Whether to print output during the selection process.
@@ -58,7 +63,7 @@ class SubmodularSelection(object):
 		sample, and so forth.
 	"""
 
-	def __init__(self, n_samples, n_greedy_samples=1, verbose=False):
+	def __init__(self, n_samples, n_greedy_samples=1, initial_subset=None, verbose=False):
 		self.pq = PriorityQueue()
 
 		if type(n_samples) != int:
@@ -73,6 +78,11 @@ class SubmodularSelection(object):
 		if n_greedy_samples > n_samples:
 			raise ValueError("n_samples must be larger than n_greedy_samples")
 
+		if not isinstance(initial_subset, (list, numpy.ndarray)) and initial_subset is not None: 
+			raise ValueError("initial_subset must be a list, numpy array, or None")
+		if isinstance(initial_subset, (list, numpy.ndarray)):
+			initial_subset = numpy.array(initial_subset)
+
 		if verbose not in (True, False):
 			raise ValueError("verbosity must be True or False")
 
@@ -82,6 +92,7 @@ class SubmodularSelection(object):
 		self.ranking = None
 		self.gains = None
 		self.sparse = None
+		self.initial_subset = initial_subset
 	
 	def fit(self, X, y=None):
 		"""Fit a ranking to the data set of the top n_sample elements.
@@ -120,11 +131,21 @@ class SubmodularSelection(object):
 		if self.verbose == True:
 			self.pbar = tqdm(total=self.n_samples)
 
-		self.current_values = numpy.zeros(X.shape[1], dtype='float64')
-		self.current_values += numpy.min(X)
-		self.current_concave_values = numpy.zeros(X.shape[1])
+		if initial_subset is None or initial_subset.ndim == 2:
+			self.current_values = numpy.zeros(X.shape[1], dtype='float64')
+			self.current_values += numpy.min(X)
+			self.current_concave_values = numpy.zeros(X.shape[1])
+			self.mask = numpy.zeros(X.shape[0], dtype='int8')
+		elif initial_subset.dtype == bool:
+			self.mask = initial_subset.copy().astype('int8')
+		elif initial_subset.ndim == 1:
+			self.mask = numpy.zeros(X.shape[1], dtype='int8')
+			self.mask[initial_subset] = 1
 
-		self.mask = numpy.zeros(X.shape[0], dtype='int8')
+		if initial_subset is not None and initial_subset.ndim == 1:
+			initial_subset = X[initial_subset]
+			self._initialize_with_subset(X, initial_subset)
+
 		self.ranking = []
 		self.gains = []
 
