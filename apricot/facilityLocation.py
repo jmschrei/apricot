@@ -79,6 +79,24 @@ class FacilityLocationSelection(SubmodularSelection):
 			'cosine' : The normalized dot product of the matrix
 			'precomputed' : User passes in a NxN matrix of distances themselves
 
+	n_greedy_samples : int
+		The number of samples to perform the naive greedy algorithm on
+		before switching to the lazy greedy algorithm. The lazy greedy
+		algorithm is faster once features begin to saturate, but is slower
+		in the initial few selections. This is, in part, because the naive
+		greedy algorithm is parallelized whereas the lazy greedy
+		algorithm currently is not.
+
+	initial_subset : list, numpy.ndarray or None
+		If provided, this should be a list of indices into the data matrix
+		to use as the initial subset, or a group of examples that may not be
+		in the provided data should beused as the initial subset. If indices, 
+		the provided array should be one-dimensional. If a group of examples,
+		the data should be 2 dimensional.
+
+	verbose : bool
+		Whether to print output during the selection process.
+
 	Attributes
 	----------
 	n_samples : int
@@ -99,7 +117,7 @@ class FacilityLocationSelection(SubmodularSelection):
 	"""
 
 	def __init__(self, n_samples=10, pairwise_func='euclidean', n_greedy_samples=1, 
-		verbose=False):
+		initial_subset=None, verbose=False):
 		self.pairwise_func_name = pairwise_func
 		
 		norm = lambda x: numpy.sqrt((x*x).sum(axis=1)).reshape(x.shape[0], 1)
@@ -120,7 +138,7 @@ class FacilityLocationSelection(SubmodularSelection):
 				" or a custom function.")
 
 		super(FacilityLocationSelection, self).__init__(n_samples, 
-			n_greedy_samples, verbose)
+			n_greedy_samples, initial_subset, verbose)
 
 	def fit(self, X, y=None):
 		"""Perform selection and return the subset of the data set.
@@ -174,8 +192,22 @@ class FacilityLocationSelection(SubmodularSelection):
 
 		return super(FacilityLocationSelection, self).fit(X_pairwise, y)
 
-	def _initialize_with_subset(self, X_pairwise, initial_subset):
-		pass
+	def _initialize_with_subset(self, X_pairwise):
+		if self.initial_subset.ndim == 2:
+			raise ValueError("When using facility location, the initial subset"\
+				" must be a one dimensional array of indices.")
+		elif self.initial_subset.ndim == 1:
+			if not self.sparse:
+				for i in self.initial_subset:
+					self.current_values = numpy.maximum(X_pairwise[i],
+						self.current_values)
+			else:
+				for i in self.initial_subset:
+					self.current_values = numpy.maximum(
+						X_pairwise[i].toarray()[0], self.current_values)
+		else:
+			raise ValueError("The initial subset must be either a two dimensional" \
+				" matrix of examples or a one dimensional mask.")
 
 	def _greedy_select(self, X_pairwise):
 		"""Select elements in a naive greedy manner."""

@@ -112,6 +112,22 @@ class FeatureBasedSelection(SubmodularSelection):
 			'min' : min(X, 1)
 			'inverse' : X / (1 + X)
 
+	n_greedy_samples : int
+		The number of samples to perform the naive greedy algorithm on
+		before switching to the lazy greedy algorithm. The lazy greedy
+		algorithm is faster once features begin to saturate, but is slower
+		in the initial few selections. This is, in part, because the naive
+		greedy algorithm is parallelized whereas the lazy greedy
+		algorithm currently is not.
+
+	initial_subset : list, numpy.ndarray or None
+		If provided, this should be a list of indices into the data matrix
+		to use as the initial subset, or a group of examples that may not be
+		in the provided data should beused as the initial subset. If indices, 
+		the provided array should be one-dimensional. If a group of examples,
+		the data should be 2 dimensional.
+
+
 	verbose : bool
 		Whether to print output during the selection process.
 
@@ -140,7 +156,7 @@ class FeatureBasedSelection(SubmodularSelection):
 	"""
 
 	def __init__(self, n_samples, concave_func='sqrt', n_greedy_samples=3, 
-		verbose=False):
+		initial_subset=None, verbose=False):
 		self.concave_func_name = concave_func
 
 		if concave_func == 'log':
@@ -156,7 +172,8 @@ class FeatureBasedSelection(SubmodularSelection):
 		else:
 			raise KeyError("Must be one of 'log', 'sqrt', 'min', 'inverse', or a custom function.")
 
-		super(FeatureBasedSelection, self).__init__(n_samples, n_greedy_samples, verbose)
+		super(FeatureBasedSelection, self).__init__(n_samples, n_greedy_samples, 
+			initial_subset, verbose)
 
 	def fit(self, X, y=None):
 		"""Perform selection and return the subset of the data set.
@@ -184,6 +201,17 @@ class FeatureBasedSelection(SubmodularSelection):
 		"""
 
 		return super(FeatureBasedSelection, self).fit(X, y)
+
+	def _initialize_with_subset(self, X):
+		if self.initial_subset.ndim == 2:
+			self.current_values = self.initial_subset.sum(axis=0)
+		elif self.initial_subset.ndim == 1:
+			self.current_values = X[self.initial_subset].sum(axis=0)
+		else:
+			raise ValueError("The initial subset must be either a two dimensional" \
+				" matrix of examples or a one dimensional mask.")
+
+		self.current_concave_values = self.concave_func(self.current_values)
 
 	def _greedy_select(self, X):
 		"""Select elements in a naive greedy manner."""

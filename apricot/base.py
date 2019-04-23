@@ -131,20 +131,26 @@ class SubmodularSelection(object):
 		if self.verbose == True:
 			self.pbar = tqdm(total=self.n_samples)
 
-		if initial_subset is None or initial_subset.ndim == 2:
-			self.current_values = numpy.zeros(X.shape[1], dtype='float64')
-			self.current_values += numpy.min(X)
-			self.current_concave_values = numpy.zeros(X.shape[1])
-			self.mask = numpy.zeros(X.shape[0], dtype='int8')
-		elif initial_subset.dtype == bool:
-			self.mask = initial_subset.copy().astype('int8')
-		elif initial_subset.ndim == 1:
-			self.mask = numpy.zeros(X.shape[1], dtype='int8')
-			self.mask[initial_subset] = 1
+		self.current_values = numpy.zeros(X.shape[1], dtype='float64')
+		self.current_values += numpy.min(X)
+		self.current_concave_values = numpy.zeros(X.shape[1])
+		self.mask = numpy.zeros(X.shape[0], dtype='int8')
 
-		if initial_subset is not None and initial_subset.ndim == 1:
-			initial_subset = X[initial_subset]
-			self._initialize_with_subset(X, initial_subset)
+		if self.initial_subset is not None:
+			if self.initial_subset.ndim == 1:
+				if self.initial_subset.dtype == bool:
+					self.initial_subset = numpy.where(self.initial_subset == 1)[0]
+
+				if self.initial_subset.max() > X.shape[0]:
+					raise ValueError("When passing in an integer mask for the initial subset"\
+						" the maximum value cannot exceed the size of the data set.")
+				elif self.initial_subset.min() < 0:
+					raise ValueError("When passing in an integer mask for the initial subset"\
+						" the minimum value cannot be negative.")
+				
+				self.mask[self.initial_subset] = 1
+
+			self._initialize_with_subset(X)
 
 		self.ranking = []
 		self.gains = []
@@ -167,6 +173,9 @@ class SubmodularSelection(object):
 		
 		self.ranking = numpy.array(self.ranking)
 		return self
+
+	def _initialize_with_subset(self, X, subset):
+		raise NotImplementedError
 
 	def _greedy_select(self, X):
 		raise NotImplementedError
