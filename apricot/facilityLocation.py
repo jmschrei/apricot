@@ -200,11 +200,11 @@ class FacilityLocationSelection(SubmodularSelection):
 			if not self.sparse:
 				for i in self.initial_subset:
 					self.current_values = numpy.maximum(X_pairwise[i],
-						self.current_values)
+						self.current_values).astype('float64')
 			else:
 				for i in self.initial_subset:
 					self.current_values = numpy.maximum(
-						X_pairwise[i].toarray()[0], self.current_values)
+						X_pairwise[i].toarray()[0], self.current_values).astype('float64')
 		else:
 			raise ValueError("The initial subset must be either a two dimensional" \
 				" matrix of examples or a one dimensional mask.")

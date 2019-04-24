@@ -127,6 +127,12 @@ class SubmodularSelection(object):
 		if numpy.min(X) < 0.0 and numpy.max(X) > 0.:
 			raise ValueError("X cannot contain negative values or must be entirely "\
 				"negative values.")
+		if self.n_samples > X.shape[0]:
+			raise ValueError("Cannot select more examples than the number in" \
+				" the data set.")
+
+		if not self.sparse:
+			X = X.astype('float64')
 
 		if self.verbose == True:
 			self.pbar = tqdm(total=self.n_samples)
@@ -138,6 +144,12 @@ class SubmodularSelection(object):
 
 		if self.initial_subset is not None:
 			if self.initial_subset.ndim == 1:
+				if len(self.initial_subset) + self.n_samples > X.shape[0]:
+					raise ValueError("When using a mask for the initial subset" \
+						" must selected fewer than the size of the subset minus" \
+						" the initial subset size, i.e., n_samples < X.shape[0] -"\
+						" initial_subset.shape[0].")
+
 				if self.initial_subset.dtype == bool:
 					self.initial_subset = numpy.where(self.initial_subset == 1)[0]
 

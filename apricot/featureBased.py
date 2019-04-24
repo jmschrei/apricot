@@ -204,9 +204,9 @@ class FeatureBasedSelection(SubmodularSelection):
 
 	def _initialize_with_subset(self, X):
 		if self.initial_subset.ndim == 2:
-			self.current_values = self.initial_subset.sum(axis=0)
+			self.current_values = self.initial_subset.sum(axis=0).astype('float64')
 		elif self.initial_subset.ndim == 1:
-			self.current_values = X[self.initial_subset].sum(axis=0)
+			self.current_values = X[self.initial_subset].sum(axis=0).astype('float64')
 		else:
 			raise ValueError("The initial subset must be either a two dimensional" \
 				" matrix of examples or a one dimensional mask.")
