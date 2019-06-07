@@ -2,4 +2,4 @@ numpy >= 1.14.2
 scipy >= 1.0.0
 numba >= 0.39.0, < 0.40.0
 tqdm >= 4.24.
-sklearn >= 0.21.0
+sklearn >= 0.21.2
