@@ -1,0 +1,52 @@
+    language: python
+matrix:
+  include:
+  - os: osx
+    language: generic
+    env: PYTHON=2.7
+  - os: osx
+    language: generic
+    env: PYTHON=3.4
+  - os: osx
+    language: generic
+    env: PYTHON=3.5
+  - os: osx
+    language: generic
+    env: PYTHON=3.6
+  - os: osx
+    language: generic
+    env: PYTHON=3.7
+  - os: linux
+    language: generic
+    env: PYTHON=2.7
+  - os: linux
+    language: generic
+    env: PYTHON=3.4
+  - os: linux
+    language: generic
+    env: PYTHON=3.5
+  - os: linux
+    language: generic
+    env: PYTHON=3.6
+  - os: linux
+    language: generic
+    env: PYTHON=3.7
+before_install:
+- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then if [[ "$PYTHON" == "2.7" ]]; then wget
+  http://repo.continuum.io/miniconda/Miniconda2-latest-MacOSX-x86_64.sh -O miniconda.sh;
+  else wget http://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh
+  -O miniconda.sh; fi else if [[ "$PYTHON" == "2.7" ]]; then wget http://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh
+  -O miniconda.sh; else wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+  -O miniconda.sh; fi fi
+- bash miniconda.sh -b -p $HOME/miniconda
+- export PATH="$HOME/miniconda/bin:$PATH"
+- conda config --set always_yes yes --set changeps1 no
+- conda update -q conda
+- conda info -a
+- conda create -q -n test-environment python=$PYTHON numpy scipy
+- source activate test-environment
+- pip install -r dev-requirements.txt
+install:
+- python setup.py install
+script:
+- python setup.py test
