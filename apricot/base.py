@@ -144,14 +144,14 @@ class SubmodularSelection(object):
 
 		if self.initial_subset is not None:
 			if self.initial_subset.ndim == 1:
+				if self.initial_subset.dtype == bool:
+					self.initial_subset = numpy.where(self.initial_subset == 1)[0]
+				
 				if len(self.initial_subset) + self.n_samples > X.shape[0]:
 					raise ValueError("When using a mask for the initial subset" \
 						" must selected fewer than the size of the subset minus" \
 						" the initial subset size, i.e., n_samples < X.shape[0] -"\
 						" initial_subset.shape[0].")
-
-				if self.initial_subset.dtype == bool:
-					self.initial_subset = numpy.where(self.initial_subset == 1)[0]
 
 				if self.initial_subset.max() > X.shape[0]:
 					raise ValueError("When passing in an integer mask for the initial subset"\
