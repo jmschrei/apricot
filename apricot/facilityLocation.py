@@ -128,7 +128,7 @@ class FacilityLocationSelection(SubmodularSelection):
 		elif pairwise_func == 'cosine':
 			self.pairwise_func = lambda X: numpy.abs(numpy.dot(X, X.T) / (norm(X).dot(norm(X).T)))
 		elif pairwise_func == 'euclidean':
-			self.pairwise_func = lambda X: -((-2 * numpy.dot(X, X.T) + norm2(X)).T + norm2(X))
+			self.pairwise_func = lambda X: (-2 * numpy.dot(X, X.T) + norm2(X)).T + norm2(X)
 		elif pairwise_func == 'precomputed':
 			self.pairwise_func = pairwise_func
 		elif callable(pairwise_func):
@@ -187,8 +187,7 @@ class FacilityLocationSelection(SubmodularSelection):
 			X_pairwise = self.pairwise_func(X)
 
 			if self.pairwise_func_name == 'euclidean':
-				eps = numpy.max(numpy.diag(X_pairwise))
-				X_pairwise -= numpy.eye(X.shape[0]) * eps
+				X_pairwise = numpy.ones_like(X_pairwise) * X_pairwise.max() - X_pairwise
 
 		return super(FacilityLocationSelection, self).fit(X_pairwise, y)
 

@@ -233,8 +233,8 @@ class FeatureBasedSelection(SubmodularSelection):
 				best_idx = concave_func(X, gains, self.current_values,
 					self.current_concave_values, self.mask)
 			else:
-				best_idx = select_custom_next(X, gains, current_values, 
-					current_concave_values, mask, self.concave_func)
+				best_idx = select_custom_next(X, gains, self.current_values, 
+					self.current_concave_values, self.mask, self.concave_func)
 
 			self.ranking.append(best_idx)
 			self.gains.append(gains[best_idx])

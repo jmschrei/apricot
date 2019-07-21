@@ -138,7 +138,6 @@ class SubmodularSelection(object):
 			self.pbar = tqdm(total=self.n_samples)
 
 		self.current_values = numpy.zeros(X.shape[1], dtype='float64')
-		self.current_values += numpy.min(X)
 		self.current_concave_values = numpy.zeros(X.shape[1])
 		self.mask = numpy.zeros(X.shape[0], dtype='int8')
 
