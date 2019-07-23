@@ -7,12 +7,13 @@ algorithms.
 """
 
 import numpy
+import time
 
 from .base import SubmodularSelection
 
 from tqdm import tqdm
 
-from numba import njit
+from numba import njit, jit
 from numba import prange
 
 dtypes = 'int64(float64[:,:], float64[:], float64[:], float64[:], int8[:])'
@@ -27,6 +28,17 @@ def select_sqrt_next(X, gains, current_values, current_concave_values, mask):
 		gains[idx] = (a - current_concave_values).sum()
 
 	return numpy.argmax(gains)
+
+@njit('int64(float64[:,:], float64[:], float64[:], float64[:], int32[:])', nogil=True, parallel=True)
+def select_sqrt_next_idxs(X, gains, current_values, current_concave_values, idxs):
+	for idx in prange(idxs.shape[0]):
+		idx_ = idxs[idx]
+
+		a = numpy.sqrt(current_values + X[idx_])
+		gains[idx] = (a - current_concave_values).sum()
+
+	return numpy.argmax(gains)
+
 
 @njit(dtypes, nogil=True, parallel=True)
 def select_log_next(X, gains, current_values, current_concave_values, mask):
@@ -280,3 +292,62 @@ class FeatureBasedSelection(SubmodularSelection):
 
 			if self.verbose == True:
 				self.pbar.update(1)
+
+	def _batch_lazy_greedy_select(self, X):
+		batch_size = 100
+
+		gains = numpy.zeros(batch_size, dtype='float64')
+		batch_idxs = numpy.zeros(batch_size, dtype='int32')
+
+		concave_funcs = {
+			'sqrt': select_sqrt_next,
+			'log': select_log_next,
+			'inverse': select_inv_next,
+			'min': select_min_next
+		}
+
+		concave_func = select_sqrt_next_idxs
+
+		tic = time.time()
+		tictoc = 0.
+
+		#concave_func = concave_funcs.get(self.concave_func_name, 
+		#	select_custom_next)
+
+		for i in range(self.n_greedy_samples, self.n_samples):
+			batch_size = max(batch_size - int(i / (self.n_samples - self.n_greedy_samples)), 1)
+			size = min(batch_size, len(self.pq.pq))
+
+
+			while True:
+				prev_best_gain, prev_best_idx = self.pq.pq[0]
+				prev_best_gain = -prev_best_gain
+
+				for j in range(size):
+					_, idx = self.pq.pop()
+					batch_idxs[j] = idx
+
+				best_idx_ = concave_func(X, gains, self.current_values,
+					self.current_concave_values, batch_idxs[:size])
+
+				for j in range(size):
+					if j != best_idx_:
+						self.pq.add(batch_idxs[j], -gains[j])
+
+				if gains[best_idx_] >= -self.pq.pq[0][0]:
+					best_idx = batch_idxs[best_idx_]
+					best_gain = gains[best_idx_]
+					break
+				else:
+					self.pq.add(batch_idxs[best_idx_], -gains[best_idx_])
+
+			self.ranking.append(best_idx)
+			self.gains.append(best_gain)
+			self.mask[best_idx] = True
+			self.current_values += X[best_idx]
+			self.current_concave_values = self.concave_func(self.current_values)
+
+			if self.verbose == True:
+				self.pbar.update(1)
+
+		print(time.time() - tic, tictoc)
