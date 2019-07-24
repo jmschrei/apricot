@@ -25,8 +25,7 @@ def select_next(X, gains, current_values, mask):
 		if mask[idx] == 1:
 			continue
 
-		a = numpy.maximum(X[idx], current_values)
-		gains[idx] = (a - current_values).sum()
+		gains[idx] = numpy.maximum(X[idx], current_values).sum()
 
 	return numpy.argmax(gains)
 
@@ -41,9 +40,8 @@ def select_next_sparse(X_data, X_indices, X_indptr, gains, current_values, mask)
 
 		for i in range(start, end):
 			j = X_indices[i]
+			gains[idx] += max(X_data[i], current_values[j])
 
-			if X_data[i] > current_values[j]:
-				gains[idx] += X_data[i] - current_values[j]
 
 	return numpy.argmax(gains)
 
@@ -217,12 +215,14 @@ class FacilityLocationSelection(SubmodularSelection):
 			if not self.sparse:
 				best_idx = select_next(X_pairwise, gains, self.current_values,
 					self.mask)
+				gains -= self.current_values.sum()
 				self.current_values = numpy.maximum(X_pairwise[best_idx], 
 					self.current_values)
 			else:
 				best_idx = select_next_sparse(X_pairwise.data,
 					X_pairwise.indices, X_pairwise.indptr, gains,
 					self.current_values, self.mask)
+				gains -= self.current_values.sum()
 				self.current_values = numpy.maximum(
 					X_pairwise[best_idx].toarray()[0], self.current_values)
 
