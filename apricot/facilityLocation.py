@@ -252,10 +252,9 @@ class FacilityLocationSelection(SubmodularSelection):
 					break
 				
 				if not self.sparse:
-					a = numpy.maximum(X_pairwise[:, idx], 
-						self.current_values)
+					gain = numpy.maximum(X_pairwise[:, idx], 
+						self.current_values).sum()
 
-					gain = (a - self.current_values).sum()
 				else:
 					gain = 0.
 					start = X_pairwise.indptr[idx]
@@ -263,11 +262,10 @@ class FacilityLocationSelection(SubmodularSelection):
 
 					for k in range(start, end):
 						j = X_pairwise.indices[k]
+						gain += max(X_pairwise.data[k],
+							self.current_values[j])
 
-						if X_pairwise.data[k] > self.current_values[j]:
-							gain += (X_pairwise.data[k] - 
-								self.current_values[j])
-
+				gain -= self.current_values.sum()
 				self.pq.add(idx, -gain)
 				
 				if gain > best_gain:

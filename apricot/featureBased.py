@@ -265,8 +265,8 @@ class FeatureBasedSelection(SubmodularSelection):
 					self.pq.remove(best_idx)
 					break
 				
-				a = self.concave_func(self.current_values + X[idx])
-				gain = (a - self.current_concave_values).sum()
+				gain = self.concave_func(self.current_values + X[idx]).sum()
+				gain -= self.current_concave_values.sum()
 				
 				self.pq.add(idx, -gain)
 				
