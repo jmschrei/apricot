@@ -1,4 +1,4 @@
-## apricot: submodular selection for machine learning
+## apricot: Submodular optimization for machine learning
 
 [![Build Status](https://travis-ci.org/jmschrei/apricot.svg?branch=master)](https://travis-ci.org/jmschrei/pomegranate)
 
