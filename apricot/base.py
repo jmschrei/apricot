@@ -131,6 +131,7 @@ class SubmodularSelection(object):
 			raise ValueError("Cannot select more examples than the number in" \
 				" the data set.")
 
+		self.sparse = isinstance(X, csr_matrix)
 		if not self.sparse:
 			X = X.astype('float64')
 

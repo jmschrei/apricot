@@ -176,8 +176,6 @@ class FacilityLocationSelection(SubmodularSelection):
 			self.pbar = tqdm(total=self.n_samples)
 			self.pbar.update(1)
 
-		self.sparse = isinstance(X, csr_matrix)
-
 		if self.pairwise_func == 'precomputed':
 			X_pairwise = X
 		else:
