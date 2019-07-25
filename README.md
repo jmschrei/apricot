@@ -6,9 +6,9 @@ Please consider citing the [manuscript](https://arxiv.org/abs/1906.03543) if you
 
 apricot is a package for the greedy selection of diverse subsets of data from massive data sets using submodular selection. While there are many uses of a diverse subset of data, the primary goal of apricot is to yield subsets that yield accurate machine learning models with just a fraction of the samples. To this end, apricot implements **feature based functions** that easily scale to millions of examples and **facility location functions** that are slower but are more broadly applicable. These functions are agnostic to the machine learning model that will eventually be used and so apricot can be dropped in to your system with minimal interference. apricot uses numba to accelerate its computationally intensive aspects and many algorithmic optimizations to be orders of magnitude faster than a simple NumPy implementation of the same functions.
 
-#### Installation
+### Installation
 
-apricot is on PyPI!
+apricot can be installed easily from PyPI with
 
 `pip install apricot-select`
 
@@ -24,7 +24,7 @@ or
 
 ```pip install numba==0.39.0```
 
-The issue appears to be with the most recent verson of numba, v0.40.0. Downgrading to numba v0.39.0 should solve the issue. 
+The issue appears to be with numba v0.40.0. Downgrading to numba v0.39.0 or upgrading to the most recent version should solve the issue. 
 
 ### Usage
 
