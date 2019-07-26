@@ -329,6 +329,11 @@ class FeatureBasedSelection(SubmodularSelection):
 	def _lazy_greedy_select(self, X):
 		"""Select elements from a dense matrix in a lazy greedy manner."""
 
+		if self.sparse:
+			X_data = X.data
+			X_indptr = X.indptr
+			X_indices = X.indices
+
 		for i in range(self.n_greedy_samples, self.n_samples):
 			best_gain = 0.
 			best_idx = None
@@ -343,14 +348,12 @@ class FeatureBasedSelection(SubmodularSelection):
 					break
 				
 				if self.sparse:
-					gain = 0.
-					start = X.indptr[idx] 
-					end = X.indptr[idx+1]
-
-					for j in range(start, end):
-						k = X.indices[j]
-						gain += self.concave_func(self.current_values[k] + 
-							X.data[j]) - self.current_concave_values[k]
+					start = X_indptr[idx] 
+					end = X_indptr[idx+1]
+					idxs = X_indices[start:end]
+					
+					gain = numpy.sum(self.concave_func(self.current_values[idxs]
+						+ X_data[start:end]) - self.current_concave_values[idxs])
 				else:
 					gain = self.concave_func(self.current_values + X[idx]).sum()
 					gain -= self.current_concave_values.sum()
