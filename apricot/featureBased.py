@@ -6,8 +6,13 @@ This file contains code that implements feature based submodular selection
 algorithms.
 """
 
-import numpy
+try:
+	import cupy
+except:
+	import numpy as cupy
+	
 import time
+import numpy
 
 from .base import SubmodularSelection
 
@@ -126,6 +131,27 @@ def select_min_next_sparse(X_data, X_indices, X_indptr, gains, current_values,
 			gains[idx] += min(X_data[i] + current_values[j], 1) - current_concave_values[j]
 
 	return numpy.argmax(gains)
+
+def select_sqrt_next_cupy(X, gains, current_values, mask):
+	gains[:] = cupy.sum(cupy.sqrt(current_values + X), axis=1)
+	gains[:] = gains * (1 - mask)
+	return int(cupy.argmax(gains))
+
+def select_log_next_cupy(X, gains, current_values, mask):
+	gains[:] = cupy.sum(cupy.log(current_values + X + 1), axis=1)
+	gains[:] = gains * (1 - mask)
+	return int(cupy.argmax(gains))
+
+def select_inv_next_cupy(X, gains, current_values, mask):
+	gains[:] = cupy.sum((current_values + X) / 
+		(1. + current_values + X), axis=1)
+	gains[:] = gains * (1 - mask)
+	return int(cupy.argmax(gains))
+
+def select_min_next_cupy(X, gains, current_values, mask):
+	gains[:] = cupy.sum(cupy.min(current_values + X, 1), axis=1)
+	gains[:] = gains * (1 - mask)
+	return int(cupy.argmax(gains))
 
 def select_custom_next(X, gains, current_values, mask, 
 	concave_func):
@@ -285,28 +311,38 @@ class FeatureBasedSelection(SubmodularSelection):
 		concave_funcs = {
 			'sqrt': select_sqrt_next,
 			'sqrt_sparse': select_sqrt_next_sparse,
+			'sqrt_cupy': select_sqrt_next_cupy,
 			'log': select_log_next,
 			'log_sparse': select_log_next_sparse,
+			'log_cupy': select_log_next_cupy,
 			'inverse': select_inv_next,
 			'inverse_sparse': select_inv_next_sparse,
+			'inverse_cupy': select_inv_next_cupy,
 			'min': select_min_next,
-			'min_sparse': select_min_next_sparse
+			'min_sparse': select_min_next_sparse,
+			'min_cupy': select_min_next_cupy
 		}
 
 		self.concave_func_name += '_sparse' if self.sparse else ''
+		self.concave_func_name += '_cupy' if self.cupy else ''
+
 		concave_func = concave_funcs.get(self.concave_func_name,  
 			select_custom_next)
 
 		for i in range(self.n_greedy_samples):
-			gains = numpy.zeros(X.shape[0], dtype='float64')
-			
+			if self.cupy:
+				gains = cupy.zeros(X.shape[0], dtype='float64')
+			else:
+				gains = numpy.zeros(X.shape[0], dtype='float64')
+
 			if self.concave_func_name in concave_funcs:
 				if self.sparse:
 					best_idx = concave_func(X.data, X.indices, X.indptr, gains, 
-						self.current_values, self.current_concave_values, self.mask)
+						self.current_values, self.current_concave_values, 
+						self.mask)
 					self.current_values += X[best_idx].toarray()[0]
 				else:
-					best_idx = concave_func(X, gains, self.current_values,
+					best_idx = concave_func(X, gains, self.current_values, 
 						self.mask)
 					self.current_values += X[best_idx]
 					gains -= self.current_concave_values.sum()

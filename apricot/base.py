@@ -6,6 +6,11 @@ This file contains code that implements the core of the submodular selection
 algorithms.
 """
 
+try:
+	import cupy
+except:
+	import numpy as cupy
+
 import numpy
 
 from .utils import PriorityQueue
@@ -92,6 +97,7 @@ class SubmodularSelection(object):
 		self.ranking = None
 		self.gains = None
 		self.sparse = None
+		self.cupy = None
 		self.initial_subset = initial_subset
 	
 	def fit(self, X, y=None):
@@ -117,7 +123,7 @@ class SubmodularSelection(object):
 		self : SubmodularSelection
 		"""
 
-		allowed_dtypes = list, numpy.ndarray, csr_matrix
+		allowed_dtypes = list, numpy.ndarray, csr_matrix, cupy.ndarray
 
 		if not isinstance(X, allowed_dtypes):
 			raise ValueError("X must be either a list of lists, a 2D numpy " \
@@ -132,15 +138,25 @@ class SubmodularSelection(object):
 				" the data set.")
 
 		self.sparse = isinstance(X, csr_matrix)
-		if not self.sparse:
+		self.cupy = isinstance(X, cupy.ndarray)
+		if not self.sparse and not self.cupy:
 			X = X.astype('float64')
 
 		if self.verbose == True:
 			self.pbar = tqdm(total=self.n_samples)
 
-		self.current_values = numpy.zeros(X.shape[1], dtype='float64')
-		self.current_concave_values = numpy.zeros(X.shape[1])
-		self.mask = numpy.zeros(X.shape[0], dtype='int8')
+		self.ranking = []
+		self.gains = []
+
+		if self.cupy:
+			self.current_values = cupy.zeros(X.shape[1], dtype='float64')
+			self.current_concave_values = cupy.zeros(X.shape[1], dtype='float64')
+			self.mask = cupy.zeros(X.shape[0], dtype='int8')
+		else:
+			self.current_values = numpy.zeros(X.shape[1], dtype='float64')
+			self.current_concave_values = numpy.zeros(X.shape[1])
+			self.mask = numpy.zeros(X.shape[0], dtype='int8')
+
 
 		if self.initial_subset is not None:
 			if self.initial_subset.ndim == 1:
@@ -163,9 +179,6 @@ class SubmodularSelection(object):
 				self.mask[self.initial_subset] = 1
 
 			self._initialize_with_subset(X)
-
-		self.ranking = []
-		self.gains = []
 
 		# Select using the greedy algorithm first returning the gains from
 		# the last round of selection.

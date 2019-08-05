@@ -2,7 +2,6 @@ import scipy
 import numpy
 
 from apricot import FeatureBasedSelection
-
 from sklearn.datasets import load_digits
 
 from numpy.testing import assert_equal
