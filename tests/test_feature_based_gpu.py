@@ -91,6 +91,30 @@ def test_digits_sqrt_small_greedy():
 	assert_array_equal(model.ranking, digits_sqrt_ranking[:10])
 	assert_array_almost_equal(model.gains, digits_sqrt_gains[:10], 4)
 
+def test_digits_sqrt_small_greedy_rank_initialized():
+	model = FeatureBasedSelection(10, 'sqrt', 10, initial_subset=digits_sqrt_ranking[:5])
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_sqrt_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_sqrt_gains[5:15], 4)
+
+def test_digits_sqrt_small_greedy_bool_initialized():
+	mask = numpy.zeros(X_digits.shape[0], dtype=bool)
+	mask[digits_sqrt_ranking[:5]] = True
+	model = FeatureBasedSelection(10, 'sqrt', 10, initial_subset=mask)
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_sqrt_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_sqrt_gains[5:15], 4)
+
+def test_digits_sqrt_small_greedy_value_initialized():
+	mask = numpy.zeros(X_digits.shape[0], dtype=bool)
+	mask[digits_sqrt_ranking[:5]] = True
+	new_ranking = digits_sqrt_ranking - numpy.cumsum(mask)[digits_sqrt_ranking]
+
+	model = FeatureBasedSelection(10, 'sqrt', 10, initial_subset=X_digits[mask])
+	model.fit(X_digits[~mask])
+	assert_array_equal(model.ranking, new_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_sqrt_gains[5:15], 4)
+
 def test_digits_sqrt_large_greedy():
 	model = FeatureBasedSelection(100, 'sqrt', 100)
 	model.fit(X_digits)
@@ -103,6 +127,30 @@ def test_digits_log_small_greedy():
 	assert_array_equal(model.ranking, digits_log_ranking[:10])
 	assert_array_almost_equal(model.gains, digits_log_gains[:10], 4)
 
+def test_digits_log_small_greedy_rank_initialized():
+	model = FeatureBasedSelection(10, 'log', 10, initial_subset=digits_log_ranking[:5])
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_log_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_log_gains[5:15], 4)
+
+def test_digits_log_small_greedy_bool_initialized():
+	mask = numpy.zeros(X_digits.shape[0], dtype=bool)
+	mask[digits_log_ranking[:5]] = True
+	model = FeatureBasedSelection(10, 'log', 10, initial_subset=mask)
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_log_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_log_gains[5:15], 4)
+
+def test_digits_log_small_greedy_value_initialized():
+	mask = numpy.zeros(X_digits.shape[0], dtype=bool)
+	mask[digits_log_ranking[:5]] = True
+	new_ranking = digits_log_ranking - numpy.cumsum(mask)[digits_log_ranking]
+
+	model = FeatureBasedSelection(10, 'log', 10, initial_subset=X_digits[mask])
+	model.fit(X_digits[~mask])
+	assert_array_equal(model.ranking, new_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_log_gains[5:15], 4)
+
 def test_digits_log_large_greedy():
 	model = FeatureBasedSelection(100, 'log', 100)
 	model.fit(X_digits)
@@ -114,6 +162,30 @@ def test_digits_inverse_small_greedy():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_inverse_ranking[:10])
 	assert_array_almost_equal(model.gains, digits_inverse_gains[:10], 4)
+
+def test_digits_inverse_small_greedy_rank_initialized():
+	model = FeatureBasedSelection(10, 'inverse', 10, initial_subset=digits_inverse_ranking[:5])
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_inverse_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_inverse_gains[5:15], 4)
+
+def test_digits_inverse_small_greedy_bool_initialized():
+	mask = numpy.zeros(X_digits.shape[0], dtype=bool)
+	mask[digits_inverse_ranking[:5]] = True
+	model = FeatureBasedSelection(10, 'inverse', 10, initial_subset=mask)
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_inverse_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_inverse_gains[5:15], 4)
+
+def test_digits_inverse_small_greedy_value_initialized():
+	mask = numpy.zeros(X_digits.shape[0], dtype=bool)
+	mask[digits_inverse_ranking[:5]] = True
+	new_ranking = digits_inverse_ranking - numpy.cumsum(mask)[digits_inverse_ranking]
+
+	model = FeatureBasedSelection(10, 'inverse', 10, initial_subset=X_digits[mask])
+	model.fit(X_digits[~mask])
+	assert_array_equal(model.ranking, new_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_inverse_gains[5:15], 4)
 
 def test_digits_inverse_large_greedy():
 	model = FeatureBasedSelection(100, 'inverse', 100)
