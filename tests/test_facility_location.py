@@ -96,17 +96,59 @@ def test_digits_corr_small_greedy():
 	assert_array_equal(model.ranking, digits_corr_ranking[:10])
 	assert_array_almost_equal(model.gains, digits_corr_gains[:10], 4)
 
+def test_digits_corr_small_greedy_rank_initialized():
+	model = FacilityLocationSelection(10, 'corr', 10, initial_subset=digits_corr_ranking[:5])
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_corr_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_corr_gains[5:15], 4)
+
+def test_digits_corr_small_greedy_bool_initialized():
+	mask = numpy.zeros(X_digits.shape[0], dtype=bool)
+	mask[digits_corr_ranking[:5]] = True
+	model = FacilityLocationSelection(10, 'corr', 10, initial_subset=mask)
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_corr_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_corr_gains[5:15], 4)
+
 def test_digits_corr_small_pivot():
 	model = FacilityLocationSelection(10, 'corr', 5)
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_corr_ranking[:10])
 	assert_array_almost_equal(model.gains, digits_corr_gains[:10], 4)
 
+def test_digits_corr_small_pivot_rank_initialized():
+	model = FacilityLocationSelection(10, 'corr', 5, initial_subset=digits_corr_ranking[:5])
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_corr_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_corr_gains[5:15], 4)
+
+def test_digits_corr_small_pivot_bool_initialized():
+	mask = numpy.zeros(X_digits.shape[0], dtype=bool)
+	mask[digits_corr_ranking[:5]] = True
+	model = FacilityLocationSelection(10, 'corr', 5, initial_subset=mask)
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_corr_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_corr_gains[5:15], 4)
+
 def test_digits_corr_small_pq():
 	model = FacilityLocationSelection(10, 'corr', 1)
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_corr_ranking[:10])
 	assert_array_almost_equal(model.gains, digits_corr_gains[:10], 4)
+
+def test_digits_corr_small_pq_rank_initialized():
+	model = FacilityLocationSelection(10, 'corr', 1, initial_subset=digits_corr_ranking[:5])
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_corr_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_corr_gains[5:15], 4)
+
+def test_digits_corr_small_pq_bool_initialized():
+	mask = numpy.zeros(X_digits.shape[0], dtype=bool)
+	mask[digits_corr_ranking[:5]] = True
+	model = FacilityLocationSelection(10, 'corr', 1, initial_subset=mask)
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_corr_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_corr_gains[5:15], 4)
 
 def test_digits_corr_small_truncated():
 	model = FacilityLocationSelection(15, 'corr', 1)
