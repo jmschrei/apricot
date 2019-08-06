@@ -1,4 +1,4 @@
-## apricot: Submodular optimization for machine learning
+<img src="https://github.com/jmschrei/apricot/blob/master/docs/logos/apricot-logo.png" width=600>
 
 [![Build Status](https://travis-ci.org/jmschrei/apricot.svg?branch=master)](https://travis-ci.org/jmschrei/pomegranate)
 
@@ -16,15 +16,7 @@ If you get an error that looks like
 
 ```Inconsistency detected by ld.so: dl-version.c: 224: _dl_check_map_versions: Assertion `needed != NULL' failed!``` 
 
-or a segmentation fault when importing apricot for the first time then you should try reinstalling numba through conda using 
-
-```conda install numba```.
-
-or
-
-```pip install numba==0.39.0```
-
-The issue appears to be with numba v0.40.0. Downgrading to numba v0.39.0 or upgrading to the most recent version should solve the issue. 
+or a segmentation fault when importing apricot for the first time then you should try upgrading numba, as v0.40.0 appears to cause the issue. 
 
 ### Usage
 
