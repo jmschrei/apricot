@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='apricot-select',
-    version='0.3.0',
+    version='0.4.0rc1',
     author='Jacob Schreiber',
     author_email='jmschreiber91@gmail.com',
     packages=['apricot'],
@@ -12,7 +12,7 @@ setup(
     install_requires=[
         "numpy >= 1.14.2",
         "scipy >= 1.0.0",
-        "numba >= 0.39.0, < 0.40.0",
+        "numba >= 0.43.0",
         "tqdm >= 4.24.0"
     ],
 )

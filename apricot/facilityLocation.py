@@ -5,6 +5,11 @@
 This code implements facility location functions.
 """
 
+try:
+	import cupy
+except:
+	import numpy as cupy
+
 import numpy
 
 from .base import SubmodularSelection
@@ -42,9 +47,12 @@ def select_next_sparse(X_data, X_indices, X_indptr, gains, current_values, mask)
 			j = X_indices[i]
 			gains[idx] += max(X_data[i], current_values[j])
 
-
 	return numpy.argmax(gains)
 
+def select_next_cupy(X, gains, current_values, mask):
+	gains[:] = cupy.sum(cupy.maximum(X, current_values), axis=1)
+	gains[:] = gains * (1 - mask)
+	return int(cupy.argmax(gains))
 
 class FacilityLocationSelection(SubmodularSelection):
 	"""A facility location submodular selection algorithm.
@@ -208,21 +216,30 @@ class FacilityLocationSelection(SubmodularSelection):
 		"""Select elements in a naive greedy manner."""
 
 		for i in range(self.n_greedy_samples):
-			gains = numpy.zeros(X_pairwise.shape[0], dtype='float64')
+			if self.cupy:
+				gains = cupy.zeros(X_pairwise.shape[0], dtype='float64')
+			else:
+				gains = numpy.zeros(X_pairwise.shape[0], dtype='float64')
 
-			if not self.sparse:
-				best_idx = select_next(X_pairwise, gains, self.current_values,
+			if self.cupy:
+				best_idx = select_next_cupy(X_pairwise, gains, self.current_values,
 					self.mask)
 				gains -= self.current_values.sum()
-				self.current_values = numpy.maximum(X_pairwise[best_idx], 
+				self.current_values = cupy.maximum(X_pairwise[best_idx], 
 					self.current_values)
-			else:
+			elif self.sparse:
 				best_idx = select_next_sparse(X_pairwise.data,
 					X_pairwise.indices, X_pairwise.indptr, gains,
 					self.current_values, self.mask)
 				gains -= self.current_values.sum()
 				self.current_values = numpy.maximum(
 					X_pairwise[best_idx].toarray()[0], self.current_values)
+			else:
+				best_idx = select_next(X_pairwise, gains, self.current_values,
+					self.mask)
+				gains -= self.current_values.sum()
+				self.current_values = numpy.maximum(X_pairwise[best_idx], 
+					self.current_values)
 
 			self.ranking.append(best_idx)
 			self.gains.append(gains[best_idx])

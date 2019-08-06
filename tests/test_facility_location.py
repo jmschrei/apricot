@@ -1,6 +1,11 @@
 import scipy
 import numpy
 
+try:
+	import cupy
+except:
+	import numpy as cupy
+
 from apricot import FacilityLocationSelection
 
 from sklearn.datasets import load_digits
@@ -16,6 +21,9 @@ norm = lambda x: numpy.sqrt((x*x).sum(axis=1)).reshape(x.shape[0], 1)
 cosine = lambda x: numpy.dot(x, x.T) / (norm(x).dot(norm(x).T))
 
 X_digits_sparse = scipy.sparse.csr_matrix(cosine(X_digits))
+
+X_digits_corr_cupy = cupy.corrcoef(cupy.array(X_digits), rowvar=True) ** 2
+X_digits_cosine_cupy = cupy.array(cosine(X_digits))
 
 digits_corr_ranking = [424, 1647, 396, 339, 1030, 331, 983, 1075, 1482, 
 	1539, 1282, 493, 885, 823, 1051, 236, 537, 1161, 345, 1788, 1432, 1634, 
@@ -88,17 +96,59 @@ def test_digits_corr_small_greedy():
 	assert_array_equal(model.ranking, digits_corr_ranking[:10])
 	assert_array_almost_equal(model.gains, digits_corr_gains[:10], 4)
 
+def test_digits_corr_small_greedy_rank_initialized():
+	model = FacilityLocationSelection(10, 'corr', 10, initial_subset=digits_corr_ranking[:5])
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_corr_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_corr_gains[5:15], 4)
+
+def test_digits_corr_small_greedy_bool_initialized():
+	mask = numpy.zeros(X_digits.shape[0], dtype=bool)
+	mask[digits_corr_ranking[:5]] = True
+	model = FacilityLocationSelection(10, 'corr', 10, initial_subset=mask)
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_corr_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_corr_gains[5:15], 4)
+
 def test_digits_corr_small_pivot():
 	model = FacilityLocationSelection(10, 'corr', 5)
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_corr_ranking[:10])
 	assert_array_almost_equal(model.gains, digits_corr_gains[:10], 4)
 
+def test_digits_corr_small_pivot_rank_initialized():
+	model = FacilityLocationSelection(10, 'corr', 5, initial_subset=digits_corr_ranking[:5])
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_corr_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_corr_gains[5:15], 4)
+
+def test_digits_corr_small_pivot_bool_initialized():
+	mask = numpy.zeros(X_digits.shape[0], dtype=bool)
+	mask[digits_corr_ranking[:5]] = True
+	model = FacilityLocationSelection(10, 'corr', 5, initial_subset=mask)
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_corr_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_corr_gains[5:15], 4)
+
 def test_digits_corr_small_pq():
 	model = FacilityLocationSelection(10, 'corr', 1)
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_corr_ranking[:10])
 	assert_array_almost_equal(model.gains, digits_corr_gains[:10], 4)
+
+def test_digits_corr_small_pq_rank_initialized():
+	model = FacilityLocationSelection(10, 'corr', 1, initial_subset=digits_corr_ranking[:5])
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_corr_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_corr_gains[5:15], 4)
+
+def test_digits_corr_small_pq_bool_initialized():
+	mask = numpy.zeros(X_digits.shape[0], dtype=bool)
+	mask[digits_corr_ranking[:5]] = True
+	model = FacilityLocationSelection(10, 'corr', 1, initial_subset=mask)
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_corr_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_corr_gains[5:15], 4)
 
 def test_digits_corr_small_truncated():
 	model = FacilityLocationSelection(15, 'corr', 1)
@@ -177,7 +227,7 @@ def test_digits_euclidean_large_greedy():
 	model.fit(X_digits)
 
 	assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
-
+	
 	# There is one swap in the resulting ranking because two points have
 	# the same distance. Thus, the gains are the same but this swap means
 	# that the ranking aren't the same.
@@ -327,3 +377,27 @@ def test_digits_cosine_large_precomputed_truncated_pivot():
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking[:100], digits_cosine_ranking)
 	assert_array_almost_equal(model.gains[:100], digits_cosine_gains, 4)
+
+def test_digits_corr_small_precomputed_greedy():
+	model = FacilityLocationSelection(10, 'precomputed', 10)
+	model.fit(X_digits_corr_cupy)
+	assert_array_equal(model.ranking, digits_corr_ranking[:10])
+	assert_array_almost_equal(model.gains, digits_corr_gains[:10], 4)
+
+def test_digits_corr_large_precomputed_greedy():
+	model = FacilityLocationSelection(100, 'precomputed', 100)
+	model.fit(X_digits_corr_cupy)
+	assert_array_equal(model.ranking, digits_corr_ranking)
+	assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+
+def test_digits_cosine_small_precomputed_greedy():
+	model = FacilityLocationSelection(10, 'precomputed', 10)
+	model.fit(X_digits_cosine_cupy)
+	assert_array_equal(model.ranking, digits_cosine_ranking[:10])
+	assert_array_almost_equal(model.gains, digits_cosine_gains[:10], 4)
+
+def test_digits_cosine_large_precomputed_greedy():
+	model = FacilityLocationSelection(100, 'precomputed', 100)
+	model.fit(X_digits_cosine_cupy)
+	assert_array_equal(model.ranking, digits_cosine_ranking)
+	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)

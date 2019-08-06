@@ -2,7 +2,6 @@ import scipy
 import numpy
 
 from apricot import FeatureBasedSelection
-
 from sklearn.datasets import load_digits
 
 from numpy.testing import assert_equal
@@ -102,17 +101,59 @@ def test_digits_sqrt_small_greedy():
 	assert_array_equal(model.ranking, digits_sqrt_ranking[:10])
 	assert_array_almost_equal(model.gains, digits_sqrt_gains[:10], 4)
 
+def test_digits_sqrt_small_greedy_rank_initialized():
+	model = FeatureBasedSelection(10, 'sqrt', 10, initial_subset=digits_sqrt_ranking[:5])
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_sqrt_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_sqrt_gains[5:15], 4)
+
+def test_digits_sqrt_small_greedy_bool_initialized():
+	mask = numpy.zeros(X_digits.shape[0], dtype=bool)
+	mask[digits_sqrt_ranking[:5]] = True
+	model = FeatureBasedSelection(10, 'sqrt', 10, initial_subset=mask)
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_sqrt_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_sqrt_gains[5:15], 4)
+
 def test_digits_sqrt_small_pivot():
 	model = FeatureBasedSelection(10, 'sqrt', 5)
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sqrt_ranking[:10])
 	assert_array_almost_equal(model.gains, digits_sqrt_gains[:10], 4)
 
+def test_digits_sqrt_small_pivot_rank_initialized():
+	model = FeatureBasedSelection(10, 'sqrt', 5, initial_subset=digits_sqrt_ranking[:5])
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_sqrt_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_sqrt_gains[5:15], 4)
+
+def test_digits_sqrt_small_pivot_bool_initialized():
+	mask = numpy.zeros(X_digits.shape[0], dtype=bool)
+	mask[digits_sqrt_ranking[:5]] = True
+	model = FeatureBasedSelection(10, 'sqrt', 5, initial_subset=mask)
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_sqrt_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_sqrt_gains[5:15], 4)
+
 def test_digits_sqrt_small_pq():
 	model = FeatureBasedSelection(10, 'sqrt', 1)
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sqrt_ranking[:10])
 	assert_array_almost_equal(model.gains, digits_sqrt_gains[:10], 4)
+
+def test_digits_sqrt_small_pq_rank_initialized():
+	model = FeatureBasedSelection(10, 'sqrt', 1, initial_subset=digits_sqrt_ranking[:5])
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_sqrt_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_sqrt_gains[5:15], 4)
+
+def test_digits_sqrt_small_pq_bool_initialized():
+	mask = numpy.zeros(X_digits.shape[0], dtype=bool)
+	mask[digits_sqrt_ranking[:5]] = True
+	model = FeatureBasedSelection(10, 'sqrt', 1, initial_subset=mask)
+	model.fit(X_digits)
+	assert_array_equal(model.ranking, digits_sqrt_ranking[5:15])
+	assert_array_almost_equal(model.gains, digits_sqrt_gains[5:15], 4)
 
 def test_digits_sqrt_small_truncated():
 	model = FeatureBasedSelection(15, 'sqrt', 1)
