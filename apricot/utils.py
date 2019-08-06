@@ -6,6 +6,8 @@ This code contains utility functions to support the main functionality of
 the code.
 """
 
+import itertools
+
 from heapq import heappush
 from heapq import heappop
 
@@ -40,6 +42,7 @@ class PriorityQueue(object):
     def __init__(self):
         self.pq = []
         self.lookup = {}
+        self.counter = itertools.count()
     
     def add(self, item, weight):
         """Add an element to the priority queue. Runtime is O(log n).
@@ -69,7 +72,7 @@ class PriorityQueue(object):
         if item in self.lookup:
             self.remove(item)
         
-        entry = [weight, item]
+        entry = [weight, next(self.counter), item]
         self.lookup[item] = entry
         heappush(self.pq, entry)
     
@@ -114,7 +117,7 @@ class PriorityQueue(object):
         """
 
         while self.pq:
-            weight, item = heappop(self.pq)
+            weight, _, item = heappop(self.pq)
             if item != "DELETED":
                 del self.lookup[item]
                 return weight, item

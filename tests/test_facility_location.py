@@ -227,7 +227,7 @@ def test_digits_euclidean_large_greedy():
 	model.fit(X_digits)
 
 	assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
-
+	
 	# There is one swap in the resulting ranking because two points have
 	# the same distance. Thus, the gains are the same but this swap means
 	# that the ranking aren't the same.
