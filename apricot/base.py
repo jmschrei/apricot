@@ -138,7 +138,7 @@ class SubmodularSelection(object):
 				" the data set.")
 
 		self.sparse = isinstance(X, csr_matrix)
-		self.cupy = isinstance(X, cupy.ndarray)
+		self.cupy = isinstance(X, cupy.ndarray) and not isinstance(X, numpy.ndarray)
 		if not self.sparse and not self.cupy:
 			X = X.astype('float64')
 
@@ -154,7 +154,7 @@ class SubmodularSelection(object):
 			self.mask = cupy.zeros(X.shape[0], dtype='int8')
 		else:
 			self.current_values = numpy.zeros(X.shape[1], dtype='float64')
-			self.current_concave_values = numpy.zeros(X.shape[1])
+			self.current_concave_values = numpy.zeros(X.shape[1], dtype='float64')
 			self.mask = numpy.zeros(X.shape[0], dtype='int8')
 
 
