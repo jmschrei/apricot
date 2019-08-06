@@ -22,7 +22,7 @@ or a segmentation fault when importing apricot for the first time then you shoul
 
 apricot has a simple API that was built in the style of a sklearn transformer. Accordingly, the API consists of a `fit` method where the ranking of samples is determed, a `transform` method that applies this ranking to the data set, and a `fit_transform` method that takes in a large data set and returns the subset. If you'd like to reduce your data set from 1000 samples to 100 you can do the following:
 
-```
+```python
 import numpy
 from apricot import FacilityLocationSelection
 
@@ -32,7 +32,7 @@ X_subset = FacilityLocationSelection(100).fit_transform(X)
 
 Because the selection process is greedy, one can use these algorithms to rank an entire data set according to the gain in diversity according to the function. The returned set is in the order of this ranking with the first sample having the largest marginal gain at the beginning and the last sample having the smallest marginal gain at the end, or you can use the ranking attribute. 
 
-```
+```python
 import numpy
 from apricot import FacilityLocationSelection
 
@@ -45,7 +45,7 @@ X_reordered2 = X[model.ranking]
 
 Feature based functions can be used similarly.
 
-```
+```python
 import numpy
 from apricot import FeatureBasedSelection
 
@@ -55,7 +55,9 @@ X_subset = FeatureBasedSelection(100).fit_transform(X)
 
 #### Feature based functions quickly select subsets for machine learning models
 
-```FeatureBasedSelection(n_samples, concave_func='sqrt', n_greedy_samples=3, verbose=False)```
+```python
+FeatureBasedSelection(n_samples, concave_func='sqrt', n_greedy_samples=3, verbose=False)
+```
 
 Feature based methods work well when the features correspond to some notion of quantity or importance. For example, when the features are number of times a word appears in a document, or the strength of a signal at a sensor. These functions then attempt to select samples that show a diversity in the features which exhibit large values, ensuring that large values are seen in as many features as possible. When using a feature based function on the 20 newsgroups data set, one can train a logistic regression model using only 100 samples and get the same performance as using all 1,187 potential samples, much better than using random sampling.
 
@@ -63,7 +65,9 @@ Feature based methods work well when the features correspond to some notion of q
 
 #### Facility location functions work in a variety of situations
 
-```FacilityLocationSelection(n_samples, pairwise_func='euclidean', n_greedy_samples=1, verbose=False)```
+```python
+FacilityLocationSelection(n_samples, pairwise_func='euclidean', n_greedy_samples=1, verbose=False)
+```
 
 Facility location functions are more general purpose and work in any situation in which a similarity can be defined over pairs of samples. These functions then attempt to identify samples that are representative of those samples who are least similar to the currently identified samples. However, because one needs to define a similarity between all pairs of samples, these algorithms take memory that is quadratic with the number of samples. However, apricot allows you to pass in a sparse matrix and gives corresponding speed gains when not all pairs of samples need to be considered.
 
@@ -75,14 +79,14 @@ These exemplars can be used for a variety of tasks, including selecting subsets 
 
 Because apricot implements these functions in the style of a scikit-learn transformer, they can be dropped into current workflows. Clustering models that used to be defined as follows:
 
-```
+```python
 model = GaussianMixture(10)
 model.fit(X)
 ```
 
 can now be turned into a pipeline without changing the rest of your code like such:
 
-```
+```python
 model = Pipeline([('selection', FacilityLocationSelection(25)),
                   ('model', GaussianMixture(10))])
 model.fit(X)
@@ -90,7 +94,7 @@ model.fit(X)
 
 sklearn does not currently allow transformers to modify the label vector y even though they can modify the data matrix X and so apricot cannot be dropped into pipelines for supervised models. However, if you are not constrained to use a pipeline then you can transform both the data matrix and the label vector together:
 
-```
+```python
 X_subset, y_subset = FacilityLocationSelection(100).fit_transform(X, y)
 model.fit(X_subset, y_subset)
 ```
