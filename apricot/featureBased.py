@@ -219,7 +219,6 @@ class FeatureBasedSelection(SubmodularSelection):
 		the provided array should be one-dimensional. If a group of examples,
 		the data should be 2 dimensional.
 
-
 	verbose : bool
 		Whether to print output during the selection process.
 
@@ -327,9 +326,15 @@ class FeatureBasedSelection(SubmodularSelection):
 		self.concave_func_name += '_cupy' if self.cupy else ''
 
 		concave_func = concave_funcs.get(self.concave_func_name,  
-			select_custom_next)
+			None)
+
+		self.concave_func_ = concave_func
 
 		for i in range(self.n_greedy_samples):
+			gains = self._calculate_gains(X)
+			best_idx = gains.argmax()
+			
+			'''
 			if self.cupy:
 				gains = cupy.zeros(X.shape[0], dtype='float64')
 			else:
@@ -351,16 +356,53 @@ class FeatureBasedSelection(SubmodularSelection):
 					self.mask, self.concave_func)
 				self.current_values += X[best_idx]
 				gains -= self.current_concave_values.sum()
+			
 
 			self.ranking.append(best_idx)
 			self.gains.append(gains[best_idx])
 			self.mask[best_idx] = True
 			self.current_concave_values = self.concave_func(self.current_values)
+			'''
+
+			self._select_next(X, gains, best_idx)
 
 			if self.verbose == True:
 				self.pbar.update(1)
 
 		return gains
+
+	def _calculate_gains(self, X):
+		if self.cupy:
+			gains = cupy.zeros(X.shape[0], dtype='float64')
+		else:
+			gains = numpy.zeros(X.shape[0], dtype='float64')
+
+		if self.concave_func_ is not None:
+			if self.sparse:
+				self.concave_func_(X.data, X.indices, X.indptr, gains, 
+					self.current_values, self.current_concave_values, 
+					self.mask)
+			else:
+				self.concave_func_(X, gains, self.current_values, 
+					self.mask)
+				gains -= self.current_concave_values.sum()
+		else:
+			select_custom_next(X, gains, self.current_values, 
+				self.mask, self.concave_func)
+			gains -= self.current_concave_values.sum()
+
+		return gains
+
+	def _select_next(self, X, gains, idx):
+		if self.sparse:
+			self.current_values += X[idx].toarray()[0]
+		else:
+			self.current_values += X[idx]
+
+		self.ranking.append(idx)
+		self.gains.append(gains[idx])
+		self.mask[idx] = True
+		self.current_concave_values = self.concave_func(self.current_values)
 
 	def _lazy_greedy_select(self, X):
 		"""Select elements from a dense matrix in a lazy greedy manner."""
