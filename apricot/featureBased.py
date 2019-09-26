@@ -247,7 +247,7 @@ class FeatureBasedSelection(SubmodularSelection):
 	"""
 
 	def __init__(self, n_samples, concave_func='sqrt', n_greedy_samples=3, 
-		initial_subset=None, verbose=False):
+		initial_subset=None, optimizer='two-stage', verbose=False):
 		self.concave_func_name = concave_func
 
 		if concave_func == 'log':
@@ -263,8 +263,9 @@ class FeatureBasedSelection(SubmodularSelection):
 		else:
 			raise KeyError("Must be one of 'log', 'sqrt', 'min', 'inverse', or a custom function.")
 
-		super(FeatureBasedSelection, self).__init__(n_samples, n_greedy_samples, 
-			initial_subset, verbose)
+		super(FeatureBasedSelection, self).__init__(n_samples=n_samples, 
+			n_greedy_samples=n_greedy_samples, initial_subset=initial_subset,
+			optimizer=optimizer, verbose=verbose) 
 
 	def fit(self, X, y=None):
 		"""Perform selection and return the subset of the data set.
@@ -304,8 +305,13 @@ class FeatureBasedSelection(SubmodularSelection):
 
 		self.current_concave_values = self.concave_func(self.current_values)
 
-	def _greedy_select(self, X):
-		"""Select elements in a naive greedy manner."""
+	def _calculate_gains(self, X):
+		"""This function will return the gain that each example would give.
+
+		This function will return the gains that each example would give if
+		added to the selected set. When a matrix of examples is given, a
+		vector will be returned showing the gain for each example. When
+		a single element is passed in, it will return a singe value."""
 
 		concave_funcs = {
 			'sqrt': select_sqrt_next,
@@ -322,38 +328,15 @@ class FeatureBasedSelection(SubmodularSelection):
 			'min_cupy': select_min_next_cupy
 		}
 
-		self.concave_func_name += '_sparse' if self.sparse else ''
-		self.concave_func_name += '_cupy' if self.cupy else ''
-
-		concave_func = concave_funcs.get(self.concave_func_name,  
-			None)
-
-		self.concave_func_ = concave_func
-
-		for i in range(self.n_greedy_samples):
-			gains = self._calculate_gains(X)
-			best_idx = gains.argmax()
-			self._select_next(X[best_idx], gains[best_idx], best_idx)
-
-			if self.verbose == True:
-				self.pbar.update(1)
-
-		return gains
-
-	def _calculate_gains(self, X):
-		"""This function will return the gain that each example would give.
-
-		This function will return the gains that each example would give if
-		added to the selected set. When a matrix of examples is given, a
-		vector will be returned showing the gain for each example. When
-		a single element is passed in, it will return a singe value."""
+		name = '{}{}'.format(self.concave_func_name,
+							   '_sparse' if self.sparse else
+							   '_cupy' if self.cupy else '')
+		concave_func = concave_funcs.get(name, None)
 
 		if len(X.shape) == 1:
 			if self.sparse:
-				idxs = X.indices
-				
-				gain = numpy.sum(self.concave_func(self.current_values[idxs]
-					+ X.data)) + numpy.random.randn() * 100 # - self.current_concave_values[idxs])
+				gain = numpy.sum(self.concave_func(self.current_values[X.indices]
+					+ X.data) - self.current_concave_values[idxs])
 			else:
 				gain = self.concave_func(self.current_values + X).sum()
 				gain -= self.current_concave_values.sum()
@@ -366,13 +349,13 @@ class FeatureBasedSelection(SubmodularSelection):
 			else:
 				gains = numpy.zeros(X.shape[0], dtype='float64')
 
-			if self.concave_func_ is not None:
+			if concave_func is not None:
 				if self.sparse:
-					self.concave_func_(X.data, X.indices, X.indptr, gains, 
+					concave_func(X.data, X.indices, X.indptr, gains, 
 						self.current_values, self.current_concave_values, 
 						self.mask)
 				else:
-					self.concave_func_(X, gains, self.current_values, 
+					concave_func(X, gains, self.current_values, 
 						self.mask)
 					gains -= self.current_concave_values.sum()
 			else:
@@ -394,98 +377,3 @@ class FeatureBasedSelection(SubmodularSelection):
 		self.gains.append(gain)
 		self.mask[idx] = True
 		self.current_concave_values = self.concave_func(self.current_values)
-
-	def _lazy_greedy_select(self, X):
-		"""Select elements from a dense matrix in a lazy greedy manner."""
-
-		if self.sparse:
-			X_data = X.data
-			X_indptr = X.indptr
-			X_indices = X.indices
-
-		for i in range(self.n_greedy_samples, self.n_samples):
-			best_gain = 0.
-			best_idx = None
-			
-			while True:
-				prev_gain, idx = self.pq.pop()
-				prev_gain = -prev_gain
-				
-				#if best_gain >= prev_gain:
-				#	self.pq.add(idx, -prev_gain)
-				#	self.pq.remove(best_idx)
-				#	break
-				
-				gain = self._calculate_gains(X[idx])
-
-				if gain > -self.pq.pq[0][0]:
-					break
-
-				self.pq.add(idx, -gain)
-				if gain > best_gain:
-					best_gain = gain
-					best_idx = idx
-
-			self._select_next(X[best_idx], best_gain, best_idx)
-
-			if self.verbose == True:
-				self.pbar.update(1)
-
-	def _batch_lazy_greedy_select(self, X):
-		batch_size = 100
-
-		gains = numpy.zeros(batch_size, dtype='float64')
-		batch_idxs = numpy.zeros(batch_size, dtype='int32')
-
-		concave_funcs = {
-			'sqrt': select_sqrt_next,
-			'log': select_log_next,
-			'inverse': select_inv_next,
-			'min': select_min_next
-		}
-
-		concave_func = select_sqrt_next_idxs
-
-		tic = time.time()
-		tictoc = 0.
-
-		#concave_func = concave_funcs.get(self.concave_func_name, 
-		#	select_custom_next)
-
-		for i in range(self.n_greedy_samples, self.n_samples):
-			batch_size = max(batch_size - int(i / (self.n_samples - self.n_greedy_samples)), 1)
-			size = min(batch_size, len(self.pq.pq))
-
-
-			while True:
-				prev_best_gain, prev_best_idx = self.pq.pq[0]
-				prev_best_gain = -prev_best_gain
-
-				for j in range(size):
-					_, idx = self.pq.pop()
-					batch_idxs[j] = idx
-
-				best_idx_ = concave_func(X, gains, self.current_values,
-					self.current_concave_values, batch_idxs[:size])
-
-				for j in range(size):
-					if j != best_idx_:
-						self.pq.add(batch_idxs[j], -gains[j])
-
-				if gains[best_idx_] >= -self.pq.pq[0][0]:
-					best_idx = batch_idxs[best_idx_]
-					best_gain = gains[best_idx_]
-					break
-				else:
-					self.pq.add(batch_idxs[best_idx_], -gains[best_idx_])
-
-			self.ranking.append(best_idx)
-			self.gains.append(best_gain)
-			self.mask[best_idx] = True
-			self.current_values += X[best_idx]
-			self.current_concave_values = self.concave_func(self.current_values)
-
-			if self.verbose == True:
-				self.pbar.update(1)
-
-		print(time.time() - tic, tictoc)

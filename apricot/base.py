@@ -13,7 +13,13 @@ except:
 
 import numpy
 
+from .optimizers import Optimizer
+from .optimizers import NaiveGreedy
+from .optimizers import LazyGreedy
+from .optimizers import TwoStageGreedy
+
 from .utils import PriorityQueue
+
 
 from tqdm import tqdm
 from scipy.sparse import csr_matrix
@@ -68,9 +74,8 @@ class SubmodularSelection(object):
 		sample, and so forth.
 	"""
 
-	def __init__(self, n_samples, n_greedy_samples=1, initial_subset=None, verbose=False):
-		self.pq = PriorityQueue()
-
+	def __init__(self, n_samples, n_greedy_samples=1, initial_subset=None, 
+		optimizer='two-stage', verbose=False):
 		if type(n_samples) != int:
 			raise ValueError("n_samples must be a positive integer.")
 		if n_samples < 1:
@@ -88,11 +93,16 @@ class SubmodularSelection(object):
 		if isinstance(initial_subset, (list, numpy.ndarray)):
 			initial_subset = numpy.array(initial_subset)
 
+		if not isinstance(optimizer, Optimizer):
+			if optimizer not in ('naive', 'lazy', 'two-stage'):
+				raise ValueError("Optimizer must be a string or an optimizer object.")
+
 		if verbose not in (True, False):
 			raise ValueError("verbosity must be True or False")
 
 		self.n_samples = n_samples
 		self.n_greedy_samples = n_greedy_samples
+		self.optimizer = optimizer
 		self.verbose = verbose
 		self.ranking = None
 		self.gains = None
@@ -182,20 +192,19 @@ class SubmodularSelection(object):
 
 		# Select using the greedy algorithm first returning the gains from
 		# the last round of selection.
-		gains = self._greedy_select(X)
 
-		# Populate the priority queue following greedy selection
-		if self.n_greedy_samples < self.n_samples:
-			for idx, gain in enumerate(gains):
-				if self.mask[idx] != 1:
-					self.pq.add(idx, -gain) 
+		optimizers = {
+			'naive' : NaiveGreedy(self, self.verbose),
+			'lazy' : LazyGreedy(self, self.verbose),
+			'two-stage' : TwoStageGreedy(self, self.n_greedy_samples, self.verbose)
+		}
 
-			# Now select remaining elements using the lazy greedy algorithm.
-			self._lazy_greedy_select(X)
+		optimizer = optimizers[self.optimizer]
+		optimizer.select(X, self.n_samples)
 
 		if self.verbose == True:
 			self.pbar.close()
-		
+
 		self.ranking = numpy.array(self.ranking)
 		return self
 

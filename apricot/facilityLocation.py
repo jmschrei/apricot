@@ -123,7 +123,7 @@ class FacilityLocationSelection(SubmodularSelection):
 	"""
 
 	def __init__(self, n_samples=10, pairwise_func='euclidean', n_greedy_samples=1, 
-		initial_subset=None, verbose=False):
+		initial_subset=None, optimizer='two-stage', verbose=False):
 		self.pairwise_func_name = pairwise_func
 		
 		norm = lambda x: numpy.sqrt((x*x).sum(axis=1)).reshape(x.shape[0], 1)
@@ -143,8 +143,9 @@ class FacilityLocationSelection(SubmodularSelection):
 			raise KeyError("Must be one of 'euclidean', 'corr', 'cosine', 'precomputed'" \
 				" or a custom function.")
 
-		super(FacilityLocationSelection, self).__init__(n_samples, 
-			n_greedy_samples, initial_subset, verbose)
+		super(FacilityLocationSelection, self).__init__(n_samples=n_samples, 
+			n_greedy_samples=n_greedy_samples, initial_subset=initial_subset, 
+			optimizer=optimizer, verbose=verbose)
 
 	def fit(self, X, y=None):
 		"""Perform selection and return the subset of the data set.
@@ -212,97 +213,52 @@ class FacilityLocationSelection(SubmodularSelection):
 			raise ValueError("The initial subset must be either a two dimensional" \
 				" matrix of examples or a one dimensional mask.")
 
-	def _greedy_select(self, X_pairwise):
-		"""Select elements in a naive greedy manner."""
+	def _calculate_gains(self, X_pairwise):
+		if len(X_pairwise.shape) == 1:
+			if not self.sparse:
+				gain = numpy.maximum(X_pairwise, 
+					self.current_values).sum()
+			else:
+				gain = numpy.sum(numpy.maximum(X_pairwise.data, 
+					self.current_values[X.indices]))
 
-		for i in range(self.n_greedy_samples):
+			gain -= self.current_values.sum()
+			return gain
+
+		else:
 			if self.cupy:
 				gains = cupy.zeros(X_pairwise.shape[0], dtype='float64')
 			else:
 				gains = numpy.zeros(X_pairwise.shape[0], dtype='float64')
 
 			if self.cupy:
-				best_idx = select_next_cupy(X_pairwise, gains, self.current_values,
+				select_next_cupy(X_pairwise, gains, self.current_values,
 					self.mask)
-				gains -= self.current_values.sum()
-				self.current_values = cupy.maximum(X_pairwise[best_idx], 
-					self.current_values)
+
 			elif self.sparse:
-				best_idx = select_next_sparse(X_pairwise.data,
+				select_next_sparse(X_pairwise.data,
 					X_pairwise.indices, X_pairwise.indptr, gains,
 					self.current_values, self.mask)
-				gains -= self.current_values.sum()
-				self.current_values = numpy.maximum(
-					X_pairwise[best_idx].toarray()[0], self.current_values)
 			else:
-				best_idx = select_next(X_pairwise, gains, self.current_values,
+				select_next(X_pairwise, gains, self.current_values,
 					self.mask)
-				gains -= self.current_values.sum()
-				self.current_values = numpy.maximum(X_pairwise[best_idx], 
-					self.current_values)
 
-			self.ranking.append(best_idx)
-			self.gains.append(gains[best_idx])
-			self.mask[best_idx] = 1
+			gains -= self.current_values.sum()
+			return gains
 
-			if self.verbose == True:
-				self.pbar.update(1)
+	def _select_next(self, X_pairwise, gain, idx):
+		"""This function will add the given item to the selected set."""
 
-		return gains
+		if self.cupy:
+			self.current_values = cupy.maximum(X_pairwise, 
+				self.current_values)
+		elif self.sparse:
+			self.current_values = numpy.maximum(
+				X_pairwise.toarray()[0], self.current_values)
+		else:
+			self.current_values = numpy.maximum(X_pairwise, 
+				self.current_values)
 
-	def _lazy_greedy_select(self, X_pairwise):
-		"""Select elements from a dense matrix in a lazy greedy manner."""
-
-		for i in range(self.n_greedy_samples, self.n_samples):
-			best_gain = 0.
-			best_idx = None
-			
-			while True:
-				prev_gain, idx = self.pq.pop()
-				prev_gain = -prev_gain
-				
-				if best_gain >= prev_gain:
-					self.pq.add(idx, -prev_gain)
-					self.pq.remove(best_idx)
-					break
-				
-				if not self.sparse:
-					gain = numpy.maximum(X_pairwise[:, idx], 
-						self.current_values).sum()
-
-				else:
-					gain = 0.
-					start = X_pairwise.indptr[idx]
-					end = X_pairwise.indptr[idx+1]
-
-					for k in range(start, end):
-						j = X_pairwise.indices[k]
-						gain += max(X_pairwise.data[k],
-							self.current_values[j])
-
-				gain -= self.current_values.sum()
-				self.pq.add(idx, -gain)
-				
-				if gain > best_gain:
-					best_gain = gain
-					best_idx = idx
-
-			self.ranking.append(best_idx)
-			self.gains.append(best_gain)
-			self.mask[best_idx] = True
-
-			if not self.sparse:
-				self.current_values = numpy.maximum(X_pairwise[best_idx],
-					self.current_values)
-			else:
-				start = X_pairwise.indptr[best_idx]
-				end = X_pairwise.indptr[best_idx+1]
-
-				for k in range(start, end):
-					j = X_pairwise.indices[k]
-					self.current_values[j] = max(X_pairwise.data[k], 
-						self.current_values[j])
-
-			if self.verbose == True:
-				self.pbar.update(1)
-
+		self.ranking.append(idx)
+		self.gains.append(gain)
+		self.mask[idx] = True
