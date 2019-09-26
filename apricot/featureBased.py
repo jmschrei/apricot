@@ -333,38 +333,7 @@ class FeatureBasedSelection(SubmodularSelection):
 		for i in range(self.n_greedy_samples):
 			gains = self._calculate_gains(X)
 			best_idx = gains.argmax()
-			
-			'''
-			if self.cupy:
-				gains = cupy.zeros(X.shape[0], dtype='float64')
-			else:
-				gains = numpy.zeros(X.shape[0], dtype='float64')
-
-			if self.concave_func_name in concave_funcs:
-				if self.sparse:
-					best_idx = concave_func(X.data, X.indices, X.indptr, gains, 
-						self.current_values, self.current_concave_values, 
-						self.mask)
-					self.current_values += X[best_idx].toarray()[0]
-				else:
-					best_idx = concave_func(X, gains, self.current_values, 
-						self.mask)
-					self.current_values += X[best_idx]
-					gains -= self.current_concave_values.sum()
-			else:
-				best_idx = select_custom_next(X, gains, self.current_values, 
-					self.mask, self.concave_func)
-				self.current_values += X[best_idx]
-				gains -= self.current_concave_values.sum()
-			
-
-			self.ranking.append(best_idx)
-			self.gains.append(gains[best_idx])
-			self.mask[best_idx] = True
-			self.current_concave_values = self.concave_func(self.current_values)
-			'''
-
-			self._select_next(X, gains, best_idx)
+			self._select_next(X[best_idx], gains[best_idx], best_idx)
 
 			if self.verbose == True:
 				self.pbar.update(1)
@@ -372,35 +341,57 @@ class FeatureBasedSelection(SubmodularSelection):
 		return gains
 
 	def _calculate_gains(self, X):
-		if self.cupy:
-			gains = cupy.zeros(X.shape[0], dtype='float64')
-		else:
-			gains = numpy.zeros(X.shape[0], dtype='float64')
+		"""This function will return the gain that each example would give.
 
-		if self.concave_func_ is not None:
+		This function will return the gains that each example would give if
+		added to the selected set. When a matrix of examples is given, a
+		vector will be returned showing the gain for each example. When
+		a single element is passed in, it will return a singe value."""
+
+		if len(X.shape) == 1:
 			if self.sparse:
-				self.concave_func_(X.data, X.indices, X.indptr, gains, 
-					self.current_values, self.current_concave_values, 
-					self.mask)
+				idxs = X.indices
+				
+				gain = numpy.sum(self.concave_func(self.current_values[idxs]
+					+ X.data)) + numpy.random.randn() * 100 # - self.current_concave_values[idxs])
 			else:
-				self.concave_func_(X, gains, self.current_values, 
-					self.mask)
+				gain = self.concave_func(self.current_values + X).sum()
+				gain -= self.current_concave_values.sum()
+
+			return gain
+
+		else:
+			if self.cupy:
+				gains = cupy.zeros(X.shape[0], dtype='float64')
+			else:
+				gains = numpy.zeros(X.shape[0], dtype='float64')
+
+			if self.concave_func_ is not None:
+				if self.sparse:
+					self.concave_func_(X.data, X.indices, X.indptr, gains, 
+						self.current_values, self.current_concave_values, 
+						self.mask)
+				else:
+					self.concave_func_(X, gains, self.current_values, 
+						self.mask)
+					gains -= self.current_concave_values.sum()
+			else:
+				select_custom_next(X, gains, self.current_values, 
+					self.mask, self.concave_func)
 				gains -= self.current_concave_values.sum()
-		else:
-			select_custom_next(X, gains, self.current_values, 
-				self.mask, self.concave_func)
-			gains -= self.current_concave_values.sum()
 
-		return gains
+			return gains
 
-	def _select_next(self, X, gains, idx):
+	def _select_next(self, X, gain, idx):
+		"""This function will add the given item to the selected set."""
+
 		if self.sparse:
-			self.current_values += X[idx].toarray()[0]
+			self.current_values += X.toarray()[0]
 		else:
-			self.current_values += X[idx]
+			self.current_values += X
 
 		self.ranking.append(idx)
-		self.gains.append(gains[idx])
+		self.gains.append(gain)
 		self.mask[idx] = True
 		self.current_concave_values = self.concave_func(self.current_values)
 
@@ -420,36 +411,22 @@ class FeatureBasedSelection(SubmodularSelection):
 				prev_gain, idx = self.pq.pop()
 				prev_gain = -prev_gain
 				
-				if best_gain >= prev_gain:
-					self.pq.add(idx, -prev_gain)
-					self.pq.remove(best_idx)
-					break
+				#if best_gain >= prev_gain:
+				#	self.pq.add(idx, -prev_gain)
+				#	self.pq.remove(best_idx)
+				#	break
 				
-				if self.sparse:
-					start = X_indptr[idx] 
-					end = X_indptr[idx+1]
-					idxs = X_indices[start:end]
-					
-					gain = numpy.sum(self.concave_func(self.current_values[idxs]
-						+ X_data[start:end]) - self.current_concave_values[idxs])
-				else:
-					gain = self.concave_func(self.current_values + X[idx]).sum()
-					gain -= self.current_concave_values.sum()
+				gain = self._calculate_gains(X[idx])
+
+				if gain > -self.pq.pq[0][0]:
+					break
 
 				self.pq.add(idx, -gain)
 				if gain > best_gain:
 					best_gain = gain
 					best_idx = idx
 
-			self.ranking.append(best_idx)
-			self.gains.append(best_gain)
-			self.mask[best_idx] = True
-
-			if self.sparse:
-				self.current_values += X[best_idx].toarray()[0]
-			else:
-				self.current_values += X[best_idx]
-			self.current_concave_values = self.concave_func(self.current_values)
+			self._select_next(X[best_idx], best_gain, best_idx)
 
 			if self.verbose == True:
 				self.pbar.update(1)

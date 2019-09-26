@@ -108,43 +108,28 @@ class SubmodularMixtureSelection(SubmodularSelection):
 		else:
 			self.weights = weights
 
-		super(FeatureBasedSelection, self).__init__(n_samples, n_greedy_samples, 
+		super(SubmodularMixtureSelection, self).__init__(n_samples, n_greedy_samples, 
 			initial_subset, verbose)
+
+	def _initialize_with_subset(self, X):
+		for function in self.submodular_functions:
+			function._initialize_with_subset(X)
 
 	def _greedy_select(self, X):
 		"""Select elements in a naive greedy manner."""
 
+
 		for i in range(self.n_greedy_samples):
-			if self.cupy:
-				gains = cupy.zeros(X.shape[0], dtype='float64')
-			else:
-				gains = numpy.zeros(X.shape[0], dtype='float64')
-
-			if self.concave_func_name in concave_funcs:
-				if self.sparse:
-					best_idx = concave_func(X.data, X.indices, X.indptr, gains, 
-						self.current_values, self.current_concave_values, 
-						self.mask)
-					self.current_values += X[best_idx].toarray()[0]
-				else:
-					best_idx = concave_func(X, gains, self.current_values, 
-						self.mask)
-					self.current_values += X[best_idx]
-					gains -= self.current_concave_values.sum()
-			else:
-				best_idx = select_custom_next(X, gains, self.current_values, 
-					self.mask, self.concave_func)
-				self.current_values += X[best_idx]
-				gains -= self.current_concave_values.sum()
-
-			self.ranking.append(best_idx)
-			self.gains.append(gains[best_idx])
-			self.mask[best_idx] = True
-			self.current_concave_values = self.concave_func(self.current_values)
+			gains = numpy.array([function._calculate_gains(X)
+				for function in self.submodular_functions]).T
+			gains = (gains * self.weights).sum(axis=1)
+			best_idx = gains.argmax()
+			self._select_next(X, gains, best_idx)
 
 			if self.verbose == True:
 				self.pbar.update(1)
 
+		return gains
 		return gains
 
 	def _lazy_greedy_select(self, X):
