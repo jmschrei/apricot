@@ -178,7 +178,7 @@ class LazyGreedy(Optimizer):
 			self.function._select_next(X[best_idx], best_gain, best_idx)
 
 			if self.verbose == True:
-				pbar.update(1)
+				self.function.pbar.update(1)
 
 class TwoStageGreedy(Optimizer):
 	"""An approach that uses both naive and lazy greedy algorithms.
@@ -238,3 +238,146 @@ class TwoStageGreedy(Optimizer):
 		if n > self.n_naive_selections:
 			optimizer = LazyGreedy(self.function, self.verbose)
 			optimizer.select(X, n - self.n_naive_selections)
+
+class TwoStageGreedy(Optimizer):
+	"""An approach that uses both naive and lazy greedy algorithms.
+
+	This optimization approach starts off by using the naive greedy algorithm
+	to select the first few examples and then switches to use the lazy greedy
+	algorithm. This two stage procedure is designed to overcome the limitations
+	of the lazy greedy algorithm---specifically, the inability to parallelize
+	the implementation. Additionally, early iterations frequently require
+	iterating over most of the examples, which is particularly costly to do
+	on a priority queue. Thus, one can frequently see large speed gains simply
+	by doing the first few iterations using the naive greedy algorithm and
+	then switching to the lazy greedy algorithm.
+
+	Parameters
+	----------
+	self.function : base.SubmodularSelection
+		A submodular function that implements the `_calculate_gains` and
+		`_select_next` methods. This is the function that will be
+		optimized.
+
+	self.n_naive_selections : int
+		The number of selections to perform using the naive greedy algorithm
+		before populating the priority queue and using the lazy greedy
+		algorithm.
+
+	self.verbose : bool
+		Whether to display a progress bar during the optimization process.
+
+
+	Attributes
+	----------
+	self.function : base.SubmodularSelection
+		A submodular function that implements the `_calculate_gains` and
+		`_select_next` methods. This is the function that will be
+		optimized.
+
+	self.verbose : bool
+		Whether to display a progress bar during the optimization process.
+
+	self.pq : utils.PriorityQueue
+		The priority queue used to order examples for evaluation.
+
+	self.gains_ : numpy.ndarray or None
+		The gain that each example would give the last time that it was
+		evaluated.
+	"""
+
+	def __init__(self, function, n_naive_selections=10, verbose=False):
+		self.n_naive_selections = n_naive_selections
+		super(TwoStageGreedy, self).__init__(function, verbose)
+
+	def select(self, X, n):
+		optimizer = NaiveGreedy(self.function, self.verbose)
+		optimizer.select(X, self.n_naive_selections)
+
+		if n > self.n_naive_selections:
+			optimizer = LazyGreedy(self.function, self.verbose)
+			optimizer.select(X, n - self.n_naive_selections)
+
+class BidirectionalGreedy(Optimizer):
+	"""The bidirectional greedy algorithm.
+
+	This is a stochastic algorithm for the optimization of submodular
+	functions that are not monotone, i.e., where f(A \union {b}) 
+	is not necessarily greater than f(A). When these functions are not
+	monotone, the greedy algorithm does not have the same good 
+	guarantees on convergence, whereas the bidirectional greedy algorithm
+	does.
+
+	Generally, it is difficult to control the number of examples that
+	are returned by the bidirectional greedy algorithm. This can be done
+	by tuning a hyperparameter that regularizes the gains until you get
+	the right set size. Here we take another approach and randomly
+	select examples for consideration until we achieve the appropriate
+	set size. This means that not all examples will be considered for
+	addition.
+
+	Parameters
+	----------
+	self.function : base.SubmodularSelection
+		A submodular function that implements the `_calculate_gains` and
+		`_select_next` methods. This is the function that will be
+		optimized.
+
+	self.verbose : bool
+		Whether to display a progress bar during the optimization process.
+
+
+	Attributes
+	----------
+	self.function : base.SubmodularSelection
+		A submodular function that implements the `_calculate_gains` and
+		`_select_next` methods. This is the function that will be
+		optimized.
+
+	self.verbose : bool
+		Whether to display a progress bar during the optimization process.
+
+	self.gains_ : numpy.ndarray or None
+		The gain that each example would give the last time that it was
+		evaluated.
+	"""
+
+	def __init__(self, function, verbose=False):
+		super(BidirectionalGreedy, self).__init__(function, verbose)
+
+	def select(self, X, n):
+		"""Select elements in a naive greedy manner."""
+
+		if self.verbose == True:
+			self.function.pbar = tqdm(total=n)
+
+		A = numpy.zeros(X.shape[0], dtype=bool)
+		B = numpy.ones(X.shape[0], dtype=bool)
+
+		idxs = numpy.arange(n)
+		numpy.random.shuffle(idxs)
+
+		for i in idxs:
+			self.function._initialize_with_subset(X[A])
+			gain_a = self.function._calculate_gains(X[i])
+
+
+			B[i] = False
+			function = self.function.initialize_with_subset(X[B])
+			gain_b = -self.function._calculate_gains(X[i])
+
+			if gain_a == gain_b == 0.0:
+				p = 0.5
+			else:
+				p = gain_a / (gain_a + gain_b)
+
+			self.gains_[i] = p
+
+			if numpy.random.uniform(0, 1) <= p:
+				A[i] = True
+				self.function._select_next(X[i], gain_a, i)
+				if A.sum() == n:
+					break
+
+			else:
+				B[i] = False

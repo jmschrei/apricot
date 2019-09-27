@@ -259,6 +259,5 @@ class FacilityLocationSelection(SubmodularSelection):
 			self.current_values = numpy.maximum(X_pairwise, 
 				self.current_values)
 
-		self.ranking.append(idx)
-		self.gains.append(gain)
-		self.mask[idx] = True
+		super(FacilityLocationSelection, self)._select_next(
+			X_pairwise, gain, idx)

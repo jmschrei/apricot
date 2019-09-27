@@ -208,15 +208,6 @@ class SubmodularSelection(object):
 		self.ranking = numpy.array(self.ranking)
 		return self
 
-	def _initialize_with_subset(self, X, subset):
-		raise NotImplementedError
-
-	def _greedy_select(self, X):
-		raise NotImplementedError
-
-	def _lazy_greedy_select(self, X):
-		raise NotImplementedError
-
 	def transform(self, X, y=None):
 		"""Transform the data set by selecting the top n_samples samples.
 
@@ -281,3 +272,14 @@ class SubmodularSelection(object):
 		"""
 
 		return self.fit(X, y).transform(X, y)
+
+	def _initialize_with_subset(self, X, subset):
+		raise NotImplementedError
+
+	def _calculate_gains(self, X):
+		raise NotImplementedError
+
+	def _select_next(self, X, gain, idx):
+		self.ranking.append(idx)
+		self.gains.append(gain)
+		self.mask[idx] = True

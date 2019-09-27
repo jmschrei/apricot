@@ -373,7 +373,8 @@ class FeatureBasedSelection(SubmodularSelection):
 		else:
 			self.current_values += X
 
-		self.ranking.append(idx)
-		self.gains.append(gain)
-		self.mask[idx] = True
 		self.current_concave_values = self.concave_func(self.current_values)
+
+		super(FeatureBasedSelection, self)._select_next(
+			X, gain, idx)
+
