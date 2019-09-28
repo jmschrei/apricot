@@ -67,15 +67,13 @@ class PriorityQueue(object):
         None
         """
 
-
-
         if item in self.lookup:
             self.remove(item)
         
         entry = [weight, next(self.counter), item]
         self.lookup[item] = entry
         heappush(self.pq, entry)
-    
+
     def remove(self, item):
         """Remove an element from the queue.
 
@@ -92,7 +90,6 @@ class PriorityQueue(object):
         -------
         None
         """
-
 
         entry = self.lookup.pop(item)
         entry[-1] = "DELETED"
