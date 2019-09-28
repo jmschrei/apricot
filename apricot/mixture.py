@@ -95,7 +95,8 @@ class SubmodularMixtureSelection(SubmodularSelection):
 	"""
 
 	def __init__(self, n_samples, submodular_functions, weights=None, 
-		n_greedy_samples=3, initial_subset=None, verbose=False):
+		n_greedy_samples=3, initial_subset=None, optimizer='two-stage',
+		verbose=False):
 
 		if len(submodular_functions) < 2:
 			raise ValueError("Must mix at least two submodular functions.")
@@ -108,76 +109,76 @@ class SubmodularMixtureSelection(SubmodularSelection):
 		else:
 			self.weights = weights
 
-		super(SubmodularMixtureSelection, self).__init__(n_samples, n_greedy_samples, 
-			initial_subset, verbose)
+		super(SubmodularMixtureSelection, self).__init__(n_samples=n_samples, 
+			n_greedy_samples=n_greedy_samples, initial_subset=initial_subset,
+			optimizer=optimizer, verbose=verbose) 
 
-	def _initialize_with_subset(self, X):
+	def fit(self, X, y=None):
+		"""Perform selection and return the subset of the data set.
+
+		This method will take in a full data set and return the selected subset
+		according to the feature based function. The data will be returned in
+		the order that it was selected, with the first row corresponding to
+		the best first selection, the second row corresponding to the second
+		best selection, etc.
+
+		Parameters
+		----------
+		X : list or numpy.ndarray, shape=(n, d)
+			The data set to transform. Must be numeric.
+
+		y : list or numpy.ndarray, shape=(n,), optional
+			The labels to transform. If passed in this function will return
+			both the data and th corresponding labels for the rows that have
+			been selected.
+
+		Returns
+		-------
+		self : FeatureBasedSelection
+			The fit step returns itself.
+		"""
+
+		if self.verbose:
+			self.pbar = tqdm(total=self.n_samples)
+
+		return super(SubmodularMixtureSelection, self).fit(X, y)
+
+	def _initialize(self, X):
+		super(SubmodularMixtureSelection, self)._initialize(X)
+
 		for function in self.submodular_functions:
-			function._initialize_with_subset(X)
+			function._initialize(X)
 
-	def _greedy_select(self, X):
-		"""Select elements in a naive greedy manner."""
+	def _calculate_gains(self, X):
+		"""This function will return the gain that each example would give.
 
+		This function will return the gains that each example would give if
+		added to the selected set. When a matrix of examples is given, a
+		vector will be returned showing the gain for each example. When
+		a single element is passed in, it will return a singe value."""
 
-		for i in range(self.n_greedy_samples):
-			gains = numpy.array([function._calculate_gains(X)
-				for function in self.submodular_functions]).T
-			gains = (gains * self.weights).sum(axis=1)
-			best_idx = gains.argmax()
-			self._select_next(X, gains, best_idx)
+		if len(X.shape) == 1:
+			gain = 0.0
+			for function in self.submodular_functions:
+				gain += function._calculate_gains(X)
 
-			if self.verbose == True:
-				self.pbar.update(1)
+			return gain
 
-		return gains
-		return gains
-
-	def _lazy_greedy_select(self, X):
-		"""Select elements from a dense matrix in a lazy greedy manner."""
-
-		if self.sparse:
-			X_data = X.data
-			X_indptr = X.indptr
-			X_indices = X.indices
-
-		for i in range(self.n_greedy_samples, self.n_samples):
-			best_gain = 0.
-			best_idx = None
-			
-			while True:
-				prev_gain, idx = self.pq.pop()
-				prev_gain = -prev_gain
-				
-				if best_gain >= prev_gain:
-					self.pq.add(idx, -prev_gain)
-					self.pq.remove(best_idx)
-					break
-				
-				if self.sparse:
-					start = X_indptr[idx] 
-					end = X_indptr[idx+1]
-					idxs = X_indices[start:end]
-					
-					gain = numpy.sum(self.concave_func(self.current_values[idxs]
-						+ X_data[start:end]) - self.current_concave_values[idxs])
-				else:
-					gain = self.concave_func(self.current_values + X[idx]).sum()
-					gain -= self.current_concave_values.sum()
-
-				self.pq.add(idx, -gain)
-				if gain > best_gain:
-					best_gain = gain
-					best_idx = idx
-
-			self.ranking.append(best_idx)
-			self.gains.append(best_gain)
-			self.mask[best_idx] = True
-
-			if self.sparse:
-				self.current_values += X[best_idx].toarray()[0]
+		else:
+			if self.cupy:
+				gains = cupy.zeros(X.shape[0], dtype='float64')
 			else:
-				self.current_values += X[best_idx]
-			self.current_concave_values = self.concave_func(self.current_values)
+				gains = numpy.zeros(X.shape[0], dtype='float64')
 
-			if self.verbose == True:
-				self.pbar.update(1)
+			for i, function in enumerate(self.submodular_functions):
+				gains += function._calculate_gains(X) * self.weights[i]
+
+			return gains
+
+	def _select_next(self, X, gain, idx):
+		"""This function will add the given item to the selected set."""
+
+		for function in self.submodular_functions:
+			function._select_next(X, gain, idx)
+
+		super(SubmodularMixtureSelection, self)._select_next(X, gain, idx)

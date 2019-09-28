@@ -1,6 +1,9 @@
 # optimizers.py
 # Author: Jacob Schreiber <jmschreiber91@gmail.com>
 
+import numpy
+
+from tqdm import tqdm
 from .utils import PriorityQueue
 
 class Optimizer(object):
@@ -90,9 +93,6 @@ class NaiveGreedy(Optimizer):
 	def select(self, X, n):
 		"""Select elements in a naive greedy manner."""
 
-		if self.verbose == True:
-			self.function.pbar = tqdm(total=n)
-
 		for i in range(n):
 			self.gains_ = self.function._calculate_gains(X)
 			best_idx = self.gains_.argmax()
@@ -147,9 +147,6 @@ class LazyGreedy(Optimizer):
 		super(LazyGreedy, self).__init__(function, verbose)
 
 	def select(self, X, n):
-		if self.verbose == True:
-			self.function.pbar = tqdm(total=n)
-
 		gains = self.function._calculate_gains(X)
 		for idx, gain in enumerate(gains):
 			self.pq.add(idx, -gain) 
@@ -302,7 +299,7 @@ class BidirectionalGreedy(Optimizer):
 	"""The bidirectional greedy algorithm.
 
 	This is a stochastic algorithm for the optimization of submodular
-	functions that are not monotone, i.e., where f(A \union {b}) 
+	functions that are not monotone, i.e., where f(A union {b}) 
 	is not necessarily greater than f(A). When these functions are not
 	monotone, the greedy algorithm does not have the same good 
 	guarantees on convergence, whereas the bidirectional greedy algorithm
@@ -348,36 +345,41 @@ class BidirectionalGreedy(Optimizer):
 	def select(self, X, n):
 		"""Select elements in a naive greedy manner."""
 
-		if self.verbose == True:
-			self.function.pbar = tqdm(total=n)
-
 		A = numpy.zeros(X.shape[0], dtype=bool)
 		B = numpy.ones(X.shape[0], dtype=bool)
 
-		idxs = numpy.arange(n)
+		idxs = numpy.arange(X.shape[0])
 		numpy.random.shuffle(idxs)
+		self.gains_ = numpy.zeros(X.shape[0])
 
-		for i in idxs:
-			self.function._initialize_with_subset(X[A])
-			gain_a = self.function._calculate_gains(X[i])
+		while True: 
+			for i in idxs:
+				if A[i] == True:
+					continue
+
+				self.function.initial_subset = A
+				self.function._initialize(X)
+				gain_a = self.function._calculate_gains(X[i])
 
 
-			B[i] = False
-			function = self.function.initialize_with_subset(X[B])
-			gain_b = -self.function._calculate_gains(X[i])
-
-			if gain_a == gain_b == 0.0:
-				p = 0.5
-			else:
-				p = gain_a / (gain_a + gain_b)
-
-			self.gains_[i] = p
-
-			if numpy.random.uniform(0, 1) <= p:
-				A[i] = True
-				self.function._select_next(X[i], gain_a, i)
-				if A.sum() == n:
-					break
-
-			else:
 				B[i] = False
+				self.function.initial_subset = B
+				self.function._initialize(X)
+				gain_b = -self.function._calculate_gains(X[i])
+				B[i] = True
+
+				if gain_a == gain_b == 0.0:
+					p = 0.5
+				else:
+					p = gain_a / (gain_a + gain_b)
+
+				self.gains_[i] = p
+
+				if numpy.random.uniform(0, 1) <= p:
+					A[i] = True
+					self.function._select_next(X[i], gain_a, i)
+					if A.sum() == n:
+						return
+
+				else:
+					B[i] = False

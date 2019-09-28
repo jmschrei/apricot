@@ -292,10 +292,17 @@ class FeatureBasedSelection(SubmodularSelection):
 			The fit step returns itself.
 		"""
 
+		if self.verbose:
+			self.pbar = tqdm(total=self.n_samples)
+
 		return super(FeatureBasedSelection, self).fit(X, y)
 
-	def _initialize_with_subset(self, X):
-		if self.initial_subset.ndim == 2:
+	def _initialize(self, X):
+		super(FeatureBasedSelection, self)._initialize(X)
+
+		if self.initial_subset is None:
+			return
+		elif self.initial_subset.ndim == 2:
 			self.current_values = self.initial_subset.sum(axis=0).astype('float64')
 		elif self.initial_subset.ndim == 1:
 			self.current_values = X[self.initial_subset].sum(axis=0).astype('float64')

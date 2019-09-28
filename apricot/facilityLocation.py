@@ -183,7 +183,6 @@ class FacilityLocationSelection(SubmodularSelection):
 
 		if self.verbose == True:
 			self.pbar = tqdm(total=self.n_samples)
-			self.pbar.update(1)
 
 		if self.pairwise_func == 'precomputed':
 			X_pairwise = X
@@ -196,8 +195,12 @@ class FacilityLocationSelection(SubmodularSelection):
 
 		return super(FacilityLocationSelection, self).fit(X_pairwise, y)
 
-	def _initialize_with_subset(self, X_pairwise):
-		if self.initial_subset.ndim == 2:
+	def _initialize(self, X_pairwise):
+		super(FacilityLocationSelection, self)._initialize(X_pairwise)
+
+		if self.initial_subset is None:
+			return
+		elif self.initial_subset.ndim == 2:
 			raise ValueError("When using facility location, the initial subset"\
 				" must be a one dimensional array of indices.")
 		elif self.initial_subset.ndim == 1:

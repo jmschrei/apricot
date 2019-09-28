@@ -17,11 +17,10 @@ from .optimizers import Optimizer
 from .optimizers import NaiveGreedy
 from .optimizers import LazyGreedy
 from .optimizers import TwoStageGreedy
+from .optimizers import BidirectionalGreedy
 
 from .utils import PriorityQueue
 
-
-from tqdm import tqdm
 from scipy.sparse import csr_matrix
 
 class SubmodularSelection(object):
@@ -94,7 +93,7 @@ class SubmodularSelection(object):
 			initial_subset = numpy.array(initial_subset)
 
 		if not isinstance(optimizer, Optimizer):
-			if optimizer not in ('naive', 'lazy', 'two-stage'):
+			if optimizer not in ('naive', 'lazy', 'two-stage', 'bidirectional'):
 				raise ValueError("Optimizer must be a string or an optimizer object.")
 
 		if verbose not in (True, False):
@@ -109,7 +108,7 @@ class SubmodularSelection(object):
 		self.sparse = None
 		self.cupy = None
 		self.initial_subset = initial_subset
-	
+
 	def fit(self, X, y=None):
 		"""Fit a ranking to the data set of the top n_sample elements.
 
@@ -147,56 +146,16 @@ class SubmodularSelection(object):
 			raise ValueError("Cannot select more examples than the number in" \
 				" the data set.")
 
-		self.sparse = isinstance(X, csr_matrix)
-		self.cupy = isinstance(X, cupy.ndarray) and not isinstance(X, numpy.ndarray)
+		self._initialize(X)
+
 		if not self.sparse and not self.cupy:
 			X = X.astype('float64')
-
-		if self.verbose == True:
-			self.pbar = tqdm(total=self.n_samples)
-
-		self.ranking = []
-		self.gains = []
-
-		if self.cupy:
-			self.current_values = cupy.zeros(X.shape[1], dtype='float64')
-			self.current_concave_values = cupy.zeros(X.shape[1], dtype='float64')
-			self.mask = cupy.zeros(X.shape[0], dtype='int8')
-		else:
-			self.current_values = numpy.zeros(X.shape[1], dtype='float64')
-			self.current_concave_values = numpy.zeros(X.shape[1], dtype='float64')
-			self.mask = numpy.zeros(X.shape[0], dtype='int8')
-
-
-		if self.initial_subset is not None:
-			if self.initial_subset.ndim == 1:
-				if self.initial_subset.dtype == bool:
-					self.initial_subset = numpy.where(self.initial_subset == 1)[0]
-				
-				if len(self.initial_subset) + self.n_samples > X.shape[0]:
-					raise ValueError("When using a mask for the initial subset" \
-						" must selected fewer than the size of the subset minus" \
-						" the initial subset size, i.e., n_samples < X.shape[0] -"\
-						" initial_subset.shape[0].")
-
-				if self.initial_subset.max() > X.shape[0]:
-					raise ValueError("When passing in an integer mask for the initial subset"\
-						" the maximum value cannot exceed the size of the data set.")
-				elif self.initial_subset.min() < 0:
-					raise ValueError("When passing in an integer mask for the initial subset"\
-						" the minimum value cannot be negative.")
-				
-				self.mask[self.initial_subset] = 1
-
-			self._initialize_with_subset(X)
-
-		# Select using the greedy algorithm first returning the gains from
-		# the last round of selection.
 
 		optimizers = {
 			'naive' : NaiveGreedy(self, self.verbose),
 			'lazy' : LazyGreedy(self, self.verbose),
-			'two-stage' : TwoStageGreedy(self, self.n_greedy_samples, self.verbose)
+			'two-stage' : TwoStageGreedy(self, self.n_greedy_samples, self.verbose),
+			'bidirectional' : BidirectionalGreedy(self, self.verbose)
 		}
 
 		optimizer = optimizers[self.optimizer]
@@ -273,8 +232,41 @@ class SubmodularSelection(object):
 
 		return self.fit(X, y).transform(X, y)
 
-	def _initialize_with_subset(self, X, subset):
-		raise NotImplementedError
+	def _initialize(self, X):
+		self.sparse = isinstance(X, csr_matrix)
+		self.cupy = isinstance(X, cupy.ndarray) and not isinstance(X, numpy.ndarray)
+		self.ranking = []
+		self.gains = []
+
+		if self.cupy:
+			self.current_values = cupy.zeros(X.shape[1], dtype='float64')
+			self.current_concave_values = cupy.zeros(X.shape[1], dtype='float64')
+			self.mask = cupy.zeros(X.shape[0], dtype='int8')
+		else:
+			self.current_values = numpy.zeros(X.shape[1], dtype='float64')
+			self.current_concave_values = numpy.zeros(X.shape[1], dtype='float64')
+			self.mask = numpy.zeros(X.shape[0], dtype='int8')
+
+
+		if self.initial_subset is not None:
+			if self.initial_subset.ndim == 1:
+				if self.initial_subset.dtype == bool:
+					self.initial_subset = numpy.where(self.initial_subset == 1)[0]
+				
+				if len(self.initial_subset) + self.n_samples > X.shape[0]:
+					raise ValueError("When using a mask for the initial subset" \
+						" must selected fewer than the size of the subset minus" \
+						" the initial subset size, i.e., n_samples < X.shape[0] -"\
+						" initial_subset.shape[0].")
+
+				if self.initial_subset.max() > X.shape[0]:
+					raise ValueError("When passing in an integer mask for the initial subset"\
+						" the maximum value cannot exceed the size of the data set.")
+				elif self.initial_subset.min() < 0:
+					raise ValueError("When passing in an integer mask for the initial subset"\
+						" the minimum value cannot be negative.")
+				
+				self.mask[self.initial_subset] = 1
 
 	def _calculate_gains(self, X):
 		raise NotImplementedError
