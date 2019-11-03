@@ -159,7 +159,7 @@ class LazyGreedy(Optimizer):
 				prev_gain, idx = self.pq.pop()
 				prev_gain = -prev_gain
 				
-				if best_gain >= prev_gain:
+				if best_idx == idx:
 					self.pq.add(idx, -prev_gain)
 					self.pq.remove(best_idx)
 					break

@@ -32,7 +32,7 @@ def select_sqrt_next(X, gains, current_values, mask):
 
 		gains[idx] = numpy.sqrt(current_values + X[idx]).sum()
 
-	return numpy.argmax(gains)
+	return 1
 
 
 @njit(dtypes, nogil=True, parallel=True)
@@ -43,7 +43,7 @@ def select_log_next(X, gains, current_values, mask):
 
 		gains[idx] = numpy.log(current_values + X[idx] + 1).sum()
 
-	return numpy.argmax(gains)
+	return 1
 
 @njit(dtypes, nogil=True, parallel=True)
 def select_inv_next(X, gains, current_values, mask):
@@ -54,7 +54,7 @@ def select_inv_next(X, gains, current_values, mask):
 		gains[idx] = ((current_values + X[idx]) / (1. 
 			+ current_values + X[idx])).sum()
 
-	return numpy.argmax(gains)
+	return 1
 
 @njit(dtypes, nogil=True, parallel=True)
 def select_min_next(X, gains, current_values, mask):
@@ -65,12 +65,12 @@ def select_min_next(X, gains, current_values, mask):
 		gains[idx] = numpy.fmin(current_values + X[idx], 
 			numpy.ones(X.shape[1])).sum()
 
-	return numpy.argmax(gains)
+	return 1
 
 @njit(sdtypes, nogil=True, parallel=True)
 def select_sqrt_next_sparse(X_data, X_indices, X_indptr, gains, current_values, 
 	current_concave_values, mask):
-	for idx in range(X_indptr.shape[0] - 1):
+	for idx in prange(X_indptr.shape[0] - 1):
 		if mask[idx] == 1:
 			continue
 
@@ -81,12 +81,12 @@ def select_sqrt_next_sparse(X_data, X_indices, X_indptr, gains, current_values,
 			j = X_indices[i]
 			gains[idx] += numpy.sqrt(X_data[i] + current_values[j]) - current_concave_values[j]
 
-	return numpy.argmax(gains)
+	return 1
 
 @njit(sdtypes, nogil=True, parallel=True)
 def select_log_next_sparse(X_data, X_indices, X_indptr, gains, current_values, 
 	current_concave_values, mask):
-	for idx in range(X_indptr.shape[0] - 1):
+	for idx in prange(X_indptr.shape[0] - 1):
 		if mask[idx] == 1:
 			continue
 
@@ -97,12 +97,12 @@ def select_log_next_sparse(X_data, X_indices, X_indptr, gains, current_values,
 			j = X_indices[i]
 			gains[idx] += numpy.log(X_data[i] + current_values[j] + 1) - current_concave_values[j]
 
-	return numpy.argmax(gains)
+	return 1
 
 @njit(sdtypes, nogil=True, parallel=True)
 def select_inv_next_sparse(X_data, X_indices, X_indptr, gains, current_values, 
 	current_concave_values, mask):
-	for idx in range(X_indptr.shape[0] - 1):
+	for idx in prange(X_indptr.shape[0] - 1):
 		if mask[idx] == 1:
 			continue
 
@@ -114,12 +114,12 @@ def select_inv_next_sparse(X_data, X_indices, X_indptr, gains, current_values,
 			gains[idx] += (current_values[j] + X_data[i]) / (1.
 				+ current_values[j] + X_data[i]) - current_concave_values[j]
 
-	return numpy.argmax(gains)
+	return 1
 
 @njit(sdtypes, nogil=True, parallel=True)
 def select_min_next_sparse(X_data, X_indices, X_indptr, gains, current_values, 
 	current_concave_values, mask):
-	for idx in range(X_indptr.shape[0] - 1):
+	for idx in prange(X_indptr.shape[0] - 1):
 		if mask[idx] == 1:
 			continue
 
@@ -130,28 +130,28 @@ def select_min_next_sparse(X_data, X_indices, X_indptr, gains, current_values,
 			j = X_indices[i]
 			gains[idx] += min(X_data[i] + current_values[j], 1) - current_concave_values[j]
 
-	return numpy.argmax(gains)
+	return 1
 
 def select_sqrt_next_cupy(X, gains, current_values, mask):
 	gains[:] = cupy.sum(cupy.sqrt(current_values + X), axis=1)
 	gains[:] = gains * (1 - mask)
-	return int(cupy.argmax(gains))
+	return 1
 
 def select_log_next_cupy(X, gains, current_values, mask):
 	gains[:] = cupy.sum(cupy.log(current_values + X + 1), axis=1)
 	gains[:] = gains * (1 - mask)
-	return int(cupy.argmax(gains))
+	return 1
 
 def select_inv_next_cupy(X, gains, current_values, mask):
 	gains[:] = cupy.sum((current_values + X) / 
 		(1. + current_values + X), axis=1)
 	gains[:] = gains * (1 - mask)
-	return int(cupy.argmax(gains))
+	return 1
 
 def select_min_next_cupy(X, gains, current_values, mask):
 	gains[:] = cupy.sum(cupy.min(current_values + X, 1), axis=1)
 	gains[:] = gains * (1 - mask)
-	return int(cupy.argmax(gains))
+	return 1
 
 def select_custom_next(X, gains, current_values, mask, 
 	concave_func):
@@ -340,10 +340,10 @@ class FeatureBasedSelection(SubmodularSelection):
 							   '_cupy' if self.cupy else '')
 		concave_func = concave_funcs.get(name, None)
 
-		if len(X.shape) == 1:
+		if len(X.shape) == 1 or (self.sparse and X.shape[0] == 1):
 			if self.sparse:
 				gain = numpy.sum(self.concave_func(self.current_values[X.indices]
-					+ X.data) - self.current_concave_values[idxs])
+					+ X.data) - self.current_concave_values[X.indices])
 			else:
 				gain = self.concave_func(self.current_values + X).sum()
 				gain -= self.current_concave_values.sum()

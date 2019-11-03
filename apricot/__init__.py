@@ -5,4 +5,4 @@ from .featureBased import FeatureBasedSelection
 from .facilityLocation import FacilityLocationSelection
 from .mixture import SubmodularMixtureSelection
 
-__version__ = '0.4.0'
+__version__ = '0.4.1'

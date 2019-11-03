@@ -165,6 +165,7 @@ class SubmodularSelection(object):
 			self.pbar.close()
 
 		self.ranking = numpy.array(self.ranking)
+		self.gains = numpy.array(self.gains)
 		return self
 
 	def transform(self, X, y=None):
