@@ -13,14 +13,14 @@ except:
 import time
 import numpy
 
-from .base import SubmodularSelection
+from .base import BaseSelection
 
 from tqdm import tqdm
 
 from numba import njit, jit
 from numba import prange
 
-class SubmodularMixtureSelection(SubmodularSelection):
+class SubmodularMixtureSelection(BaseSelection):
 	"""A selection approach based on a mixture of submodular functions.
 
 	This class implements a simple mixture of submodular functions for the

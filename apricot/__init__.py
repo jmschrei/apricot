@@ -3,6 +3,7 @@
 
 from .featureBased import FeatureBasedSelection
 from .facilityLocation import FacilityLocationSelection
+from .saturatedCoverage import SaturatedCoverageSelection
 from .mixture import SubmodularMixtureSelection
 
-__version__ = '0.4.1'
+__version__ = '0.5.0rc'

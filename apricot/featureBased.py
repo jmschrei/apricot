@@ -14,7 +14,7 @@ except:
 import time
 import numpy
 
-from .base import SubmodularSelection
+from .base import BaseSelection
 
 from tqdm import tqdm
 
@@ -171,7 +171,7 @@ def select_custom_next(X, gains, current_values, mask,
 
 	return best_idx
 
-class FeatureBasedSelection(SubmodularSelection):
+class FeatureBasedSelection(BaseSelection):
 	"""A feature based submodular selection algorithm.
 
 	NOTE: All values in your data must be positive for this selection to work.

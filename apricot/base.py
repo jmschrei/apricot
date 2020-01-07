@@ -23,7 +23,7 @@ from .utils import PriorityQueue
 
 from scipy.sparse import csr_matrix
 
-class SubmodularSelection(object):
+class BaseSelection(object):
 	"""The base selection object.
 
 	This object defines the structures that all submodular selection algorithms
@@ -129,7 +129,7 @@ class SubmodularSelection(object):
 
 		Returns
 		-------
-		self : SubmodularSelection
+		self : BaseSelection
 		"""
 
 		allowed_dtypes = list, numpy.ndarray, csr_matrix, cupy.ndarray
@@ -276,3 +276,153 @@ class SubmodularSelection(object):
 		self.ranking.append(idx)
 		self.gains.append(gain)
 		self.mask[idx] = True
+
+
+class BaseGraphSelection(BaseSelection):
+	"""The base graph selection object.
+
+	This object defines the structures that all submodular selection algorithms
+	should follow if they operate on a graph, such as pairwise similarity 
+	measurements. All algorithms will have the same public methods and the same 
+	attributes.
+
+	NOTE: All ~pairwise~ values in your data must be positive for these
+	selection methods to work.
+
+	This implementation allows users to pass in either their own symmetric
+	square matrix of similarity values, or a data matrix as normal and a function
+	that calculates these pairwise values.
+
+	Parameters
+	----------
+	n_samples : int
+		The number of samples to return.
+
+	pairwise_func : str or callable
+		The method for converting a data matrix into a square symmetric matrix
+		of pairwise similarities. If a string, can be any of the following:
+
+			'euclidean' : The negative euclidean distance
+			'corr' : The squared correlation matrix
+			'cosine' : The normalized dot product of the matrix
+			'precomputed' : User passes in a NxN matrix of distances themselves
+
+	n_greedy_samples : int
+		The number of samples to perform the naive greedy algorithm on
+		before switching to the lazy greedy algorithm. The lazy greedy
+		algorithm is faster once features begin to saturate, but is slower
+		in the initial few selections. This is, in part, because the naive
+		greedy algorithm is parallelized whereas the lazy greedy
+		algorithm currently is not.
+
+	initial_subset : list, numpy.ndarray or None
+		If provided, this should be a list of indices into the data matrix
+		to use as the initial subset, or a group of examples that may not be
+		in the provided data should beused as the initial subset. If indices, 
+		the provided array should be one-dimensional. If a group of examples,
+		the data should be 2 dimensional.
+
+	verbose : bool
+		Whether to print output during the selection process.
+
+	Attributes
+	----------
+	n_samples : int
+		The number of samples to select.
+
+	pairwise_func : callable
+		A function that takes in a data matrix and converts it to a square
+		symmetric matrix.
+
+	ranking : numpy.array int
+		The selected samples in the order of their gain.
+
+	gains : numpy.array float
+		The gain of each sample in the returned set when it was added to the
+		growing subset. The first number corresponds to the gain of the first
+		added sample, the second corresponds to the gain of the second added
+		sample, and so forth.
+	"""
+
+	def __init__(self, n_samples=10, pairwise_func='euclidean', n_greedy_samples=1, 
+		initial_subset=None, optimizer='two-stage', verbose=False):
+		self.pairwise_func_name = pairwise_func
+		
+		norm = lambda x: numpy.sqrt((x*x).sum(axis=1)).reshape(x.shape[0], 1)
+		norm2 = lambda x: (x*x).sum(axis=1).reshape(x.shape[0], 1)
+
+		if pairwise_func == 'corr':
+			self.pairwise_func = lambda X: numpy.corrcoef(X, rowvar=True) ** 2.
+		elif pairwise_func == 'cosine':
+			self.pairwise_func = lambda X: numpy.abs(numpy.dot(X, X.T) / (norm(X).dot(norm(X).T)))
+		elif pairwise_func == 'euclidean':
+			self.pairwise_func = lambda X: (-2 * numpy.dot(X, X.T) + norm2(X)).T + norm2(X)
+		elif pairwise_func == 'precomputed':
+			self.pairwise_func = pairwise_func
+		elif callable(pairwise_func):
+			self.pairwise_func = pairwise_func
+		else:
+			raise KeyError("Must be one of 'euclidean', 'corr', 'cosine', 'precomputed'" \
+				" or a custom function.")
+
+		super(BaseGraphSelection, self).__init__(n_samples=n_samples, 
+			n_greedy_samples=n_greedy_samples, initial_subset=initial_subset, 
+			optimizer=optimizer, verbose=verbose)
+
+	def fit(self, X, y=None):
+		"""Perform selection and return the subset of the data set.
+
+		This method will take in a full data set and return the selected subset
+		according to the graph selection function. The data will be returned in
+		the order that it was selected, with the first row corresponding to
+		the best first selection, the second row corresponding to the second
+		best selection, etc.
+
+		Parameters
+		----------
+		X : list or numpy.ndarray, shape=(n, d)
+			The data set to transform. Must be numeric.
+
+		y : list or numpy.ndarray, shape=(n,), optional
+			The labels to transform. If passed in this function will return
+			both the data and th corresponding labels for the rows that have
+			been selected.
+
+		Returns
+		-------
+		self : GraphSelectionSelection
+			The fit step returns itself.
+		"""
+
+		f = self.pairwise_func
+
+		if isinstance(X, csr_matrix) and f != "precomputed":
+			raise ValueError("Must passed in a precomputed sparse " \
+				"similarity matrix or a dense feature matrix.")
+		if f == 'precomputed' and X.shape[0] != X.shape[1]:
+			raise ValueError("Precomputed similarity matrices " \
+				"must be square and symmetric.")
+
+		if self.verbose == True:
+			self.pbar = tqdm(total=self.n_samples)
+
+		if self.pairwise_func == 'precomputed':
+			X_pairwise = X
+		else:
+			X_pairwise = self.pairwise_func(X)
+			X_pairwise = numpy.array(X_pairwise, copy=False, dtype='float64')
+
+			if self.pairwise_func_name == 'euclidean':
+				X_max = X_pairwise.max()
+				X_pairwise = numpy.ones_like(X_pairwise) * X_max - X_pairwise
+
+		return super(BaseGraphSelection, self).fit(X_pairwise, y)
+
+	def _initialize(self, X_pairwise):
+		super(BaseGraphSelection, self)._initialize(X_pairwise)
+
+	def _calculate_gains(self, X_pairwise):
+		super(BaseGraphSelection, self)._calculate_gains(X_pairwise)
+
+	def _select_next(self, X_pairwise, gain, idx):
+		super(BaseGraphSelection, self)._select_next(X_pairwise, gain, idx)

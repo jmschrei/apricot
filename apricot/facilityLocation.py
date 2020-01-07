@@ -12,7 +12,7 @@ except:
 
 import numpy
 
-from .base import SubmodularSelection
+from .base import BaseGraphSelection
 
 from tqdm import tqdm
 
@@ -54,7 +54,7 @@ def select_next_cupy(X, gains, current_values, mask):
 	gains[:] = gains * (1 - mask)
 	return int(cupy.argmax(gains))
 
-class FacilityLocationSelection(SubmodularSelection):
+class FacilityLocationSelection(BaseGraphSelection):
 	"""A facility location submodular selection algorithm.
 
 	NOTE: All ~pairwise~ values in your data must be positive for this 
@@ -124,28 +124,10 @@ class FacilityLocationSelection(SubmodularSelection):
 
 	def __init__(self, n_samples=10, pairwise_func='euclidean', n_greedy_samples=1, 
 		initial_subset=None, optimizer='two-stage', verbose=False):
-		self.pairwise_func_name = pairwise_func
-		
-		norm = lambda x: numpy.sqrt((x*x).sum(axis=1)).reshape(x.shape[0], 1)
-		norm2 = lambda x: (x*x).sum(axis=1).reshape(x.shape[0], 1)
-
-		if pairwise_func == 'corr':
-			self.pairwise_func = lambda X: numpy.corrcoef(X, rowvar=True) ** 2.
-		elif pairwise_func == 'cosine':
-			self.pairwise_func = lambda X: numpy.abs(numpy.dot(X, X.T) / (norm(X).dot(norm(X).T)))
-		elif pairwise_func == 'euclidean':
-			self.pairwise_func = lambda X: (-2 * numpy.dot(X, X.T) + norm2(X)).T + norm2(X)
-		elif pairwise_func == 'precomputed':
-			self.pairwise_func = pairwise_func
-		elif callable(pairwise_func):
-			self.pairwise_func = pairwise_func
-		else:
-			raise KeyError("Must be one of 'euclidean', 'corr', 'cosine', 'precomputed'" \
-				" or a custom function.")
 
 		super(FacilityLocationSelection, self).__init__(n_samples=n_samples, 
-			n_greedy_samples=n_greedy_samples, initial_subset=initial_subset, 
-			optimizer=optimizer, verbose=verbose)
+			pairwise_func=pairwise_func, n_greedy_samples=n_greedy_samples, 
+			initial_subset=initial_subset, optimizer=optimizer, verbose=verbose)
 
 	def fit(self, X, y=None):
 		"""Perform selection and return the subset of the data set.
@@ -172,28 +154,7 @@ class FacilityLocationSelection(SubmodularSelection):
 			The fit step returns itself.
 		"""
 
-		f = self.pairwise_func
-
-		if isinstance(X, csr_matrix) and f != "precomputed":
-			raise ValueError("Must passed in a precomputed sparse " \
-				"similarity  matrix or a dense feature matrix.")
-		if f == 'precomputed' and X.shape[0] != X.shape[1]:
-			raise ValueError("Precomputed similarity matrices " \
-				"must be square and symmetric.")
-
-		if self.verbose == True:
-			self.pbar = tqdm(total=self.n_samples)
-
-		if self.pairwise_func == 'precomputed':
-			X_pairwise = X
-		else:
-			X = numpy.array(X, dtype='float64')
-			X_pairwise = self.pairwise_func(X)
-
-			if self.pairwise_func_name == 'euclidean':
-				X_pairwise = numpy.ones_like(X_pairwise) * X_pairwise.max() - X_pairwise
-
-		return super(FacilityLocationSelection, self).fit(X_pairwise, y)
+		return super(FacilityLocationSelection, self).fit(X, y)
 
 	def _initialize(self, X_pairwise):
 		super(FacilityLocationSelection, self)._initialize(X_pairwise)
