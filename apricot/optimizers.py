@@ -5,8 +5,9 @@ import numpy
 
 from tqdm import tqdm
 from .utils import PriorityQueue
+from .utils import check_random_state
 
-class Optimizer(object):
+class BaseOptimizer(object):
 	"""An approach for optimizing submodular functions.
 
 	This object contains a single method, `select`, that implements an
@@ -19,21 +20,21 @@ class Optimizer(object):
 
 	Parameters
 	----------
-	self.function : base.SubmodularSelection
+	function : base.SubmodularSelection
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
 		optimized.
 
-	self.verbose : bool
+	verbose : bool
 		Whether to display a progress bar during the optimization process.
 
 
 	Attributes
 	----------
-	self.function : base.SubmodularSelection
+	self.function : base.BaseSelection or None
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
-		optimized.
+		optimized. If None, will be set by the selector when passed in.
 
 	self.verbose : bool
 		Whether to display a progress bar during the optimization process.
@@ -43,15 +44,119 @@ class Optimizer(object):
 		evaluated.
 	"""
 
-	def __init__(self, function, verbose):
+	def __init__(self, function=None, verbose=False):
 		self.function = function
 		self.verbose = verbose
 		self.gains_ = None
 
-	def select(self, X, n):
+	def select(self, X, k):
 		raise NotImplementedError
 
-class NaiveGreedy(Optimizer):
+
+class GreeDi(BaseOptimizer):
+	"""An approach for optimizing submodular functions in parallel.
+
+	This optimizer implements the GreeDi method for selecting sets in parallel
+	by Mirzasoleiman et al. (https://papers.nips.cc/paper/5039-distributed-
+	submodular-maximization-identifying-representative-elements-in-massive-
+	data.pdf).
+
+	Briefly, this approach splits the data into m partitions uniformly at
+	random, selects l exemplars from each partition, and then runs a second
+	iteration of greedy selection on the union of l*m exemplars from each
+	partition to get the top k.
+
+	Parameters
+	----------
+	function : base.SubmodularSelection
+		A submodular function that implements the `_calculate_gains` and
+		`_select_next` methods. This is the function that will be
+		optimized.
+
+	m : int
+		The number of partitions to split the data into. 
+
+	l : int
+		The number of exemplars to select from each partition. l*m must
+		be larger than the number of exemplars k that will be selected
+		later on.
+
+	optimizer1 : str or base.Optimizer, optional
+		The optimizer to use in the first stage of the process where l
+		exemplars are selected from each partition. Default is 'lazy'.
+
+	optimizer2 : str or base.Optimizer, optional
+		The optimizer to use in the second stage where k exemplars are
+		selected from the l*m exemplars returned from the first stage.
+		Default is 'lazy'.
+
+	random_state : int or RandomState or None, optional
+		The random seed to use for the random selection process.
+
+	verbose : bool
+		Whether to display a progress bar during the optimization process.
+
+
+	Attributes
+	----------
+	self.function : base.BaseSelection or None
+		A submodular function that implements the `_calculate_gains` and
+		`_select_next` methods. This is the function that will be
+		optimized. If None, will be set by the selector when passed in.
+
+	self.m : int
+		The number of partitions that the data will be split into.
+
+	self.l : int
+		The number of exemplars that will be selected from each partition.
+
+	self.verbose : bool
+		Whether to display a progress bar during the optimization process.
+
+	self.gains_ : numpy.ndarray or None
+		The gain that each example would give the last time that it was
+		evaluated.
+	"""
+
+	def __init__(self, function=None, m=1, l=1, optimizer1='lazy', optimizer2='lazy', 
+		n_jobs=None, random_state=None, verbose=False):
+		self.m = m
+		self.l = l
+		self.optimizer1 = optimizer1
+		self.optimizer2 = optimizer2
+		self.n_jobs = n_jobs
+		self.random_state = check_random_state(random_state)
+		super(GreeDi, self).__init__(function, verbose)
+
+	def select(self, X, k):
+		if k > (self.m * self.l):
+			raise ValueError("k must be smaller than m * l")
+
+		idxs = numpy.arange(X.shape[0] % self.m)
+		self.random_state.shuffle(idxs)
+
+		X_subsets = [X[idxs[i::m]] for i in range(m)]
+
+		optimizers = {
+			'naive' : NaiveGreedy(self, self.verbose),
+			'lazy' : LazyGreedy(self, self.verbose),
+			'two-stage' : TwoStageGreedy(self, self.n_naive_samples, self.verbose),
+			'stochastic' : StochasticGreedy(self, self.epsilon, self.random_state,
+				self.verbose),
+			'bidirectional' : BidirectionalGreedy(self, self.verbose)
+		}
+
+		optimizer1 = optimizers[self.optimizer1]
+		optimizer2 = optimizers[self.optimizer2] 
+
+
+		with Parallel(n_jobs=self.n_jobs) as parallel:
+			f = optimizer1.select(X_subset)
+
+		raise NotImplementedError
+
+
+class NaiveGreedy(BaseOptimizer):
 	"""The naive greedy algorithm for optimization.
 
 	This optimization approach is the naive greedy algorithm. At each iteration
@@ -87,13 +192,13 @@ class NaiveGreedy(Optimizer):
 		evaluated.
 	"""
 
-	def __init__(self, function, verbose=False):
+	def __init__(self, function=None, verbose=False):
 		super(NaiveGreedy, self).__init__(function, verbose)
 
-	def select(self, X, n):
+	def select(self, X, k):
 		"""Select elements in a naive greedy manner."""
 
-		for i in range(n):
+		for i in range(k):
 			self.gains_ = self.function._calculate_gains(X)
 			best_idx = self.gains_.argmax()
 			self.function._select_next(X[best_idx], self.gains_[best_idx], best_idx)
@@ -101,7 +206,8 @@ class NaiveGreedy(Optimizer):
 			if self.verbose == True:
 				self.function.pbar.update(1)
 
-class LazyGreedy(Optimizer):
+
+class LazyGreedy(BaseOptimizer):
 	"""The lazy/accelerated greedy algorithm for optimization.
 
 	This optimization approach is the lazy/accelerated greedy algorithm. It
@@ -142,16 +248,16 @@ class LazyGreedy(Optimizer):
 		evaluated.
 	"""
 
-	def __init__(self, function, verbose=False):
+	def __init__(self, function=None, verbose=False):
 		self.pq = PriorityQueue()
 		super(LazyGreedy, self).__init__(function, verbose)
 
-	def select(self, X, n):
+	def select(self, X, k):
 		gains = self.function._calculate_gains(X)
 		for idx, gain in enumerate(gains):
 			self.pq.add(idx, -gain) 
 
-		for i in range(n):
+		for i in range(k):
 			best_gain = 0.
 			best_idx = None
 			
@@ -177,7 +283,8 @@ class LazyGreedy(Optimizer):
 			if self.verbose == True:
 				self.function.pbar.update(1)
 
-class TwoStageGreedy(Optimizer):
+
+class TwoStageGreedy(BaseOptimizer):
 	"""An approach that uses both naive and lazy greedy algorithms.
 
 	This optimization approach starts off by using the naive greedy algorithm
@@ -224,30 +331,28 @@ class TwoStageGreedy(Optimizer):
 		evaluated.
 	"""
 
-	def __init__(self, function, n_naive_selections=10, verbose=False):
+	def __init__(self, function=None, n_naive_selections=10, verbose=False):
 		self.n_naive_selections = n_naive_selections
 		super(TwoStageGreedy, self).__init__(function, verbose)
 
-	def select(self, X, n):
+	def select(self, X, k):
 		optimizer = NaiveGreedy(self.function, self.verbose)
 		optimizer.select(X, self.n_naive_selections)
 
-		if n > self.n_naive_selections:
+		if k > self.n_naive_selections:
 			optimizer = LazyGreedy(self.function, self.verbose)
-			optimizer.select(X, n - self.n_naive_selections)
+			optimizer.select(X, k - self.n_naive_selections)
 
-class TwoStageGreedy(Optimizer):
-	"""An approach that uses both naive and lazy greedy algorithms.
 
-	This optimization approach starts off by using the naive greedy algorithm
-	to select the first few examples and then switches to use the lazy greedy
-	algorithm. This two stage procedure is designed to overcome the limitations
-	of the lazy greedy algorithm---specifically, the inability to parallelize
-	the implementation. Additionally, early iterations frequently require
-	iterating over most of the examples, which is particularly costly to do
-	on a priority queue. Thus, one can frequently see large speed gains simply
-	by doing the first few iterations using the naive greedy algorithm and
-	then switching to the lazy greedy algorithm.
+class StochasticGreedy(BaseOptimizer):
+	"""The stochastic greedy algorithm for optimization.
+
+	This optimization approach is the stochastic greedy algorithm proposed by
+	Mirzasoleiman et al. (https://las.inf.ethz.ch/files/mirzasoleiman15lazier.pdf).
+	This approach is conceptually similar to the naive greedy algorithm except
+	that it only evaluates a subset of examples at each iteration. Thus, it is
+	easy to parallelize and amenable to acceleration using a GPU while 
+	maintaining nice theoretical guarantees.
 
 	Parameters
 	----------
@@ -256,10 +361,13 @@ class TwoStageGreedy(Optimizer):
 		`_select_next` methods. This is the function that will be
 		optimized.
 
-	self.n_naive_selections : int
-		The number of selections to perform using the naive greedy algorithm
-		before populating the priority queue and using the lazy greedy
-		algorithm.
+	epsilon : float, optional
+		The inverse of the sampling probability of any particular point being 
+		included in the subset, such that 1 - epsilon is the probability that
+		a point is included. Default is 0.9.
+
+	random_state : int or RandomState or None, optional
+		The random seed to use for the random selection process.
 
 	self.verbose : bool
 		Whether to display a progress bar during the optimization process.
@@ -275,27 +383,46 @@ class TwoStageGreedy(Optimizer):
 	self.verbose : bool
 		Whether to display a progress bar during the optimization process.
 
-	self.pq : utils.PriorityQueue
-		The priority queue used to order examples for evaluation.
-
 	self.gains_ : numpy.ndarray or None
 		The gain that each example would give the last time that it was
 		evaluated.
 	"""
 
-	def __init__(self, function, n_naive_selections=10, verbose=False):
-		self.n_naive_selections = n_naive_selections
-		super(TwoStageGreedy, self).__init__(function, verbose)
+	def __init__(self, function=None, epsilon=0.9, random_state=None, 
+		verbose=False):
+		self.epsilon = epsilon
+		self.random_state = check_random_state(random_state)
+		super(StochasticGreedy, self).__init__(function, verbose)
 
-	def select(self, X, n):
-		optimizer = NaiveGreedy(self.function, self.verbose)
-		optimizer.select(X, self.n_naive_selections)
+	def select(self, X, k):
+		"""Select elements in a naive greedy manner."""
 
-		if n > self.n_naive_selections:
-			optimizer = LazyGreedy(self.function, self.verbose)
-			optimizer.select(X, n - self.n_naive_selections)
+		n = X.shape[0]
+		subset_size = -numpy.log2(self.epsilon) * n / k
+		subset_size = max(int(subset_size), 1)
 
-class BidirectionalGreedy(Optimizer):
+		mask = numpy.zeros(X.shape[0], dtype='int8')
+		mask_ = numpy.zeros(subset_size, dtype='int8')
+
+		for i in range(k):
+			unselected = numpy.where(mask == 0)[0]
+			idxs = self.random_state.choice(unselected, replace=False, 
+				size=subset_size)
+
+			self.function.mask = mask.copy()
+			self.gains_ = self.function._calculate_gains(X[idxs])
+
+			best_idx = self.gains_.argmax()
+			best_gain = self.gains_[best_idx]
+			best_idx = idxs[best_idx]
+
+			self.function._select_next(X[best_idx], best_gain, best_idx)
+
+			if self.verbose == True:
+				self.function.pbar.update(1)
+
+
+class BidirectionalGreedy(BaseOptimizer):
 	"""The bidirectional greedy algorithm.
 
 	This is a stochastic algorithm for the optimization of submodular
@@ -339,10 +466,10 @@ class BidirectionalGreedy(Optimizer):
 		evaluated.
 	"""
 
-	def __init__(self, function, verbose=False):
+	def __init__(self, function=None, verbose=False):
 		super(BidirectionalGreedy, self).__init__(function, verbose)
 
-	def select(self, X, n):
+	def select(self, X, k):
 		"""Select elements in a naive greedy manner."""
 
 		A = numpy.zeros(X.shape[0], dtype=bool)

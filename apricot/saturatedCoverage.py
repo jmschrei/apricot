@@ -85,7 +85,7 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 			'cosine' : The normalized dot product of the matrix
 			'precomputed' : User passes in a NxN matrix of distances themselves
 
-	n_greedy_samples : int
+	n_naive_samples : int
 		The number of samples to perform the naive greedy algorithm on
 		before switching to the lazy greedy algorithm. The lazy greedy
 		algorithm is faster once features begin to saturate, but is slower
@@ -122,12 +122,12 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 		sample, and so forth.
 	"""
 
-	def __init__(self, n_samples=10, pairwise_func='euclidean', n_greedy_samples=1, 
+	def __init__(self, n_samples=10, pairwise_func='euclidean', n_naive_samples=1, 
 		initial_subset=None, optimizer='two-stage', verbose=False):
 		self.pairwise_func_name = pairwise_func
 
 		super(SaturatedCoverageSelection, self).__init__(n_samples=n_samples, 
-			n_greedy_samples=n_greedy_samples, initial_subset=initial_subset, 
+			n_naive_samples=n_naive_samples, initial_subset=initial_subset, 
 			optimizer=optimizer, verbose=verbose)
 
 

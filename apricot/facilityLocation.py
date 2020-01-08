@@ -85,7 +85,7 @@ class FacilityLocationSelection(BaseGraphSelection):
 			'cosine' : The normalized dot product of the matrix
 			'precomputed' : User passes in a NxN matrix of distances themselves
 
-	n_greedy_samples : int
+	n_naive_samples : int
 		The number of samples to perform the naive greedy algorithm on
 		before switching to the lazy greedy algorithm. The lazy greedy
 		algorithm is faster once features begin to saturate, but is slower
@@ -99,6 +99,27 @@ class FacilityLocationSelection(BaseGraphSelection):
 		in the provided data should beused as the initial subset. If indices, 
 		the provided array should be one-dimensional. If a group of examples,
 		the data should be 2 dimensional.
+
+	optimizer : string or optimizers.BaseOptimizer, optional
+		The optimization approach to use for the selection. Default is
+		'two-stage', which makes selections using the naive greedy algorithm
+		initially and then switches to the lazy greedy algorithm. Must be
+		one of
+
+			'naive' : the naive greedy algorithm
+			'lazy' : the lazy (or accelerated) greedy algorithm
+			'two-stage' : starts with naive and switches to lazy
+			'stochastic' : the stochastic greedy algorithm
+			'bidirectional' : the bidirectional greedy algorithm
+
+	epsilon : float, optional
+		The inverse of the sampling probability of any particular point being 
+		included in the subset, such that 1 - epsilon is the probability that
+		a point is included. Only used for stochastic greedy. Default is 0.9.
+
+	random_state : int or RandomState or None, optional
+		The random seed to use for the random selection process. Only used
+		for stochastic greedy.
 
 	verbose : bool
 		Whether to print output during the selection process.
@@ -122,12 +143,14 @@ class FacilityLocationSelection(BaseGraphSelection):
 		sample, and so forth.
 	"""
 
-	def __init__(self, n_samples=10, pairwise_func='euclidean', n_greedy_samples=1, 
-		initial_subset=None, optimizer='two-stage', verbose=False):
+	def __init__(self, n_samples=10, pairwise_func='euclidean', 
+		n_naive_samples=1, initial_subset=None, optimizer='two-stage', 
+		epsilon=0.9, random_state=None, verbose=False):
 
 		super(FacilityLocationSelection, self).__init__(n_samples=n_samples, 
-			pairwise_func=pairwise_func, n_greedy_samples=n_greedy_samples, 
-			initial_subset=initial_subset, optimizer=optimizer, verbose=verbose)
+			pairwise_func=pairwise_func, n_naive_samples=n_naive_samples, 
+			initial_subset=initial_subset, optimizer=optimizer, 
+			epsilon=epsilon, random_state=random_state, verbose=verbose)
 
 	def fit(self, X, y=None):
 		"""Perform selection and return the subset of the data set.

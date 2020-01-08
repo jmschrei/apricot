@@ -13,10 +13,11 @@ except:
 
 import numpy
 
-from .optimizers import Optimizer
+from .optimizers import BaseOptimizer
 from .optimizers import NaiveGreedy
 from .optimizers import LazyGreedy
 from .optimizers import TwoStageGreedy
+from .optimizers import StochasticGreedy
 from .optimizers import BidirectionalGreedy
 
 from .utils import PriorityQueue
@@ -35,7 +36,7 @@ class BaseSelection(object):
 	n_samples : int
 		The number of samples to return.
 
-	n_greedy_samples : int
+	n_naive_samples : int, optional
 		The number of samples to perform the naive greedy algorithm on
 		before switching to the lazy greedy algorithm. The lazy greedy
 		algorithm is faster once features begin to saturate, but is slower
@@ -43,12 +44,33 @@ class BaseSelection(object):
 		greedy algorithm is parallelized whereas the lazy greedy
 		algorithm currently is not.
 
-	initial_subset : list, numpy.ndarray or None
+	initial_subset : list, numpy.ndarray or None, optional
 		If provided, this should be a list of indices into the data matrix
 		to use as the initial subset, or a group of examples that may not be
 		in the provided data should beused as the initial subset. If indices, 
 		the provided array should be one-dimensional. If a group of examples,
 		the data should be 2 dimensional.
+
+	optimizer : string or optimizers.BaseOptimizer, optional
+		The optimization approach to use for the selection. Default is
+		'two-stage', which makes selections using the naive greedy algorithm
+		initially and then switches to the lazy greedy algorithm. Must be
+		one of
+
+			'naive' : the naive greedy algorithm
+			'lazy' : the lazy (or accelerated) greedy algorithm
+			'two-stage' : starts with naive and switches to lazy
+			'stochastic' : the stochastic greedy algorithm
+			'bidirectional' : the bidirectional greedy algorithm
+
+	epsilon : float, optional
+		The inverse of the sampling probability of any particular point being 
+		included in the subset, such that 1 - epsilon is the probability that
+		a point is included. Only used for stochastic greedy. Default is 0.9.
+
+	random_state : int or RandomState or None, optional
+		The random seed to use for the random selection process. Only used
+		for stochastic greedy.
 
 	verbose : bool
 		Whether to print output during the selection process.
@@ -73,34 +95,40 @@ class BaseSelection(object):
 		sample, and so forth.
 	"""
 
-	def __init__(self, n_samples, n_greedy_samples=1, initial_subset=None, 
-		optimizer='two-stage', verbose=False):
+	def __init__(self, n_samples, n_naive_samples=1, initial_subset=None, 
+		optimizer='two-stage', epsilon=0.9, random_state=None, verbose=False):
 		if type(n_samples) != int:
 			raise ValueError("n_samples must be a positive integer.")
 		if n_samples < 1:
 			raise ValueError("n_samples must be a positive integer.")
 
-		if type(n_greedy_samples) != int:
-			raise ValueError("n_greedy_samples must be a positive integer")
-		if n_greedy_samples < 1:
-			raise ValueError("n_greedy_samples must be a positive integer.")
-		if n_greedy_samples > n_samples:
-			raise ValueError("n_samples must be larger than n_greedy_samples")
+		if type(n_naive_samples) != int:
+			raise ValueError("n_naive_samples must be a positive integer")
+		if n_naive_samples < 1:
+			raise ValueError("n_naive_samples must be a positive integer.")
+		if n_naive_samples > n_samples:
+			raise ValueError("n_samples must be larger than n_naive_samples")
 
 		if not isinstance(initial_subset, (list, numpy.ndarray)) and initial_subset is not None: 
 			raise ValueError("initial_subset must be a list, numpy array, or None")
 		if isinstance(initial_subset, (list, numpy.ndarray)):
 			initial_subset = numpy.array(initial_subset)
 
-		if not isinstance(optimizer, Optimizer):
-			if optimizer not in ('naive', 'lazy', 'two-stage', 'bidirectional'):
+		if not isinstance(optimizer, BaseOptimizer):
+			if optimizer not in ('naive', 'lazy', 'two-stage', 'stochastic', 
+				'bidirectional'):
 				raise ValueError("Optimizer must be a string or an optimizer object.")
+
+		if isinstance(optimizer, BaseOptimizer):
+			optimizer.function = self
 
 		if verbose not in (True, False):
 			raise ValueError("verbosity must be True or False")
 
 		self.n_samples = n_samples
-		self.n_greedy_samples = n_greedy_samples
+		self.n_naive_samples = n_naive_samples
+		self.epsilon = epsilon
+		self.random_state = random_state
 		self.optimizer = optimizer
 		self.verbose = verbose
 		self.ranking = None
@@ -149,16 +177,23 @@ class BaseSelection(object):
 		self._initialize(X)
 
 		if not self.sparse and not self.cupy:
-			X = X.astype('float64')
+			if X.dtype != 'float64':
+				X = X.astype('float64')
 
 		optimizers = {
 			'naive' : NaiveGreedy(self, self.verbose),
 			'lazy' : LazyGreedy(self, self.verbose),
-			'two-stage' : TwoStageGreedy(self, self.n_greedy_samples, self.verbose),
+			'two-stage' : TwoStageGreedy(self, self.n_naive_samples, self.verbose),
+			'stochastic' : StochasticGreedy(self, self.epsilon, self.random_state,
+				self.verbose),
 			'bidirectional' : BidirectionalGreedy(self, self.verbose)
 		}
 
-		optimizer = optimizers[self.optimizer]
+		if isinstance(self.optimizer, str):
+			optimizer = optimizers[self.optimizer]
+		else:
+			optimizer = self.optimizer
+
 		optimizer.select(X, self.n_samples)
 
 		if self.verbose == True:
@@ -307,7 +342,7 @@ class BaseGraphSelection(BaseSelection):
 			'cosine' : The normalized dot product of the matrix
 			'precomputed' : User passes in a NxN matrix of distances themselves
 
-	n_greedy_samples : int
+	n_naive_samples : int
 		The number of samples to perform the naive greedy algorithm on
 		before switching to the lazy greedy algorithm. The lazy greedy
 		algorithm is faster once features begin to saturate, but is slower
@@ -321,6 +356,27 @@ class BaseGraphSelection(BaseSelection):
 		in the provided data should beused as the initial subset. If indices, 
 		the provided array should be one-dimensional. If a group of examples,
 		the data should be 2 dimensional.
+
+	optimizer : string or optimizers.BaseOptimizer, optional
+		The optimization approach to use for the selection. Default is
+		'two-stage', which makes selections using the naive greedy algorithm
+		initially and then switches to the lazy greedy algorithm. Must be
+		one of
+
+			'naive' : the naive greedy algorithm
+			'lazy' : the lazy (or accelerated) greedy algorithm
+			'two-stage' : starts with naive and switches to lazy
+			'stochastic' : the stochastic greedy algorithm
+			'bidirectional' : the bidirectional greedy algorithm
+
+	epsilon : float, optional
+		The inverse of the sampling probability of any particular point being 
+		included in the subset, such that 1 - epsilon is the probability that
+		a point is included. Only used for stochastic greedy. Default is 0.9.
+
+	random_state : int or RandomState or None, optional
+		The random seed to use for the random selection process. Only used
+		for stochastic greedy.
 
 	verbose : bool
 		Whether to print output during the selection process.
@@ -344,8 +400,9 @@ class BaseGraphSelection(BaseSelection):
 		sample, and so forth.
 	"""
 
-	def __init__(self, n_samples=10, pairwise_func='euclidean', n_greedy_samples=1, 
-		initial_subset=None, optimizer='two-stage', verbose=False):
+	def __init__(self, n_samples=10, pairwise_func='euclidean', n_naive_samples=1, 
+		initial_subset=None, optimizer='two-stage', epsilon=0.9, random_state=None,
+		verbose=False):
 		self.pairwise_func_name = pairwise_func
 		
 		norm = lambda x: numpy.sqrt((x*x).sum(axis=1)).reshape(x.shape[0], 1)
@@ -366,7 +423,7 @@ class BaseGraphSelection(BaseSelection):
 				" or a custom function.")
 
 		super(BaseGraphSelection, self).__init__(n_samples=n_samples, 
-			n_greedy_samples=n_greedy_samples, initial_subset=initial_subset, 
+			n_naive_samples=n_naive_samples, initial_subset=initial_subset, 
 			optimizer=optimizer, verbose=verbose)
 
 	def fit(self, X, y=None):
