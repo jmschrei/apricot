@@ -132,6 +132,7 @@ class BaseSelection(object):
 		self.optimizer = optimizer
 		self.verbose = verbose
 		self.ranking = None
+		self.idxs = None
 		self.gains = None
 		self.sparse = None
 		self.cupy = None
@@ -304,6 +305,8 @@ class BaseSelection(object):
 				
 				self.mask[self.initial_subset] = 1
 
+		self.idxs = numpy.where(self.mask == 0)[0]
+
 	def _calculate_gains(self, X):
 		raise NotImplementedError
 
@@ -311,6 +314,7 @@ class BaseSelection(object):
 		self.ranking.append(idx)
 		self.gains.append(gain)
 		self.mask[idx] = True
+		self.idxs = numpy.where(self.mask == 0)[0]
 
 
 class BaseGraphSelection(BaseSelection):

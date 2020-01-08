@@ -398,25 +398,22 @@ class StochasticGreedy(BaseOptimizer):
 		"""Select elements in a naive greedy manner."""
 
 		n = X.shape[0]
-		subset_size = -numpy.log2(self.epsilon) * n / k
+		subset_size = -numpy.log(self.epsilon) * n / k
 		subset_size = max(int(subset_size), 1)
 
-		mask = numpy.zeros(X.shape[0], dtype='int8')
-		mask_ = numpy.zeros(subset_size, dtype='int8')
-
 		for i in range(k):
-			unselected = numpy.where(mask == 0)[0]
-			idxs = self.random_state.choice(unselected, replace=False, 
-				size=subset_size)
+			idxs_ = self.function.idxs
 
-			self.function.mask = mask.copy()
-			self.gains_ = self.function._calculate_gains(X[idxs])
+			subset_idxs = self.random_state.choice(self.function.idxs, 
+				replace=False, size=subset_size)
 
-			best_idx = self.gains_.argmax()
-			best_gain = self.gains_[best_idx]
-			best_idx = idxs[best_idx]
+			self.function.idxs = subset_idxs
+			self.gains_ = self.function._calculate_gains(X)
 
-			self.function._select_next(X[best_idx], best_gain, best_idx)
+			best_idx = self.gains_[subset_idxs].argmax()
+			best_idx = subset_idxs[best_idx]
+
+			self.function._select_next(X[best_idx], self.gains_[best_idx], best_idx)
 
 			if self.verbose == True:
 				self.function.pbar.update(1)

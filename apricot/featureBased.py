@@ -21,59 +21,48 @@ from tqdm import tqdm
 from numba import njit, jit
 from numba import prange
 
-dtypes = 'int64(float64[:,:], float64[:], float64[:], int8[:])'
-sdtypes = 'int64(float64[:], int32[:], int32[:], float64[:], float64[:], float64[:], int8[:])'
+dtypes = 'int64(float64[:,:], float64[:], float64[:], int64[:])'
+sdtypes = 'int64(float64[:], int32[:], int32[:], float64[:], float64[:], float64[:], int64[:])'
 
 @njit(dtypes, nogil=True, parallel=True)
-def select_sqrt_next(X, gains, current_values, mask):
-	for idx in prange(X.shape[0]):
-		if mask[idx] == 1:
-			continue
-
+def select_sqrt_next(X, gains, current_values, idxs):
+	for i in prange(idxs.shape[0]):
+		idx = idxs[i] 
 		gains[idx] = numpy.sqrt(current_values + X[idx]).sum()
 
 	return 1
 
 
 @njit(dtypes, nogil=True, parallel=True)
-def select_log_next(X, gains, current_values, mask):
-	for idx in prange(X.shape[0]):
-		if mask[idx] == 1:
-			continue
-
+def select_log_next(X, gains, current_values, idxs):
+	for i in prange(idxs.shape[0]):
+		idx = idxs[i]
 		gains[idx] = numpy.log(current_values + X[idx] + 1).sum()
 
 	return 1
 
 @njit(dtypes, nogil=True, parallel=True)
-def select_inv_next(X, gains, current_values, mask):
-	for idx in prange(X.shape[0]):
-		if mask[idx] == 1:
-			continue
-
+def select_inv_next(X, gains, current_values, idxs):
+	for i in prange(idxs.shape[0]):
+		idx = idxs[i]
 		gains[idx] = ((current_values + X[idx]) / (1. 
 			+ current_values + X[idx])).sum()
 
 	return 1
 
 @njit(dtypes, nogil=True, parallel=True)
-def select_min_next(X, gains, current_values, mask):
-	for idx in prange(X.shape[0]):
-		if mask[idx] == 1:
-			continue
-
+def select_min_next(X, gains, current_values, idxs):
+	for idx in prange(idxs.shape[0]):
 		gains[idx] = numpy.fmin(current_values + X[idx], 
 			numpy.ones(X.shape[1])).sum()
 
 	return 1
 
-@njit(sdtypes, nogil=True, parallel=True)
+@njit(sdtypes, nogil=True)
 def select_sqrt_next_sparse(X_data, X_indices, X_indptr, gains, current_values, 
-	current_concave_values, mask):
-	for idx in prange(X_indptr.shape[0] - 1):
-		if mask[idx] == 1:
-			continue
-
+	current_concave_values, idxs):
+	for i in range(idxs.shape[0]):
+		idx = idxs[i]
 		start = X_indptr[idx]
 		end = X_indptr[idx+1]
 
@@ -83,13 +72,11 @@ def select_sqrt_next_sparse(X_data, X_indices, X_indptr, gains, current_values,
 
 	return 1
 
-@njit(sdtypes, nogil=True, parallel=True)
+@njit(sdtypes, nogil=True)
 def select_log_next_sparse(X_data, X_indices, X_indptr, gains, current_values, 
-	current_concave_values, mask):
-	for idx in prange(X_indptr.shape[0] - 1):
-		if mask[idx] == 1:
-			continue
-
+	current_concave_values, idxs):
+	for i in range(idxs.shape[0]):
+		idx = idxs[i]
 		start = X_indptr[idx]
 		end = X_indptr[idx+1]
 
@@ -99,13 +86,11 @@ def select_log_next_sparse(X_data, X_indices, X_indptr, gains, current_values,
 
 	return 1
 
-@njit(sdtypes, nogil=True, parallel=True)
+@njit(sdtypes, nogil=True)
 def select_inv_next_sparse(X_data, X_indices, X_indptr, gains, current_values, 
-	current_concave_values, mask):
-	for idx in prange(X_indptr.shape[0] - 1):
-		if mask[idx] == 1:
-			continue
-
+	current_concave_values, idxs):
+	for i in range(idxs.shape[0]):
+		idx = idxs[i]
 		start = X_indptr[idx]
 		end = X_indptr[idx+1]
 
@@ -116,13 +101,11 @@ def select_inv_next_sparse(X_data, X_indices, X_indptr, gains, current_values,
 
 	return 1
 
-@njit(sdtypes, nogil=True, parallel=True)
+@njit(sdtypes, nogil=True)
 def select_min_next_sparse(X_data, X_indices, X_indptr, gains, current_values, 
-	current_concave_values, mask):
-	for idx in prange(X_indptr.shape[0] - 1):
-		if mask[idx] == 1:
-			continue
-
+	current_concave_values, idxs):
+	for i in range(idxs.shape[0]):
+		idx = idxs[i]
 		start = X_indptr[idx]
 		end = X_indptr[idx+1]
 
@@ -153,15 +136,12 @@ def select_min_next_cupy(X, gains, current_values, mask):
 	gains[:] = gains * (1 - mask)
 	return 1
 
-def select_custom_next(X, gains, current_values, mask, 
+def select_custom_next(X, gains, current_values, idxs, 
 	concave_func):
 	best_gain = 0.
 	best_idx = -1
 
 	for idx in range(X.shape[0]):
-		if mask[idx] == 1:
-			continue
-
 		a = concave_func(current_values + X[idx])
 		gains[idx] = (a - current_concave_values).sum()
 
@@ -363,37 +343,33 @@ class FeatureBasedSelection(BaseSelection):
 							   '_cupy' if self.cupy else '')
 		concave_func = concave_funcs.get(name, None)
 
-		if len(X.shape) == 1 or (self.sparse and X.shape[0] == 1):
-			if self.sparse:
-				gain = numpy.sum(self.concave_func(self.current_values[X.indices]
+
+		if self.sparse and X.shape[0] == 1:
+			return numpy.sum(self.concave_func(self.current_values[X.indices]
 					+ X.data) - self.current_concave_values[X.indices])
-			else:
-				gain = self.concave_func(self.current_values + X).sum()
-				gain -= self.current_concave_values.sum()
 
-			return gain
-
+		if X.shape[0] == 1:
+			X = X.reshape(1, X.shape[0])
+			
+		if self.cupy:
+			gains = cupy.zeros(X.shape[0], dtype='float64')
 		else:
-			if self.cupy:
-				gains = cupy.zeros(X.shape[0], dtype='float64')
-			else:
-				gains = numpy.zeros(X.shape[0], dtype='float64')
+			gains = numpy.zeros(X.shape[0], dtype='float64')
 
-			if concave_func is not None:
-				if self.sparse:
-					concave_func(X.data, X.indices, X.indptr, gains, 
-						self.current_values, self.current_concave_values, 
-						self.mask)
-				else:
-					concave_func(X, gains, self.current_values, 
-						self.mask)
-					gains -= self.current_concave_values.sum()
+		if concave_func is not None:
+			if self.sparse:
+				concave_func(X.data, X.indices, X.indptr, gains, 
+					self.current_values, self.current_concave_values, 
+					self.idxs)
 			else:
-				select_custom_next(X, gains, self.current_values, 
-					self.mask, self.concave_func)
+				concave_func(X, gains, self.current_values, self.idxs)
 				gains -= self.current_concave_values.sum()
+		else:
+			select_custom_next(X, gains, self.current_values, 
+				self.mask, self.concave_func)
+			gains -= self.current_concave_values.sum()
 
-			return gains
+		return gains
 
 	def _select_next(self, X, gain, idx):
 		"""This function will add the given item to the selected set."""
