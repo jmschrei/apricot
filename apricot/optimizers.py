@@ -1,6 +1,7 @@
 # optimizers.py
 # Author: Jacob Schreiber <jmschreiber91@gmail.com>
 
+import os
 import numpy
 
 from tqdm import tqdm
@@ -199,9 +200,12 @@ class NaiveGreedy(BaseOptimizer):
 		"""Select elements in a naive greedy manner."""
 
 		for i in range(k):
-			self.gains_ = self.function._calculate_gains(X)
-			best_idx = self.gains_.argmax()
-			self.function._select_next(X[best_idx], self.gains_[best_idx], best_idx)
+			gains = self.function._calculate_gains(X)
+			best_idx = gains.argmax()
+			best_gain = gains[best_idx]
+			best_idx = self.function.idxs[best_idx]
+
+			self.function._select_next(X[best_idx], best_gain, best_idx)
 
 			if self.verbose == True:
 				self.function.pbar.update(1)
@@ -254,7 +258,8 @@ class LazyGreedy(BaseOptimizer):
 
 	def select(self, X, k):
 		gains = self.function._calculate_gains(X)
-		for idx, gain in enumerate(gains):
+
+		for idx, gain in zip(self.function.idxs, gains):
 			self.pq.add(idx, -gain) 
 
 		for i in range(k):
@@ -270,10 +275,10 @@ class LazyGreedy(BaseOptimizer):
 					self.pq.remove(best_idx)
 					break
 				
-				gain = self.function._calculate_gains(X[idx])
-
+				self.function.idxs = numpy.array([idx])
+				gain = self.function._calculate_gains(X)[0]
 				self.pq.add(idx, -gain)
-				
+
 				if gain > best_gain:
 					best_gain = gain
 					best_idx = idx
@@ -403,17 +408,17 @@ class StochasticGreedy(BaseOptimizer):
 
 		for i in range(k):
 			idxs_ = self.function.idxs
-
 			subset_idxs = self.random_state.choice(self.function.idxs, 
 				replace=False, size=subset_size)
 
 			self.function.idxs = subset_idxs
-			self.gains_ = self.function._calculate_gains(X)
+			gains = self.function._calculate_gains(X)
 
-			best_idx = self.gains_[subset_idxs].argmax()
+			best_idx = gains.argmax()
+			best_gain = gains[best_idx]
 			best_idx = subset_idxs[best_idx]
 
-			self.function._select_next(X[best_idx], self.gains_[best_idx], best_idx)
+			self.function._select_next(X[best_idx], best_gain, best_idx)
 
 			if self.verbose == True:
 				self.function.pbar.update(1)
@@ -474,7 +479,7 @@ class BidirectionalGreedy(BaseOptimizer):
 
 		idxs = numpy.arange(X.shape[0])
 		numpy.random.shuffle(idxs)
-		self.gains_ = numpy.zeros(X.shape[0])
+		gains = numpy.zeros(X.shape[0])
 
 		while True: 
 			for i in idxs:
