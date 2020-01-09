@@ -407,16 +407,14 @@ class StochasticGreedy(BaseOptimizer):
 		subset_size = max(int(subset_size), 1)
 
 		for i in range(k):
-			idxs_ = self.function.idxs
-			subset_idxs = self.random_state.choice(self.function.idxs, 
+			self.function.idxs = self.random_state.choice(self.function.idxs, 
 				replace=False, size=subset_size)
 
-			self.function.idxs = subset_idxs
 			gains = self.function._calculate_gains(X)
 
 			best_idx = gains.argmax()
 			best_gain = gains[best_idx]
-			best_idx = subset_idxs[best_idx]
+			best_idx = self.function.idxs[best_idx]
 
 			self.function._select_next(X[best_idx], best_gain, best_idx)
 

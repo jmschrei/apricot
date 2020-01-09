@@ -21,33 +21,26 @@ from numba import prange
 
 from scipy.sparse import csr_matrix
 
-dtypes = 'int64(float64[:,:], float64[:], float64[:], int8[:])'
-sdtypes = 'int64(float64[:], int32[:], int32[:], float64[:], float64[:], int8[:])'
+dtypes = 'void(float64[:,:], float64[:], float64[:], int64[:])'
+sdtypes = 'void(float64[:], int32[:], int32[:], float64[:], float64[:], int64[:])'
 
-@njit(dtypes, nogil=True, parallel=True)
-def select_next(X, gains, current_values, mask):
-	for idx in prange(X.shape[0]):
-		if mask[idx] == 1:
-			continue
+@njit(dtypes, parallel=True, fastmath=True)
+def select_next(X, gains, current_values, idxs):
+	for i in prange(idxs.shape[0]):
+		idx = idxs[i]
+		gains[i] = numpy.maximum(X[idx], current_values).sum()
 
-		gains[idx] = numpy.maximum(X[idx], current_values).sum()
-
-	return numpy.argmax(gains)
-
-@njit(sdtypes, nogil=True, parallel=True)
-def select_next_sparse(X_data, X_indices, X_indptr, gains, current_values, mask):
-	for idx in range(X_indptr.shape[0] - 1):
-		if mask[idx] == 1:
-			continue
+@njit(sdtypes, parallel=True, fastmath=True)
+def select_next_sparse(X_data, X_indices, X_indptr, gains, current_values, idxs):
+	for i in prange(idxs.shape[0]):
+		idx = idxs[i]
 
 		start = X_indptr[idx]
 		end = X_indptr[idx+1]
 
-		for i in range(start, end):
-			j = X_indices[i]
-			gains[idx] += max(X_data[i], current_values[j])
-
-	return numpy.argmax(gains)
+		for j in range(start, end):
+			k = X_indices[j]
+			gains[i] += max(X_data[j], current_values[k])
 
 def select_next_cupy(X, gains, current_values, mask):
 	gains[:] = cupy.sum(cupy.maximum(X, current_values), axis=1)
@@ -201,45 +194,30 @@ class FacilityLocationSelection(BaseGraphSelection):
 				" matrix of examples or a one dimensional mask.")
 
 	def _calculate_gains(self, X_pairwise):
-		if len(X_pairwise.shape) == 1:
-			if not self.sparse:
-				gain = numpy.maximum(X_pairwise, 
-					self.current_values).sum()
-			else:
-				gain = numpy.sum(numpy.maximum(X_pairwise.data, 
-					self.current_values[X.indices]))
-
-			gain -= self.current_values.sum()
-			return gain
-
+		if self.cupy:
+			gains = cupy.zeros(self.idxs.shape[0], dtype='float64')
+			select_next_cupy(X_pairwise, gains, self.current_values,
+				self.idxs)
 		else:
-			if self.cupy:
-				gains = cupy.zeros(X_pairwise.shape[0], dtype='float64')
-			else:
-				gains = numpy.zeros(X_pairwise.shape[0], dtype='float64')
+			gains = numpy.zeros(self.idxs.shape[0], dtype='float64')
 
-			if self.cupy:
-				select_next_cupy(X_pairwise, gains, self.current_values,
-					self.mask)
-
-			elif self.sparse:
+			if self.sparse:
 				select_next_sparse(X_pairwise.data,
 					X_pairwise.indices, X_pairwise.indptr, gains,
-					self.current_values, self.mask)
+					self.current_values, self.idxs)
 			else:
 				select_next(X_pairwise, gains, self.current_values,
-					self.mask)
+					self.idxs)
 
-			gains -= self.current_values.sum()
-			return gains
+		gains -= self.current_values.sum()
+		return gains
 
 	def _select_next(self, X_pairwise, gain, idx):
 		"""This function will add the given item to the selected set."""
 
-		if self.cupy:
-			self.current_values = cupy.maximum(X_pairwise, 
-				self.current_values)
-		elif self.sparse:
+		#gain -= self.current_values.sum()
+
+		if self.sparse:
 			self.current_values = numpy.maximum(
 				X_pairwise.toarray()[0], self.current_values)
 		else:

@@ -12,6 +12,7 @@ except:
 	import numpy as cupy
 
 import numpy
+from tqdm import tqdm
 
 from .optimizers import BaseOptimizer
 from .optimizers import NaiveGreedy
