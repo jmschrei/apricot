@@ -17,9 +17,11 @@ from tqdm import tqdm
 from .optimizers import BaseOptimizer
 from .optimizers import NaiveGreedy
 from .optimizers import LazyGreedy
+from .optimizers import ApproximateLazyGreedy
 from .optimizers import TwoStageGreedy
 from .optimizers import StochasticGreedy
 from .optimizers import BidirectionalGreedy
+from .optimizers import GreeDi
 
 from .utils import PriorityQueue
 
@@ -97,7 +99,9 @@ class BaseSelection(object):
 	"""
 
 	def __init__(self, n_samples, n_naive_samples=1, initial_subset=None, 
-		optimizer='two-stage', epsilon=0.9, random_state=None, verbose=False):
+		optimizer='two-stage', optimizer1='lazy', optimizer2='lazy', 
+		epsilon=0.9, beta=0.9, l=2, m=4, n_jobs=1, random_state=None, 
+		verbose=False):
 		if type(n_samples) != int:
 			raise ValueError("n_samples must be a positive integer.")
 		if n_samples < 1:
@@ -116,8 +120,8 @@ class BaseSelection(object):
 			initial_subset = numpy.array(initial_subset)
 
 		if not isinstance(optimizer, BaseOptimizer):
-			if optimizer not in ('naive', 'lazy', 'two-stage', 'stochastic', 
-				'bidirectional'):
+			if optimizer not in ('naive', 'lazy', 'approximate-lazy', 
+				'two-stage', 'stochastic', 'bidirectional', 'greedi'):
 				raise ValueError("Optimizer must be a string or an optimizer object.")
 
 		if isinstance(optimizer, BaseOptimizer):
@@ -129,8 +133,14 @@ class BaseSelection(object):
 		self.n_samples = n_samples
 		self.n_naive_samples = n_naive_samples
 		self.epsilon = epsilon
+		self.beta = beta
 		self.random_state = random_state
 		self.optimizer = optimizer
+		self.optimizer1 = optimizer1
+		self.optimizer2 = optimizer2
+		self.n_jobs = n_jobs
+		self.l = l
+		self.m = m
 		self.verbose = verbose
 		self.ranking = None
 		self.idxs = None
@@ -185,10 +195,14 @@ class BaseSelection(object):
 		optimizers = {
 			'naive' : NaiveGreedy(self, self.verbose),
 			'lazy' : LazyGreedy(self, self.verbose),
+			'approximate-lazy' : ApproximateLazyGreedy(self, self.beta, 
+				self.verbose),
 			'two-stage' : TwoStageGreedy(self, self.n_naive_samples, self.verbose),
 			'stochastic' : StochasticGreedy(self, self.epsilon, self.random_state,
 				self.verbose),
-			'bidirectional' : BidirectionalGreedy(self, self.verbose)
+			'bidirectional' : BidirectionalGreedy(self, self.verbose),
+			'greedi' : GreeDi(self, self.m, self.l, self.optimizer1, 
+				self.optimizer2, self.n_jobs, self.random_state, self.verbose)
 		}
 
 		if isinstance(self.optimizer, str):
@@ -308,7 +322,7 @@ class BaseSelection(object):
 
 		self.idxs = numpy.where(self.mask == 0)[0]
 
-	def _calculate_gains(self, X):
+	def _calculate_gains(self, X, idxs=None):
 		raise NotImplementedError
 
 	def _select_next(self, X, gain, idx):

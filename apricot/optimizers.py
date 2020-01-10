@@ -133,28 +133,40 @@ class GreeDi(BaseOptimizer):
 		if k > (self.m * self.l):
 			raise ValueError("k must be smaller than m * l")
 
-		idxs = numpy.arange(X.shape[0] % self.m)
-		self.random_state.shuffle(idxs)
-
-		X_subsets = [X[idxs[i::m]] for i in range(m)]
+		partitions = numpy.arange(X.shape[0]) % self.m
+		self.random_state.shuffle(partitions)
+		idxs = numpy.arange(X.shape[0])
 
 		optimizers = {
-			'naive' : NaiveGreedy(self, self.verbose),
-			'lazy' : LazyGreedy(self, self.verbose),
-			'two-stage' : TwoStageGreedy(self, self.n_naive_samples, self.verbose),
-			'stochastic' : StochasticGreedy(self, self.epsilon, self.random_state,
-				self.verbose),
-			'bidirectional' : BidirectionalGreedy(self, self.verbose)
+			'naive' : NaiveGreedy(self.function, self.verbose),
+			'lazy' : LazyGreedy(self.function, self.verbose),
+			'two-stage' : TwoStageGreedy(self.function, 
+				self.function.n_naive_samples, self.verbose),
+			'stochastic' : StochasticGreedy(self.function, self.function.epsilon, 
+				self.random_state, self.verbose),
+			'bidirectional' : BidirectionalGreedy(self.function, self.verbose)
 		}
 
-		optimizer1 = optimizers[self.optimizer1]
-		optimizer2 = optimizers[self.optimizer2] 
+		optimizer1 = optimizers['naive'] #optimizers[self.optimizer1]
+		optimizer2 = optimizers['naive'] #optimizers[self.optimizer2] 
 
+		rankings = []
 
-		with Parallel(n_jobs=self.n_jobs) as parallel:
-			f = optimizer1.select(X_subset)
+		for i in range(self.m):
+			X_subset = X[partitions == i]
+			self.function._initialize(X_subset)
+			optimizer1.select(X_subset, self.l)
+			rankings.append(idxs[partitions == i][self.function.ranking])
 
-		raise NotImplementedError
+		rankings = numpy.concatenate(rankings)
+		X_subset = X[rankings]
+
+		if self.verbose:
+			self.function.pbar.close()
+			self.function.pbar = tqdm(total=k)
+
+		self.function._initialize(X_subset)
+		optimizer2.select(X_subset, k)
 
 
 class NaiveGreedy(BaseOptimizer):
@@ -260,7 +272,7 @@ class LazyGreedy(BaseOptimizer):
 		gains = self.function._calculate_gains(X)
 
 		for idx, gain in zip(self.function.idxs, gains):
-			self.pq.add(idx, -gain) 
+			self.pq.add(idx, -gain)
 
 		for i in range(k):
 			best_gain = 0.
@@ -275,13 +287,88 @@ class LazyGreedy(BaseOptimizer):
 					self.pq.remove(best_idx)
 					break
 				
-				self.function.idxs = numpy.array([idx])
-				gain = self.function._calculate_gains(X)[0]
+				idxs = numpy.array([idx])
+				gain = self.function._calculate_gains(X, idxs)[0]
 				self.pq.add(idx, -gain)
 
 				if gain > best_gain:
 					best_gain = gain
 					best_idx = idx
+
+			self.function._select_next(X[best_idx], best_gain, best_idx)
+
+			if self.verbose == True:
+				self.function.pbar.update(1)
+
+
+class ApproximateLazyGreedy(BaseOptimizer):
+	"""The approximate lazy/accelerated greedy algorithm for optimization.
+
+	This optimization approach is the lazy/accelerated greedy algorithm. It
+	will return the same subset as the naive greedy algorithm, but it uses a
+	priority queue to store the examples to prevent the repeated evaluation
+	of examples that are unlikely to be the next selected one. The benefit
+	of using this approach are that using a priority queue can significantly
+	improve the speed of optimization, but the downsides are that maintaining
+	a priority queue can be costly and that it's difficult to parallelize the
+	approach or put it on a GPU.
+
+	Parameters
+	----------
+	self.function : base.SubmodularSelection
+		A submodular function that implements the `_calculate_gains` and
+		`_select_next` methods. This is the function that will be
+		optimized.
+
+	self.verbose : bool
+		Whether to display a progress bar during the optimization process.
+
+
+	Attributes
+	----------
+	self.function : base.SubmodularSelection
+		A submodular function that implements the `_calculate_gains` and
+		`_select_next` methods. This is the function that will be
+		optimized.
+
+	self.verbose : bool
+		Whether to display a progress bar during the optimization process.
+
+	self.pq : utils.PriorityQueue
+		The priority queue used to order examples for evaluation.
+
+	self.gains_ : numpy.ndarray or None
+		The gain that each example would give the last time that it was
+		evaluated.
+	"""
+
+	def __init__(self, function=None, beta=0.9, verbose=False):
+		self.pq = PriorityQueue()
+		self.beta = beta
+		super(ApproximateLazyGreedy, self).__init__(function, verbose)
+
+	def select(self, X, k):
+		gains = self.function._calculate_gains(X)
+
+		for idx, gain in zip(self.function.idxs, gains):
+			self.pq.add(idx, -gain)
+
+		for i in range(k):
+			best_gain = -self.pq.pq[0][0]
+			best_idx = self.pq.pq[0][1]
+
+			while True:
+				prev_gain, idx = self.pq.pop()
+				prev_gain = -prev_gain
+				
+				idxs = numpy.array([idx])
+				gain = self.function._calculate_gains(X, idxs)[0]
+				self.pq.add(idx, -gain)
+
+				if gain >= self.beta * prev_gain:
+					best_gain = gain
+					best_idx = idx
+					break
 
 			self.function._select_next(X[best_idx], best_gain, best_idx)
 
@@ -407,14 +494,14 @@ class StochasticGreedy(BaseOptimizer):
 		subset_size = max(int(subset_size), 1)
 
 		for i in range(k):
-			self.function.idxs = self.random_state.choice(self.function.idxs, 
+			idxs = self.random_state.choice(self.function.idxs, 
 				replace=False, size=subset_size)
 
-			gains = self.function._calculate_gains(X)
+			gains = self.function._calculate_gains(X, idxs)
 
 			best_idx = gains.argmax()
 			best_gain = gains[best_idx]
-			best_idx = self.function.idxs[best_idx]
+			best_idx = idxs[best_idx]
 
 			self.function._select_next(X[best_idx], best_gain, best_idx)
 

@@ -6,6 +6,7 @@ This code contains utility functions to support the main functionality of
 the code.
 """
 
+import numbers
 import numpy
 import itertools
 

@@ -100,38 +100,19 @@ def select_min_next_sparse(X_data, X_indices, X_indptr, gains, current_values,
 			k = X_indices[j]
 			gains[i] += min(X_data[j] + current_values[k], 1) - current_concave_values[k]
 
-def select_sqrt_next_cupy(X, gains, current_values, mask):
-	gains[:] = cupy.sum(cupy.sqrt(current_values + X), axis=1)
-	gains[:] = gains * (1 - mask)
+def select_sqrt_next_cupy(X, gains, current_values, idxs):
+	gains[:] = cupy.sum(cupy.sqrt(current_values + X), axis=1)[idxs]
 
-def select_log_next_cupy(X, gains, current_values, mask):
-	gains[:] = cupy.sum(cupy.log(current_values + X + 1), axis=1)
-	gains[:] = gains * (1 - mask)
+def select_log_next_cupy(X, gains, current_values, idxs):
+	gains[:] = cupy.sum(cupy.log(current_values + X + 1), axis=1)[idxs]
 
-def select_inv_next_cupy(X, gains, current_values, mask):
+def select_inv_next_cupy(X, gains, current_values, idxs):
 	gains[:] = cupy.sum((current_values + X) / 
-		(1. + current_values + X), axis=1)
-	gains[:] = gains * (1 - mask)
+		(1. + current_values + X), axis=1)[idxs]
 
-def select_min_next_cupy(X, gains, current_values, mask):
-	gains[:] = cupy.sum(cupy.min(current_values + X, 1), axis=1)
-	gains[:] = gains * (1 - mask)
-	return 1
+def select_min_next_cupy(X, gains, current_values, idxs):
+	gains[:] = cupy.sum(cupy.min(current_values + X, 1), axis=1)[idxs]
 
-def select_custom_next(X, gains, current_values, idxs, 
-	concave_func):
-	best_gain = 0.
-	best_idx = -1
-
-	for idx in range(X.shape[0]):
-		a = concave_func(current_values + X[idx])
-		gains[idx] = (a - current_concave_values).sum()
-
-		if gains[idx] > best_gain:
-			best_gain = gain
-			best_idx = idx
-
-	return best_idx
 
 class FeatureBasedSelection(BaseSelection):
 	"""A feature based submodular selection algorithm.
@@ -230,8 +211,9 @@ class FeatureBasedSelection(BaseSelection):
 	"""
 
 	def __init__(self, n_samples, concave_func='sqrt', n_naive_samples=3, 
-		initial_subset=None, optimizer='two-stage', epsilon=0.9, 
-		random_state=None, verbose=False):
+		initial_subset=None, optimizer='two-stage', optimizer1='lazy', 
+		optimizer2='lazy', epsilon=0.9, beta=0.9, l=2, m=4, n_jobs=1, random_state=None, 
+		verbose=False):
 		self.concave_func_name = concave_func
 
 		if concave_func == 'log':
@@ -249,7 +231,8 @@ class FeatureBasedSelection(BaseSelection):
 
 		super(FeatureBasedSelection, self).__init__(n_samples=n_samples, 
 			n_naive_samples=n_naive_samples, initial_subset=initial_subset,
-			optimizer=optimizer, epsilon=epsilon, random_state=random_state,
+			optimizer=optimizer, optimizer1=optimizer1, optimizer2=optimizer2,
+			epsilon=epsilon, beta=beta, l=l, m=m, n_jobs=n_jobs, random_state=random_state,
 			verbose=verbose) 
 
 	def fit(self, X, y=None):
@@ -295,10 +278,12 @@ class FeatureBasedSelection(BaseSelection):
 			raise ValueError("The initial subset must be either a two dimensional" \
 				" matrix of examples or a one dimensional mask.")
 
-		self.current_concave_values = self.concave_func(self.current_values)
-		self.current_concave_values_sum = 0.
 
-	def _calculate_gains(self, X):
+
+		self.current_concave_values = self.concave_func(self.current_values)
+		self.current_concave_values_sum = self.current_concave_values.sum()
+
+	def _calculate_gains(self, X, idxs=None):
 		"""This function will return the gain that each example would give.
 
 		This function will return the gains that each example would give if
@@ -324,26 +309,26 @@ class FeatureBasedSelection(BaseSelection):
 		name = '{}{}'.format(self.concave_func_name,
 							   '_sparse' if self.sparse else
 							   '_cupy' if self.cupy else '')
-		concave_func = concave_funcs.get(name, None)
-			
+		concave_func = concave_funcs.get(name, self.concave_func)
+
+		idxs = idxs if idxs is not None else self.idxs
+
 		if self.cupy:
-			gains = cupy.zeros(self.idxs.shape[0], dtype='float64')
+			gains = cupy.zeros(idxs.shape[0], dtype='float64')
 		else:
-			gains = numpy.zeros(self.idxs.shape[0], dtype='float64')
+			gains = numpy.zeros(idxs.shape[0], dtype='float64')
 
 		if concave_func is not None:
 			if self.sparse:
 				concave_func(X.data, X.indices, X.indptr, gains, 
-					self.current_values, self.current_concave_values, 
-					self.idxs)
+					self.current_values, self.current_concave_values, idxs)
 			else:
-				concave_func(X, gains, self.current_values, self.idxs)
+				concave_func(X, gains, self.current_values, idxs)
+				gains -= self.current_concave_values_sum
 		else:
 			select_custom_next(X, gains, self.current_values, 
 				self.mask, self.concave_func)
 
-		if X.shape[0] == 1:
-			return gains[0]
 		return gains
 
 	def _select_next(self, X, gain, idx):
@@ -352,7 +337,6 @@ class FeatureBasedSelection(BaseSelection):
 		if self.sparse:
 			self.current_values += X.toarray()[0]
 		else:
-			gain -= self.current_concave_values_sum 
 			self.current_values += X
 
 		self.current_concave_values = self.concave_func(self.current_values)

@@ -42,10 +42,9 @@ def select_next_sparse(X_data, X_indices, X_indptr, gains, current_values, idxs)
 			k = X_indices[j]
 			gains[i] += max(X_data[j], current_values[k])
 
-def select_next_cupy(X, gains, current_values, mask):
+def select_next_cupy(X, gains, current_values, idxs):
 	gains[:] = cupy.sum(cupy.maximum(X, current_values), axis=1)
-	gains[:] = gains * (1 - mask)
-	return int(cupy.argmax(gains))
+	return int(cupy.argmax(gains[idxs]))
 
 class FacilityLocationSelection(BaseGraphSelection):
 	"""A facility location submodular selection algorithm.
@@ -138,12 +137,14 @@ class FacilityLocationSelection(BaseGraphSelection):
 
 	def __init__(self, n_samples=10, pairwise_func='euclidean', 
 		n_naive_samples=1, initial_subset=None, optimizer='two-stage', 
-		epsilon=0.9, random_state=None, verbose=False):
+		optimizer1='lazy', optimizer2='lazy', epsilon=0.9, l=2, m=4, 
+		n_jobs=1, random_state=None, verbose=False):
 
 		super(FacilityLocationSelection, self).__init__(n_samples=n_samples, 
 			pairwise_func=pairwise_func, n_naive_samples=n_naive_samples, 
 			initial_subset=initial_subset, optimizer=optimizer, 
-			epsilon=epsilon, random_state=random_state, verbose=verbose)
+			optimizer1=optimizer1, optimizer2=optimizer2, epsilon=epsilon, 
+			l=l, m=m, n_jobs=n_jobs, random_state=random_state, verbose=verbose)
 
 	def fit(self, X, y=None):
 		"""Perform selection and return the subset of the data set.
@@ -176,7 +177,7 @@ class FacilityLocationSelection(BaseGraphSelection):
 		super(FacilityLocationSelection, self)._initialize(X_pairwise)
 
 		if self.initial_subset is None:
-			return
+			pass
 		elif self.initial_subset.ndim == 2:
 			raise ValueError("When using facility location, the initial subset"\
 				" must be a one dimensional array of indices.")
@@ -193,29 +194,28 @@ class FacilityLocationSelection(BaseGraphSelection):
 			raise ValueError("The initial subset must be either a two dimensional" \
 				" matrix of examples or a one dimensional mask.")
 
-	def _calculate_gains(self, X_pairwise):
+		self.current_values_sum = self.current_values.sum()
+
+	def _calculate_gains(self, X_pairwise, idxs=None):
+		idxs = idxs if idxs is not None else self.idxs
+
 		if self.cupy:
-			gains = cupy.zeros(self.idxs.shape[0], dtype='float64')
-			select_next_cupy(X_pairwise, gains, self.current_values,
-				self.idxs)
+			gains = cupy.zeros(idxs.shape[0], dtype='float64')
+			select_next_cupy(X_pairwise, gains, self.current_values, idxs)
 		else:
-			gains = numpy.zeros(self.idxs.shape[0], dtype='float64')
+			gains = numpy.zeros(idxs.shape[0], dtype='float64')
 
 			if self.sparse:
-				select_next_sparse(X_pairwise.data,
-					X_pairwise.indices, X_pairwise.indptr, gains,
-					self.current_values, self.idxs)
+				select_next_sparse(X_pairwise.data, X_pairwise.indices, 
+					X_pairwise.indptr, gains, self.current_values, idxs)
 			else:
-				select_next(X_pairwise, gains, self.current_values,
-					self.idxs)
+				select_next(X_pairwise, gains, self.current_values, idxs)
 
-		gains -= self.current_values.sum()
+		gains -= self.current_values_sum
 		return gains
 
 	def _select_next(self, X_pairwise, gain, idx):
 		"""This function will add the given item to the selected set."""
-
-		#gain -= self.current_values.sum()
 
 		if self.sparse:
 			self.current_values = numpy.maximum(
@@ -223,6 +223,8 @@ class FacilityLocationSelection(BaseGraphSelection):
 		else:
 			self.current_values = numpy.maximum(X_pairwise, 
 				self.current_values)
+
+		self.current_values_sum = self.current_values.sum()
 
 		super(FacilityLocationSelection, self)._select_next(
 			X_pairwise, gain, idx)
