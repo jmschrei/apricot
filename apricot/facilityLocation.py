@@ -40,7 +40,7 @@ def select_next_sparse(X_data, X_indices, X_indptr, gains, current_values, idxs)
 
 		for j in range(start, end):
 			k = X_indices[j]
-			gains[i] += max(X_data[j], current_values[k])
+			gains[i] += max(X_data[j], current_values[k]) - current_values[k]
 
 def select_next_cupy(X, gains, current_values, idxs):
 	gains[:] = cupy.sum(cupy.maximum(X, current_values), axis=1)
