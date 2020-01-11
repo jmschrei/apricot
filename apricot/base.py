@@ -27,6 +27,10 @@ from .utils import PriorityQueue
 
 from scipy.sparse import csr_matrix
 
+from sklearn.metrics import pairwise_distances
+from sklearn.neighbors import KNeighborsTransformer
+
+
 class BaseSelection(object):
 	"""The base selection object.
 
@@ -62,9 +66,13 @@ class BaseSelection(object):
 
 			'naive' : the naive greedy algorithm
 			'lazy' : the lazy (or accelerated) greedy algorithm
+			'approximate-lazy' : the approximate lazy greedy algorithm
 			'two-stage' : starts with naive and switches to lazy
 			'stochastic' : the stochastic greedy algorithm
+			'greedi' : the GreeDi distributed algorithm
 			'bidirectional' : the bidirectional greedy algorithm
+
+		Default is 'naive'.
 
 	epsilon : float, optional
 		The inverse of the sampling probability of any particular point being 
@@ -352,14 +360,16 @@ class BaseGraphSelection(BaseSelection):
 	n_samples : int
 		The number of samples to return.
 
-	pairwise_func : str or callable
+	metric : str
 		The method for converting a data matrix into a square symmetric matrix
-		of pairwise similarities. If a string, can be any of the following:
-
-			'euclidean' : The negative euclidean distance
-			'corr' : The squared correlation matrix
-			'cosine' : The normalized dot product of the matrix
-			'precomputed' : User passes in a NxN matrix of distances themselves
+		of pairwise similarities. If a string, can be any of the metrics
+		implemented in sklearn (see https://scikit-learn.org/stable/modules/
+		generated/sklearn.metrics.pairwise_distances.html), including
+		"precomputed" if one has already generated a similarity matrix. Note
+		that sklearn calculates distance matrices whereas apricot operates on
+		similarity matrices, and so a distances.max() - distances transformation
+		is performed on the resulting distances. For backcompatibility,
+		'corr' will be read as 'correlation'.
 
 	n_naive_samples : int
 		The number of samples to perform the naive greedy algorithm on
@@ -384,9 +394,13 @@ class BaseGraphSelection(BaseSelection):
 
 			'naive' : the naive greedy algorithm
 			'lazy' : the lazy (or accelerated) greedy algorithm
+			'approximate-lazy' : the approximate lazy greedy algorithm
 			'two-stage' : starts with naive and switches to lazy
 			'stochastic' : the stochastic greedy algorithm
+			'greedi' : the GreeDi distributed algorithm
 			'bidirectional' : the bidirectional greedy algorithm
+
+		Default is 'naive'.
 
 	epsilon : float, optional
 		The inverse of the sampling probability of any particular point being 
@@ -405,7 +419,7 @@ class BaseGraphSelection(BaseSelection):
 	n_samples : int
 		The number of samples to select.
 
-	pairwise_func : callable
+	metric : callable
 		A function that takes in a data matrix and converts it to a square
 		symmetric matrix.
 
@@ -419,31 +433,19 @@ class BaseGraphSelection(BaseSelection):
 		sample, and so forth.
 	"""
 
-	def __init__(self, n_samples=10, pairwise_func='euclidean', n_naive_samples=1, 
-		initial_subset=None, optimizer='two-stage', epsilon=0.9, random_state=None,
-		verbose=False):
-		self.pairwise_func_name = pairwise_func
+	def __init__(self, n_samples=10, metric='euclidean', n_naive_samples=1, 
+		initial_subset=None, optimizer='two-stage', optimizer1='naive', 
+		optimizer2='naive', epsilon=0.9, beta=0.9, l=2, m=4, n_neighbors=None, 
+		n_jobs=1, random_state=None, verbose=False):
 		
-		norm = lambda x: numpy.sqrt((x*x).sum(axis=1)).reshape(x.shape[0], 1)
-		norm2 = lambda x: (x*x).sum(axis=1).reshape(x.shape[0], 1)
-
-		if pairwise_func == 'corr':
-			self.pairwise_func = lambda X: numpy.corrcoef(X, rowvar=True) ** 2.
-		elif pairwise_func == 'cosine':
-			self.pairwise_func = lambda X: numpy.abs(numpy.dot(X, X.T) / (norm(X).dot(norm(X).T)))
-		elif pairwise_func == 'euclidean':
-			self.pairwise_func = lambda X: (-2 * numpy.dot(X, X.T) + norm2(X)).T + norm2(X)
-		elif pairwise_func == 'precomputed':
-			self.pairwise_func = pairwise_func
-		elif callable(pairwise_func):
-			self.pairwise_func = pairwise_func
-		else:
-			raise KeyError("Must be one of 'euclidean', 'corr', 'cosine', 'precomputed'" \
-				" or a custom function.")
+		self.metric = metric.replace("corr", "correlation")
+		self.n_neighbors = n_neighbors
 
 		super(BaseGraphSelection, self).__init__(n_samples=n_samples, 
 			n_naive_samples=n_naive_samples, initial_subset=initial_subset, 
-			optimizer=optimizer, verbose=verbose)
+			optimizer=optimizer, optimizer1=optimizer1, optimizer2=optimizer2,
+			epsilon=epsilon, beta=beta, l=l, m=m, n_jobs=n_jobs, 
+			random_state=random_state,verbose=verbose)
 
 	def fit(self, X, y=None):
 		"""Perform selection and return the subset of the data set.
@@ -470,27 +472,45 @@ class BaseGraphSelection(BaseSelection):
 			The fit step returns itself.
 		"""
 
-		f = self.pairwise_func
-
-		if isinstance(X, csr_matrix) and f != "precomputed":
+		if isinstance(X, csr_matrix) and self.metric != "precomputed":
 			raise ValueError("Must passed in a precomputed sparse " \
 				"similarity matrix or a dense feature matrix.")
-		if f == 'precomputed' and X.shape[0] != X.shape[1]:
+		if self.metric == 'precomputed' and X.shape[0] != X.shape[1]:
 			raise ValueError("Precomputed similarity matrices " \
 				"must be square and symmetric.")
 
 		if self.verbose == True:
 			self.pbar = tqdm(total=self.n_samples)
 
-		if self.pairwise_func == 'precomputed':
-			X_pairwise = X
-		else:
-			X_pairwise = self.pairwise_func(X)
-			X_pairwise = numpy.array(X_pairwise, copy=False, dtype='float64')
 
-			if self.pairwise_func_name == 'euclidean':
-				X_max = X_pairwise.max()
-				X_pairwise = numpy.ones_like(X_pairwise) * X_max - X_pairwise
+		if self.n_neighbors is None:
+			if self.metric == 'euclidean':
+				X_pairwise = pairwise_distances(X, metric=self.metric, squared=True)
+			else:
+				X_pairwise = pairwise_distances(X, metric=self.metric)
+		else:
+			if isinstance(self.n_neighbors, int):
+				transformer = KNeighborsTransformer(
+					n_neighbors=self.n_neighbors, metric=self.metric)
+				X_pairwise = transformer.fit_transform(X)
+			elif isinstance(self.n_neighbors, KNeighborsTransformer):
+				X_pairwise = self.n_neighbors.fit_transform(X)
+
+		if self.metric == 'correlation':
+			if isinstance(X_pairwise, csr_matrix):
+				X_pairwise.data = (1 - X_pairwise.data) ** 2
+			else:
+				X_pairwise = (1 - X_pairwise) ** 2
+		elif self.metric == 'cosine':
+			if isinstance(X_pairwise, csr_matrix):
+				X_pairwise.data = 1 - X_pairwise.data
+			else:
+				X_pairwise = 1 - X_pairwise
+		elif self.metric != 'precomputed':
+			if isinstance(X_pairwise, csr_matrix):
+				X_pairwise.data = X_pairwise.max() - X_pairwise.data
+			else:
+				X_pairwise = X_pairwise.max() - X_pairwise
 
 		return super(BaseGraphSelection, self).fit(X_pairwise, y)
 
