@@ -40,7 +40,7 @@ def select_next_sparse(X_data, X_indices, X_indptr, gains, current_values, idxs)
 
 		for j in range(start, end):
 			k = X_indices[j]
-			gains[i] += max(X_data[j], current_values[k])
+			gains[i] += max(X_data[j], current_values[k]) - current_values[k]
 
 def select_next_cupy(X, gains, current_values, idxs):
 	gains[:] = cupy.sum(cupy.maximum(X, current_values), axis=1)
@@ -68,29 +68,31 @@ class FacilityLocationSelection(BaseGraphSelection):
 	n_samples : int
 		The number of samples to return.
 
-	pairwise_func : str or callable
+	metric : str, optional
 		The method for converting a data matrix into a square symmetric matrix
-		of pairwise similarities. If a string, can be any of the following:
+		of pairwise similarities. If a string, can be any of the metrics
+		implemented in sklearn (see https://scikit-learn.org/stable/modules/
+		generated/sklearn.metrics.pairwise_distances.html), including
+		"precomputed" if one has already generated a similarity matrix. Note
+		that sklearn calculates distance matrices whereas apricot operates on
+		similarity matrices, and so a distances.max() - distances transformation
+		is performed on the resulting distances. For backcompatibility,
+		'corr' will be read as 'correlation'. Default is 'euclidean'.
 
-			'euclidean' : The negative euclidean distance
-			'corr' : The squared correlation matrix
-			'cosine' : The normalized dot product of the matrix
-			'precomputed' : User passes in a NxN matrix of distances themselves
-
-	n_naive_samples : int
+	n_naive_samples : int, optional
 		The number of samples to perform the naive greedy algorithm on
 		before switching to the lazy greedy algorithm. The lazy greedy
 		algorithm is faster once features begin to saturate, but is slower
 		in the initial few selections. This is, in part, because the naive
 		greedy algorithm is parallelized whereas the lazy greedy
-		algorithm currently is not.
+		algorithm currently is not. Default is 1.
 
-	initial_subset : list, numpy.ndarray or None
+	initial_subset : list, numpy.ndarray or None, optional
 		If provided, this should be a list of indices into the data matrix
 		to use as the initial subset, or a group of examples that may not be
 		in the provided data should beused as the initial subset. If indices, 
 		the provided array should be one-dimensional. If a group of examples,
-		the data should be 2 dimensional.
+		the data should be 2 dimensional. Default is None.
 
 	optimizer : string or optimizers.BaseOptimizer, optional
 		The optimization approach to use for the selection. Default is
@@ -100,9 +102,13 @@ class FacilityLocationSelection(BaseGraphSelection):
 
 			'naive' : the naive greedy algorithm
 			'lazy' : the lazy (or accelerated) greedy algorithm
+			'approximate-lazy' : the approximate lazy greedy algorithm
 			'two-stage' : starts with naive and switches to lazy
 			'stochastic' : the stochastic greedy algorithm
+			'greedi' : the GreeDi distributed algorithm
 			'bidirectional' : the bidirectional greedy algorithm
+
+		Default is 'naive'.
 
 	epsilon : float, optional
 		The inverse of the sampling probability of any particular point being 
@@ -121,7 +127,7 @@ class FacilityLocationSelection(BaseGraphSelection):
 	n_samples : int
 		The number of samples to select.
 
-	pairwise_func : callable
+	metric : callable
 		A function that takes in a data matrix and converts it to a square
 		symmetric matrix.
 
@@ -135,16 +141,17 @@ class FacilityLocationSelection(BaseGraphSelection):
 		sample, and so forth.
 	"""
 
-	def __init__(self, n_samples=10, pairwise_func='euclidean', 
+	def __init__(self, n_samples=10, metric='euclidean', 
 		n_naive_samples=1, initial_subset=None, optimizer='two-stage', 
-		optimizer1='lazy', optimizer2='lazy', epsilon=0.9, l=2, m=4, 
-		n_jobs=1, random_state=None, verbose=False):
+		optimizer1='naive', optimizer2='naive', epsilon=0.9, l=2, m=4, 
+		n_neighbors=None, n_jobs=1, random_state=None, verbose=False):
 
 		super(FacilityLocationSelection, self).__init__(n_samples=n_samples, 
-			pairwise_func=pairwise_func, n_naive_samples=n_naive_samples, 
+			metric=metric, n_naive_samples=n_naive_samples, 
 			initial_subset=initial_subset, optimizer=optimizer, 
 			optimizer1=optimizer1, optimizer2=optimizer2, epsilon=epsilon, 
-			l=l, m=m, n_jobs=n_jobs, random_state=random_state, verbose=verbose)
+			l=l, m=m, n_neighbors=n_neighbors, n_jobs=n_jobs, 
+			random_state=random_state, verbose=verbose)
 
 	def fit(self, X, y=None):
 		"""Perform selection and return the subset of the data set.
@@ -202,6 +209,7 @@ class FacilityLocationSelection(BaseGraphSelection):
 		if self.cupy:
 			gains = cupy.zeros(idxs.shape[0], dtype='float64')
 			select_next_cupy(X_pairwise, gains, self.current_values, idxs)
+			gains -= self.current_values_sum
 		else:
 			gains = numpy.zeros(idxs.shape[0], dtype='float64')
 
@@ -210,8 +218,8 @@ class FacilityLocationSelection(BaseGraphSelection):
 					X_pairwise.indptr, gains, self.current_values, idxs)
 			else:
 				select_next(X_pairwise, gains, self.current_values, idxs)
+				gains -= self.current_values_sum
 
-		gains -= self.current_values_sum
 		return gains
 
 	def _select_next(self, X_pairwise, gain, idx):

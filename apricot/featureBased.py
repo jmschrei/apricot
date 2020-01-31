@@ -170,9 +170,13 @@ class FeatureBasedSelection(BaseSelection):
 
 			'naive' : the naive greedy algorithm
 			'lazy' : the lazy (or accelerated) greedy algorithm
+			'approximate-lazy' : the approximate lazy greedy algorithm
 			'two-stage' : starts with naive and switches to lazy
 			'stochastic' : the stochastic greedy algorithm
+			'greedi' : the GreeDi distributed algorithm
 			'bidirectional' : the bidirectional greedy algorithm
+
+		Default is 'naive'.
 
 	epsilon : float, optional
 		The inverse of the sampling probability of any particular point being 
