@@ -21,38 +21,30 @@ from numba import prange
 
 from scipy.sparse import csr_matrix
 
-dtypes = 'int64(float64[:,:], float64[:], float64[:], float64[:], int8[:])'
-sdtypes = 'int64(float64[:], int32[:], int32[:], float64[:], float64[:], float64[:], int8[:])'
+dtypes = 'void(float64[:,:], float64[:], float64[:], float64[:], int64[:])'
+sdtypes = 'void(float64[:], int32[:], int32[:], float64[:], float64[:], float64[:], int64[:])'
 
 @njit(dtypes, nogil=True, parallel=True)
-def select_next(X, gains, current_values, max_values, mask):
-	for idx in prange(X.shape[0]):
-		if mask[idx] == 1:
-			continue
-
+def select_next(X, gains, current_values, max_values, idxs):
+	for i in prange(idxs.shape[0]):
+		idx = idxs[i]
 		gains[idx] = numpy.minimum(current_values + X[idx], max_values).sum()
 
-	return numpy.argmax(gains)
-
 @njit(sdtypes, nogil=True, parallel=True)
-def select_next_sparse(X_data, X_indices, X_indptr, gains, current_values, max_values, mask):
-	for idx in range(X_indptr.shape[0] - 1):
-		if mask[idx] == 1:
-			continue
+def select_next_sparse(X_data, X_indices, X_indptr, gains, current_values, max_values, idxs):
+	for i in prange(idxs.shape[0]):
+		idx = idxs[i]
 
 		start = X_indptr[idx]
 		end = X_indptr[idx+1]
 
-		for i in range(start, end):
-			j = X_indices[i]
-			gains[idx] += min(X_data[i] + current_values[j], max_values[j])
-
-	return numpy.argmax(gains)
+		for j in range(start, end):
+			k = X_indices[j]
+			gains[idx] += min(X_data[j] + current_values[k], max_values[k])
 
 def select_next_cupy(X, gains, current_values, max_values, mask):
 	gains[:] = cupy.sum(cupy.minimum(X + current_values, max_values), axis=1)
 	gains[:] = gains * (1 - mask)
-	return int(cupy.argmax(gains))
 
 class SaturatedCoverageSelection(BaseGraphSelection):
 	"""A saturated coverage submodular selection algorithm.
@@ -123,8 +115,9 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 	"""
 
 	def __init__(self, n_samples=10, pairwise_func='euclidean', n_naive_samples=1, 
-		initial_subset=None, optimizer='two-stage', verbose=False):
+		initial_subset=None, optimizer='two-stage', alpha=1, verbose=False):
 		self.pairwise_func_name = pairwise_func
+		self.alpha = alpha
 
 		super(SaturatedCoverageSelection, self).__init__(n_samples=n_samples, 
 			n_naive_samples=n_naive_samples, initial_subset=initial_subset, 
@@ -156,8 +149,8 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 			The fit step returns itself.
 		"""
 
-		self.max_values = numpy.zeros(X.shape[0], dtype='float64')
-		return super(SaturatedCoverageSelection, self).fit(X_pairwise, y)
+		self.max_values = numpy.zeros(X.shape[0], dtype='float64') + self.alpha
+		return super(SaturatedCoverageSelection, self).fit(X, y)
 
 	def _initialize(self, X_pairwise):
 		super(SaturatedCoverageSelection, self)._initialize(X_pairwise)
@@ -200,15 +193,15 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 
 			if self.cupy:
 				select_next_cupy(X_pairwise, gains, self.current_values,
-					self.mask)
+					self.max_values, self.idxs)
 
 			elif self.sparse:
 				select_next_sparse(X_pairwise.data,
 					X_pairwise.indices, X_pairwise.indptr, gains,
-					self.current_values, self.mask)
+					self.current_values, self.max_values, self.idxs)
 			else:
 				select_next(X_pairwise, gains, self.current_values,
-					self.mask)
+					self.max_values, self.idxs)
 
 			gains -= self.current_values.sum()
 			return gains
