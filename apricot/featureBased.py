@@ -282,8 +282,6 @@ class FeatureBasedSelection(BaseSelection):
 			raise ValueError("The initial subset must be either a two dimensional" \
 				" matrix of examples or a one dimensional mask.")
 
-
-
 		self.current_concave_values = self.concave_func(self.current_values)
 		self.current_concave_values_sum = self.current_concave_values.sum()
 

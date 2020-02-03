@@ -8,6 +8,8 @@ from tqdm import tqdm
 from .utils import PriorityQueue
 from .utils import check_random_state
 
+from numba import jit
+
 class BaseOptimizer(object):
 	"""An approach for optimizing submodular functions.
 
@@ -265,26 +267,21 @@ class LazyGreedy(BaseOptimizer):
 	"""
 
 	def __init__(self, function=None, verbose=False):
-		self.pq = PriorityQueue()
 		super(LazyGreedy, self).__init__(function, verbose)
 
 	def select(self, X, k):
 		gains = self.function._calculate_gains(X)
-
-		for idx, gain in zip(self.function.idxs, gains):
-			self.pq.add(idx, -gain)
+		self.pq = PriorityQueue(self.function.idxs, -gains)
 
 		for i in range(k):
-			best_gain = 0.
+			best_gain = float("-inf")
 			best_idx = None
 			
 			while True:
 				prev_gain, idx = self.pq.pop()
 				prev_gain = -prev_gain
-				
+
 				if best_idx == idx:
-					self.pq.add(idx, -prev_gain)
-					self.pq.remove(best_idx)
 					break
 				
 				idxs = numpy.array([idx])
@@ -299,7 +296,6 @@ class LazyGreedy(BaseOptimizer):
 
 			if self.verbose == True:
 				self.function.pbar.update(1)
-
 
 class ApproximateLazyGreedy(BaseOptimizer):
 	"""The approximate lazy/accelerated greedy algorithm for optimization.
@@ -343,15 +339,12 @@ class ApproximateLazyGreedy(BaseOptimizer):
 	"""
 
 	def __init__(self, function=None, beta=0.9, verbose=False):
-		self.pq = PriorityQueue()
 		self.beta = beta
 		super(ApproximateLazyGreedy, self).__init__(function, verbose)
 
 	def select(self, X, k):
 		gains = self.function._calculate_gains(X)
-
-		for idx, gain in zip(self.function.idxs, gains):
-			self.pq.add(idx, -gain)
+		self.pq = PriorityQueue(self.function.idxs, -gains)
 
 		for i in range(k):
 			best_gain = -self.pq.pq[0][0]
@@ -495,7 +488,8 @@ class StochasticGreedy(BaseOptimizer):
 
 		for i in range(k):
 			idxs = self.random_state.choice(self.function.idxs, 
-				replace=False, size=subset_size)
+				replace=False, size=min(subset_size, 
+					self.function.idxs.shape[0]))
 
 			gains = self.function._calculate_gains(X, idxs)
 

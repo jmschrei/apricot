@@ -12,6 +12,7 @@ import itertools
 
 from heapq import heappush
 from heapq import heappop
+from heapq import heapify
 
 class PriorityQueue(object):
     """A priority queue implementation.
@@ -41,10 +42,18 @@ class PriorityQueue(object):
         constant time lookups and deletions.
     """
 
-    def __init__(self):
-        self.pq = []
-        self.lookup = {}
+    def __init__(self, items=None, weights=None):
         self.counter = itertools.count()
+        self.lookup = {}
+        self.pq = []
+
+        if items is not None and weights is not None:
+            for item, weight in zip(items, weights):
+                entry = [weight, next(self.counter), item]
+                self.pq.append(entry)
+                self.lookup[item] = entry
+
+            heapify(self.pq)
     
     def add(self, item, weight):
         """Add an element to the priority queue. Runtime is O(log n).

@@ -1,8 +1,8 @@
-# saturatedCoverage.py
+# graphCut.py
 # Author: Jacob Schreiber <jmschreiber91@gmail.com>
 
 """
-This code implements saturated coverage functions.
+This code implements the graph cut function.
 """
 
 try:
@@ -21,32 +21,8 @@ from numba import prange
 
 from scipy.sparse import csr_matrix
 
-dtypes = 'void(float64[:,:], float64[:], float64[:], float64[:], int64[:])'
-sdtypes = 'void(float64[:], int32[:], int32[:], float64[:], float64[:], float64[:], int64[:])'
 
-@njit(dtypes, nogil=True, parallel=True)
-def select_next(X, gains, current_values, max_values, idxs):
-	for i in prange(idxs.shape[0]):
-		idx = idxs[i]
-		gains[i] = numpy.minimum(current_values + X[idx], max_values).sum()
-
-@njit(sdtypes, nogil=True, parallel=True)
-def select_next_sparse(X_data, X_indices, X_indptr, gains, current_values, max_values, idxs):
-	for i in prange(idxs.shape[0]):
-		idx = idxs[i]
-
-		start = X_indptr[idx]
-		end = X_indptr[idx+1]
-
-		for j in range(start, end):
-			k = X_indices[j]
-			gains[i] += min(X_data[j] + current_values[k], max_values[k])
-
-def select_next_cupy(X, gains, current_values, max_values, mask):
-	gains[:] = cupy.sum(cupy.minimum(X + current_values, max_values), axis=1)
-	gains[:] = gains * (1 - mask)
-
-class SaturatedCoverageSelection(BaseGraphSelection):
+class GraphCutSelection(BaseGraphSelection):
 	"""A saturated coverage submodular selection algorithm.
 
 	NOTE: All ~pairwise~ values in your data must be positive for this 
@@ -144,11 +120,11 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 	def __init__(self, n_samples=10, metric='euclidean', 
 		n_naive_samples=1, initial_subset=None, optimizer='two-stage', 
 		optimizer1='naive', optimizer2='naive', epsilon=0.9, l=2, m=4, 
-		n_neighbors=None, alpha=0.1, n_jobs=1, random_state=None, 
+		n_neighbors=None, alpha=1, n_jobs=1, random_state=None, 
 		verbose=False):
 		self.alpha = alpha
 
-		super(SaturatedCoverageSelection, self).__init__(n_samples=n_samples, 
+		super(GraphCutSelection, self).__init__(n_samples=n_samples, 
 			metric=metric, n_naive_samples=n_naive_samples, 
 			initial_subset=initial_subset, optimizer=optimizer, 
 			optimizer1=optimizer1, optimizer2=optimizer2, epsilon=epsilon, 
@@ -176,15 +152,20 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 
 		Returns
 		-------
-		self : SaturatedCoverageSelection
+		self : GraphCutSelection
 			The fit step returns itself.
 		"""
 
-		return super(SaturatedCoverageSelection, self).fit(X, y)
+		return super(GraphCutSelection, self).fit(X, y)
 
 	def _initialize(self, X_pairwise):
-		super(SaturatedCoverageSelection, self)._initialize(X_pairwise)
-		self.max_values = self.alpha * X_pairwise.sum(axis=1)
+		super(GraphCutSelection, self)._initialize(X_pairwise)
+		
+		if self.sparse:
+			self.current_values = 0
+		else:
+			self.column_sum = self.alpha * X_pairwise.sum(axis=0)
+			self.current_values = numpy.diag(X_pairwise).astype('float64')
 
 		if self.initial_subset is None:
 			return
@@ -207,35 +188,16 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 	def _calculate_gains(self, X_pairwise, idxs=None):
 		idxs = idxs if idxs is not None else self.idxs
 
-		if self.cupy:
-			gains = cupy.zeros(idxs.shape[0], dtype='float64')
-			select_next_cupy(X_pairwise, gains, self.current_values,
-				self.max_values, idxs)
-		else:
-			gains = numpy.zeros(idxs.shape[0], dtype='float64')
-			if self.sparse:
-				select_next_sparse(X_pairwise.data,
-					X_pairwise.indices, X_pairwise.indptr, gains,
-					self.current_values, self.max_values, idxs)
-			else:
-				select_next(X_pairwise, gains, self.current_values,
-					self.max_values, idxs)
-
-		gains -= self.current_values.sum()
+		gains = self.column_sum[idxs] - self.current_values[idxs]
 		return gains
 
 	def _select_next(self, X_pairwise, gain, idx):
 		"""This function will add the given item to the selected set."""
 
-		if self.cupy:
-			self.current_values = cupy.minimum(self.max_values,
-				self.current_values + X_pairwise)
-		elif self.sparse:
-			self.current_values = numpy.minimum(
-				X_pairwise.toarray()[0], self.current_values)
+		if self.sparse:
+			self.current_subset_values += X_pairwise.toarray()[0]
 		else:
-			self.current_values = numpy.minimum(self.max_values,
-				self.current_values + X_pairwise)
+			self.current_values += X_pairwise
 
-		super(SaturatedCoverageSelection, self)._select_next(
+		super(GraphCutSelection, self)._select_next(
 			X_pairwise, gain, idx)

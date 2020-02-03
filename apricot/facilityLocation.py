@@ -19,8 +19,6 @@ from tqdm import tqdm
 from numba import njit
 from numba import prange
 
-from scipy.sparse import csr_matrix
-
 dtypes = 'void(float64[:,:], float64[:], float64[:], int64[:])'
 sdtypes = 'void(float64[:], int32[:], int32[:], float64[:], float64[:], int64[:])'
 

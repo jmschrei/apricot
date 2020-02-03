@@ -4,6 +4,9 @@
 from .featureBased import FeatureBasedSelection
 from .facilityLocation import FacilityLocationSelection
 from .saturatedCoverage import SaturatedCoverageSelection
+from .sumRedundancy import SumRedundancySelection
+from .maxRedundancy import MaxRedundancySelection
+from .graphCut import GraphCutSelection
 from .mixture import SubmodularMixtureSelection
 
 __version__ = '0.5.0rc'

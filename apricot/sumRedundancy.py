@@ -1,8 +1,8 @@
-# saturatedCoverage.py
+# sumRedundancy.py
 # Author: Jacob Schreiber <jmschreiber91@gmail.com>
 
 """
-This code implements saturated coverage functions.
+This code implements the graph cut function.
 """
 
 try:
@@ -15,38 +15,9 @@ import numpy
 from .base import BaseGraphSelection
 
 from tqdm import tqdm
+from scipy.sparse import diags
 
-from numba import njit
-from numba import prange
-
-from scipy.sparse import csr_matrix
-
-dtypes = 'void(float64[:,:], float64[:], float64[:], float64[:], int64[:])'
-sdtypes = 'void(float64[:], int32[:], int32[:], float64[:], float64[:], float64[:], int64[:])'
-
-@njit(dtypes, nogil=True, parallel=True)
-def select_next(X, gains, current_values, max_values, idxs):
-	for i in prange(idxs.shape[0]):
-		idx = idxs[i]
-		gains[i] = numpy.minimum(current_values + X[idx], max_values).sum()
-
-@njit(sdtypes, nogil=True, parallel=True)
-def select_next_sparse(X_data, X_indices, X_indptr, gains, current_values, max_values, idxs):
-	for i in prange(idxs.shape[0]):
-		idx = idxs[i]
-
-		start = X_indptr[idx]
-		end = X_indptr[idx+1]
-
-		for j in range(start, end):
-			k = X_indices[j]
-			gains[i] += min(X_data[j] + current_values[k], max_values[k])
-
-def select_next_cupy(X, gains, current_values, max_values, mask):
-	gains[:] = cupy.sum(cupy.minimum(X + current_values, max_values), axis=1)
-	gains[:] = gains * (1 - mask)
-
-class SaturatedCoverageSelection(BaseGraphSelection):
+class SumRedundancySelection(BaseGraphSelection):
 	"""A saturated coverage submodular selection algorithm.
 
 	NOTE: All ~pairwise~ values in your data must be positive for this 
@@ -148,7 +119,7 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 		verbose=False):
 		self.alpha = alpha
 
-		super(SaturatedCoverageSelection, self).__init__(n_samples=n_samples, 
+		super(SumRedundancySelection, self).__init__(n_samples=n_samples, 
 			metric=metric, n_naive_samples=n_naive_samples, 
 			initial_subset=initial_subset, optimizer=optimizer, 
 			optimizer1=optimizer1, optimizer2=optimizer2, epsilon=epsilon, 
@@ -176,66 +147,40 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 
 		Returns
 		-------
-		self : SaturatedCoverageSelection
+		self : SumRedundancySelection
 			The fit step returns itself.
 		"""
 
-		return super(SaturatedCoverageSelection, self).fit(X, y)
+		return super(SumRedundancySelection, self).fit(X, y)
 
 	def _initialize(self, X_pairwise):
-		super(SaturatedCoverageSelection, self)._initialize(X_pairwise)
-		self.max_values = self.alpha * X_pairwise.sum(axis=1)
+		super(SumRedundancySelection, self)._initialize(X_pairwise)
+
+		if self.sparse:
+			self.current_values = X_pairwise.diagonal()
+		else:
+			self.current_values = numpy.diag(X_pairwise).astype('float64')
 
 		if self.initial_subset is None:
 			return
 		elif self.initial_subset.ndim == 2:
 			raise ValueError("When using saturated coverage, the initial subset"\
 				" must be a one dimensional array of indices.")
-		elif self.initial_subset.ndim == 1:
-			if not self.sparse:
-				for i in self.initial_subset:
-					self.current_values = numpy.sum(X_pairwise[i],
-						self.current_values).astype('float64')
-			else:
-				for i in self.initial_subset:
-					self.current_values = numpy.sum(
-						X_pairwise[i].toarray()[0], self.current_values).astype('float64')
 		else:
 			raise ValueError("The initial subset must be either a two dimensional" \
 				" matrix of examples or a one dimensional mask.")
 
 	def _calculate_gains(self, X_pairwise, idxs=None):
 		idxs = idxs if idxs is not None else self.idxs
-
-		if self.cupy:
-			gains = cupy.zeros(idxs.shape[0], dtype='float64')
-			select_next_cupy(X_pairwise, gains, self.current_values,
-				self.max_values, idxs)
-		else:
-			gains = numpy.zeros(idxs.shape[0], dtype='float64')
-			if self.sparse:
-				select_next_sparse(X_pairwise.data,
-					X_pairwise.indices, X_pairwise.indptr, gains,
-					self.current_values, self.max_values, idxs)
-			else:
-				select_next(X_pairwise, gains, self.current_values,
-					self.max_values, idxs)
-
-		gains -= self.current_values.sum()
-		return gains
+		return -self.current_values[idxs]
 
 	def _select_next(self, X_pairwise, gain, idx):
 		"""This function will add the given item to the selected set."""
 
-		if self.cupy:
-			self.current_values = cupy.minimum(self.max_values,
-				self.current_values + X_pairwise)
-		elif self.sparse:
-			self.current_values = numpy.minimum(
-				X_pairwise.toarray()[0], self.current_values)
+		if self.sparse:
+			self.current_values += X_pairwise.toarray()[0] * 2
 		else:
-			self.current_values = numpy.minimum(self.max_values,
-				self.current_values + X_pairwise)
+			self.current_values += X_pairwise * 2
 
-		super(SaturatedCoverageSelection, self)._select_next(
+		super(SumRedundancySelection, self)._select_next(
 			X_pairwise, gain, idx)
