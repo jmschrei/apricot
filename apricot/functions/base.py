@@ -14,16 +14,16 @@ except:
 import numpy
 from tqdm import tqdm
 
-from .optimizers import BaseOptimizer
-from .optimizers import NaiveGreedy
-from .optimizers import LazyGreedy
-from .optimizers import ApproximateLazyGreedy
-from .optimizers import TwoStageGreedy
-from .optimizers import StochasticGreedy
-from .optimizers import BidirectionalGreedy
-from .optimizers import GreeDi
+from ..optimizers import BaseOptimizer
+from ..optimizers import NaiveGreedy
+from ..optimizers import LazyGreedy
+from ..optimizers import ApproximateLazyGreedy
+from ..optimizers import TwoStageGreedy
+from ..optimizers import StochasticGreedy
+from ..optimizers import BidirectionalGreedy
+from ..optimizers import GreeDi
 
-from .utils import PriorityQueue
+from ..utils import PriorityQueue
 
 from scipy.sparse import csr_matrix
 

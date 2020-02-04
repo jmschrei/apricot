@@ -19,7 +19,7 @@ from tqdm import tqdm
 from numba import njit
 from numba import prange
 
-dtypes = 'void(float64[:,:], float64[:], int64[:], int64[:])'
+dtypes = 'void(float64[:,:], float64[:], float64[:], int64[:], int64[:])'
 sdtypes = 'void(float64[:], int32[:], int32[:], float64[:], int8[:], int64[:])'
 
 @njit(dtypes, nogil=True, parallel=True)
@@ -27,7 +27,7 @@ def select_next(X, gains, current_values, subset_idxs, idxs):
 	for i in prange(idxs.shape[0]):
 		idx = idxs[i]
 		gains[i] = numpy.maximum(current_values[subset_idxs], 
-			X[idx][subset_idxs]).sum()
+			X[idx][subset_idxs]).sum() + current_values[idx]
 
 @njit(sdtypes, nogil=True, parallel=True)
 def select_next_sparse(X_data, X_indices, X_indptr, gains, mask, idxs):
@@ -185,11 +185,8 @@ class MaxRedundancySelection(BaseGraphSelection):
 		return super(MaxRedundancySelection, self).fit(X, y)
 
 	def _initialize(self, X_pairwise):
-		X_pairwise = X_pairwise.copy()
 		numpy.fill_diagonal(X_pairwise, 0)
-		
 		super(MaxRedundancySelection, self)._initialize(X_pairwise)
-		self.current_values = numpy.zeros(X_pairwise.shape[0], dtype='float64')
 
 		if self.initial_subset is None:
 			return
@@ -214,12 +211,14 @@ class MaxRedundancySelection(BaseGraphSelection):
 					X_pairwise.indices, X_pairwise.indptr, gains,
 					self.mask, idxs)
 			else:
-				select_next(X_pairwise, gains, current_values, subset_idxs, idxs)
+				select_next(X_pairwise, gains, self.current_values, subset_idxs, idxs)
 
-		return gains
+		gains -= self.current_values[subset_idxs].sum()
+		return -gains
 
 	def _select_next(self, X_pairwise, gain, idx):
 		"""This function will add the given item to the selected set."""
 
+		self.current_values = numpy.maximum(self.current_values, X_pairwise)
 		super(MaxRedundancySelection, self)._select_next(
 			X_pairwise, gain, idx)
