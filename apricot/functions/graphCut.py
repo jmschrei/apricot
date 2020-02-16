@@ -117,19 +117,15 @@ class GraphCutSelection(BaseGraphSelection):
 		sample, and so forth.
 	"""
 
-	def __init__(self, n_samples=10, metric='euclidean', 
-		n_naive_samples=1, initial_subset=None, optimizer='two-stage', 
-		optimizer1='naive', optimizer2='naive', epsilon=0.9, l=2, m=4, 
-		n_neighbors=None, alpha=1, n_jobs=1, random_state=None, 
-		verbose=False):
+	def __init__(self, n_samples=10, metric='euclidean', alpha=1,
+		initial_subset=None, optimizer='two-stage', n_neighbors=None, n_jobs=1, 
+		random_state=None, optimizer_kwds={}, verbose=False):
 		self.alpha = alpha
 
 		super(GraphCutSelection, self).__init__(n_samples=n_samples, 
-			metric=metric, n_naive_samples=n_naive_samples, 
-			initial_subset=initial_subset, optimizer=optimizer, 
-			optimizer1=optimizer1, optimizer2=optimizer2, epsilon=epsilon, 
-			l=l, m=m, n_neighbors=n_neighbors, n_jobs=n_jobs, 
-			random_state=random_state, verbose=verbose)
+			metric=metric, initial_subset=initial_subset, optimizer=optimizer,  
+			n_neighbors=n_neighbors, n_jobs=n_jobs, random_state=random_state, 
+			optimizer_kwds={}, verbose=verbose)
 
 	def fit(self, X, y=None):
 		"""Perform selection and return the subset of the data set.
@@ -162,10 +158,11 @@ class GraphCutSelection(BaseGraphSelection):
 		super(GraphCutSelection, self)._initialize(X_pairwise)
 		
 		if self.sparse:
-			self.current_values = 0
+			self.current_values = X_pairwise.diagonal().astype('float64')
+			self.column_sum = self.alpha * numpy.array(X_pairwise.sum(axis=0))[0]
 		else:
-			self.column_sum = self.alpha * X_pairwise.sum(axis=0)
 			self.current_values = numpy.diag(X_pairwise).astype('float64')
+			self.column_sum = self.alpha * X_pairwise.sum(axis=0)
 
 		if self.initial_subset is None:
 			return
@@ -173,21 +170,18 @@ class GraphCutSelection(BaseGraphSelection):
 			raise ValueError("When using saturated coverage, the initial subset"\
 				" must be a one dimensional array of indices.")
 		elif self.initial_subset.ndim == 1:
-			if not self.sparse:
+			if self.sparse:
 				for i in self.initial_subset:
-					self.current_values = numpy.sum(X_pairwise[i],
-						self.current_values).astype('float64')
+					self.current_values += X_pairwise[i].toarray()[0]
 			else:
 				for i in self.initial_subset:
-					self.current_values = numpy.sum(
-						X_pairwise[i].toarray()[0], self.current_values).astype('float64')
+					self.current_values += X_pairwise[i]
 		else:
 			raise ValueError("The initial subset must be either a two dimensional" \
 				" matrix of examples or a one dimensional mask.")
 
 	def _calculate_gains(self, X_pairwise, idxs=None):
 		idxs = idxs if idxs is not None else self.idxs
-
 		gains = self.column_sum[idxs] - self.current_values[idxs]
 		return gains
 
@@ -195,7 +189,7 @@ class GraphCutSelection(BaseGraphSelection):
 		"""This function will add the given item to the selected set."""
 
 		if self.sparse:
-			self.current_subset_values += X_pairwise.toarray()[0]
+			self.current_values += X_pairwise.toarray()[0]
 		else:
 			self.current_values += X_pairwise
 

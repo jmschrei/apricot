@@ -40,7 +40,7 @@ def select_next_sparse(X_data, X_indices, X_indptr, gains, current_values, max_v
 
 		for j in range(start, end):
 			k = X_indices[j]
-			gains[i] += min(X_data[j] + current_values[k], max_values[k])
+			gains[i] += min(X_data[j] + current_values[k], max_values[k]) - current_values[k]
 
 def select_next_cupy(X, gains, current_values, max_values, mask):
 	gains[:] = cupy.sum(cupy.minimum(X + current_values, max_values), axis=1)
@@ -110,11 +110,6 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 
 		Default is 'naive'.
 
-	epsilon : float, optional
-		The inverse of the sampling probability of any particular point being 
-		included in the subset, such that 1 - epsilon is the probability that
-		a point is included. Only used for stochastic greedy. Default is 0.9.
-
 	random_state : int or RandomState or None, optional
 		The random seed to use for the random selection process. Only used
 		for stochastic greedy.
@@ -141,19 +136,15 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 		sample, and so forth.
 	"""
 
-	def __init__(self, n_samples=10, metric='euclidean', 
-		n_naive_samples=1, initial_subset=None, optimizer='two-stage', 
-		optimizer1='naive', optimizer2='naive', epsilon=0.9, l=2, m=4, 
-		n_neighbors=None, alpha=0.1, n_jobs=1, random_state=None, 
-		verbose=False):
+	def __init__(self, n_samples=10, metric='euclidean', alpha=0.1,
+		initial_subset=None, optimizer='two-stage', n_neighbors=None, n_jobs=1, 
+		random_state=None, optimizer_kwds={}, verbose=False):
 		self.alpha = alpha
 
 		super(SaturatedCoverageSelection, self).__init__(n_samples=n_samples, 
-			metric=metric, n_naive_samples=n_naive_samples, 
-			initial_subset=initial_subset, optimizer=optimizer, 
-			optimizer1=optimizer1, optimizer2=optimizer2, epsilon=epsilon, 
-			l=l, m=m, n_neighbors=n_neighbors, n_jobs=n_jobs, 
-			random_state=random_state, verbose=verbose)
+			metric=metric,initial_subset=initial_subset, optimizer=optimizer, 
+			optimizer_kwds=optimizer_kwds, n_neighbors=n_neighbors, 
+			n_jobs=n_jobs, random_state=random_state, verbose=verbose)
 
 	def fit(self, X, y=None):
 		"""Perform selection and return the subset of the data set.
@@ -184,7 +175,12 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 
 	def _initialize(self, X_pairwise):
 		super(SaturatedCoverageSelection, self)._initialize(X_pairwise)
-		self.max_values = self.alpha * X_pairwise.sum(axis=1)
+
+		if self.sparse:
+			self.max_values = self.alpha * numpy.array(
+				X_pairwise.sum(axis=1))[:,0]
+		else:
+			self.max_values = self.alpha * X_pairwise.sum(axis=1)
 
 		if self.initial_subset is None:
 			return
@@ -194,12 +190,12 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 		elif self.initial_subset.ndim == 1:
 			if not self.sparse:
 				for i in self.initial_subset:
-					self.current_values = numpy.sum(X_pairwise[i],
-						self.current_values).astype('float64')
+					self.current_values = numpy.minimum(self.max_values,
+						self.current_values + X_pairwise[i])
 			else:
 				for i in self.initial_subset:
-					self.current_values = numpy.sum(
-						X_pairwise[i].toarray()[0], self.current_values).astype('float64')
+					self.current_values = numpy.minimum(self.max_values,
+						self.current_values + X_pairwise[i].toaray()[0])
 		else:
 			raise ValueError("The initial subset must be either a two dimensional" \
 				" matrix of examples or a one dimensional mask.")
@@ -211,6 +207,7 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 			gains = cupy.zeros(idxs.shape[0], dtype='float64')
 			select_next_cupy(X_pairwise, gains, self.current_values,
 				self.max_values, idxs)
+			gains -= self.current_values.sum()
 		else:
 			gains = numpy.zeros(idxs.shape[0], dtype='float64')
 			if self.sparse:
@@ -220,8 +217,8 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 			else:
 				select_next(X_pairwise, gains, self.current_values,
 					self.max_values, idxs)
+				gains -= self.current_values.sum()
 
-		gains -= self.current_values.sum()
 		return gains
 
 	def _select_next(self, X_pairwise, gain, idx):
@@ -231,8 +228,8 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 			self.current_values = cupy.minimum(self.max_values,
 				self.current_values + X_pairwise)
 		elif self.sparse:
-			self.current_values = numpy.minimum(
-				X_pairwise.toarray()[0], self.current_values)
+			self.current_values = numpy.minimum(self.max_values,
+				X_pairwise.toarray()[0] + self.current_values)
 		else:
 			self.current_values = numpy.minimum(self.max_values,
 				self.current_values + X_pairwise)
