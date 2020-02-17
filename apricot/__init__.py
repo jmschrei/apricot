@@ -9,6 +9,6 @@ from .functions import SaturatedCoverageSelection
 from .functions import SumRedundancySelection
 from .functions import GraphCutSelection
 
-from .functions import SubmodularMixtureSelection
+from .functions import MixtureSelection
 
 __version__ = '0.5.0rc'

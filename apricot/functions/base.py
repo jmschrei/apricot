@@ -32,7 +32,7 @@ from sklearn.metrics import pairwise_distances
 from sklearn.neighbors import KNeighborsTransformer
 
 def _calculate_pairwise_distances(X, metric, n_neighbors=None):
-	if metric == 'precomputed':
+	if metric in ('precomputed', 'ignore'):
 		return X
 
 	if n_neighbors is None:
@@ -177,12 +177,18 @@ class BaseSelection(object):
 		self.initial_subset = initial_subset
 
 	def fit(self, X, y=None):
-		"""Fit a ranking to the data set of the top n_sample elements.
+		"""Run submodular optimization to select the examples.
 
-		This method will take in the data set (and optionally a label) set
-		and fit a ranking to it. This runs the greedy select procedure n_samples
-		times, selecting at each iteration the next best element. The ranking
-		is then stored for future use.
+		This method is a wrapper for the full submodular optimization process.
+		It takes in some data set (and optionally labels that are ignored
+		during this process) and selects `n_samples` from it in the greedy
+		manner specified by the optimizer.
+
+		This method will return the selector object itself, not the transformed
+		data set. The `transform` method will then transform a data set to the
+		selected points, or alternatively one can use the ranking stored in
+		the `self.ranking` attribute. The `fit_transform` method will perform
+		both optimization and selection and return the selected items.
 
 		Parameters
 		----------
@@ -197,6 +203,7 @@ class BaseSelection(object):
 		Returns
 		-------
 		self : BaseSelection
+			The fit step returns this selector object.
 		"""
 
 		allowed_dtypes = list, numpy.ndarray, csr_matrix, cupy.ndarray
@@ -440,13 +447,18 @@ class BaseGraphSelection(BaseSelection):
 			random_state=random_state, verbose=verbose)
 
 	def fit(self, X, y=None):
-		"""Perform selection and return the subset of the data set.
+		"""Run submodular optimization to select the examples.
 
-		This method will take in a full data set and return the selected subset
-		according to the graph selection function. The data will be returned in
-		the order that it was selected, with the first row corresponding to
-		the best first selection, the second row corresponding to the second
-		best selection, etc.
+		This method is a wrapper for the full submodular optimization process.
+		It takes in some data set (and optionally labels that are ignored
+		during this process) and selects `n_samples` from it in the greedy
+		manner specified by the optimizer.
+
+		This method will return the selector object itself, not the transformed
+		data set. The `transform` method will then transform a data set to the
+		selected points, or alternatively one can use the ranking stored in
+		the `self.ranking` attribute. The `fit_transform` method will perform
+		both optimization and selection and return the selected items.
 
 		Parameters
 		----------
@@ -460,11 +472,11 @@ class BaseGraphSelection(BaseSelection):
 
 		Returns
 		-------
-		self : GraphSelectionSelection
-			The fit step returns itself.
+		self : BaseGraphSelection
+			The fit step returns this selector object.
 		"""
 
-		if isinstance(X, csr_matrix) and self.metric != "precomputed":
+		if isinstance(X, csr_matrix) and self.metric not in ("precomputed", "ignore"):
 			raise ValueError("Must passed in a precomputed sparse " \
 				"similarity matrix or a dense feature matrix.")
 		if self.metric == 'precomputed' and X.shape[0] != X.shape[1]:

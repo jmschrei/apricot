@@ -9,4 +9,4 @@ from .saturatedCoverage import SaturatedCoverageSelection
 from .sumRedundancy import SumRedundancySelection
 from .graphCut import GraphCutSelection
 
-from .mixture import SubmodularMixtureSelection
+from .mixture import MixtureSelection

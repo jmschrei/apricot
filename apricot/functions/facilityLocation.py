@@ -153,13 +153,18 @@ class FacilityLocationSelection(BaseGraphSelection):
 			n_jobs=n_jobs, random_state=random_state, verbose=verbose)
 
 	def fit(self, X, y=None):
-		"""Perform selection and return the subset of the data set.
+		"""Run submodular optimization to select the examples.
 
-		This method will take in a full data set and return the selected subset
-		according to the facility location function. The data will be returned in
-		the order that it was selected, with the first row corresponding to
-		the best first selection, the second row corresponding to the second
-		best selection, etc.
+		This method is a wrapper for the full submodular optimization process.
+		It takes in some data set (and optionally labels that are ignored
+		during this process) and selects `n_samples` from it in the greedy
+		manner specified by the optimizer.
+
+		This method will return the selector object itself, not the transformed
+		data set. The `transform` method will then transform a data set to the
+		selected points, or alternatively one can use the ranking stored in
+		the `self.ranking` attribute. The `fit_transform` method will perform
+		both optimization and selection and return the selected items.
 
 		Parameters
 		----------
@@ -174,7 +179,7 @@ class FacilityLocationSelection(BaseGraphSelection):
 		Returns
 		-------
 		self : FacilityLocationSelection
-			The fit step returns itself.
+			The fit step returns this selector object.
 		"""
 
 		return super(FacilityLocationSelection, self).fit(X, y)
