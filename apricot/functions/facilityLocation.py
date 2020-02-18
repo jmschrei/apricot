@@ -2,7 +2,8 @@
 # Author: Jacob Schreiber <jmschreiber91@gmail.com>
 
 """
-This code implements facility location functions.
+This file contains code that implements facility location submodular selection
+algorithms.
 """
 
 try:
@@ -45,21 +46,23 @@ def select_next_cupy(X, gains, current_values, idxs):
 	return int(cupy.argmax(gains[idxs]))
 
 class FacilityLocationSelection(BaseGraphSelection):
-	"""A facility location submodular selection algorithm.
+	"""A selector based off a facility location submodular function.
 
-	NOTE: All ~pairwise~ values in your data must be positive for this 
+	NOTE: All ~pairwise~ values in your data must be non-negative for this 
 	selection to work.
 
-	This function uses a facility location based submodular selection algorithm
-	to identify a representative subset of the data. This feature based function
-	works on pairwise relationships between each of the samples. This can be
-	the correlation, a dot product, or any other such function where a higher
-	value corresponds to a higher similarity and a lower value corresponds to
-	a lower similarity.
+	This selector uses a facility location submodular function to perform
+	selection. The facility location function is based on maximizing the
+	pairwise similarities between the points in the data set and their nearest
+	chosen point. The similarity function can be species by the user but must
+	be non-negative where a higher value indicates more similar.
 
 	This implementation allows users to pass in either their own symmetric
 	square matrix of similarity values, or a data matrix as normal and a function
 	that calculates these pairwise values.
+
+	For more details, see https://las.inf.ethz.ch/files/krause12survey.pdf
+	page 4.
 
 	Parameters
 	----------
@@ -77,13 +80,6 @@ class FacilityLocationSelection(BaseGraphSelection):
 		is performed on the resulting distances. For backcompatibility,
 		'corr' will be read as 'correlation'. Default is 'euclidean'.
 
-	n_naive_samples : int, optional
-		The number of samples to perform the naive greedy algorithm on
-		before switching to the lazy greedy algorithm. The lazy greedy
-		algorithm is faster once features begin to saturate, but is slower
-		in the initial few selections. This is, in part, because the naive
-		greedy algorithm is parallelized whereas the lazy greedy
-		algorithm currently is not. Default is 1.
 
 	initial_subset : list, numpy.ndarray or None, optional
 		If provided, this should be a list of indices into the data matrix
@@ -98,20 +94,32 @@ class FacilityLocationSelection(BaseGraphSelection):
 		initially and then switches to the lazy greedy algorithm. Must be
 		one of
 
+			'random' : randomly select elements (dummy optimizer)
+			'modular' : approximate the function using its modular upper bound
 			'naive' : the naive greedy algorithm
 			'lazy' : the lazy (or accelerated) greedy algorithm
 			'approximate-lazy' : the approximate lazy greedy algorithm
 			'two-stage' : starts with naive and switches to lazy
 			'stochastic' : the stochastic greedy algorithm
+			'sample' : randomly take a subset and perform selection on that
 			'greedi' : the GreeDi distributed algorithm
 			'bidirectional' : the bidirectional greedy algorithm
 
-		Default is 'naive'.
+		Default is 'two-stage'.
 
-	epsilon : float, optional
-		The inverse of the sampling probability of any particular point being 
-		included in the subset, such that 1 - epsilon is the probability that
-		a point is included. Only used for stochastic greedy. Default is 0.9.
+	optimizer_kwds : dict, optional
+		Arguments to pass into the optimizer object upon initialization.
+		Default is {}.
+
+	n_neighbors : int or None, optional
+		The number of nearest neighbors to keep in the KNN graph, discarding
+		all other neighbors. This process can result in a speedup but is an
+		approximation.
+
+	n_jobs : int, optional
+		The number of cores to use for processing. This value is multiplied
+		by 2 when used to set the number of threads. If set to -1, use all
+		cores and threads. Default is -1.
 
 	random_state : int or RandomState or None, optional
 		The random seed to use for the random selection process. Only used
@@ -125,10 +133,6 @@ class FacilityLocationSelection(BaseGraphSelection):
 	n_samples : int
 		The number of samples to select.
 
-	metric : callable
-		A function that takes in a data matrix and converts it to a square
-		symmetric matrix.
-
 	ranking : numpy.array int
 		The selected samples in the order of their gain.
 
@@ -140,25 +144,27 @@ class FacilityLocationSelection(BaseGraphSelection):
 	"""
 
 	def __init__(self, n_samples=10, metric='euclidean', 
-		n_naive_samples=1, initial_subset=None, optimizer='two-stage', 
-		optimizer1='naive', optimizer2='naive', epsilon=0.9, l=2, m=4, 
+		initial_subset=None, optimizer='two-stage', optimizer_kwds={}, 
 		n_neighbors=None, n_jobs=1, random_state=None, verbose=False):
 
 		super(FacilityLocationSelection, self).__init__(n_samples=n_samples, 
-			metric=metric, n_naive_samples=n_naive_samples, 
-			initial_subset=initial_subset, optimizer=optimizer, 
-			optimizer1=optimizer1, optimizer2=optimizer2, epsilon=epsilon, 
-			l=l, m=m, n_neighbors=n_neighbors, n_jobs=n_jobs, 
-			random_state=random_state, verbose=verbose)
+			metric=metric, initial_subset=initial_subset, optimizer=optimizer, 
+			optimizer_kwds=optimizer_kwds, n_neighbors=n_neighbors, 
+			n_jobs=n_jobs, random_state=random_state, verbose=verbose)
 
 	def fit(self, X, y=None):
-		"""Perform selection and return the subset of the data set.
+		"""Run submodular optimization to select the examples.
 
-		This method will take in a full data set and return the selected subset
-		according to the facility location function. The data will be returned in
-		the order that it was selected, with the first row corresponding to
-		the best first selection, the second row corresponding to the second
-		best selection, etc.
+		This method is a wrapper for the full submodular optimization process.
+		It takes in some data set (and optionally labels that are ignored
+		during this process) and selects `n_samples` from it in the greedy
+		manner specified by the optimizer.
+
+		This method will return the selector object itself, not the transformed
+		data set. The `transform` method will then transform a data set to the
+		selected points, or alternatively one can use the ranking stored in
+		the `self.ranking` attribute. The `fit_transform` method will perform
+		both optimization and selection and return the selected items.
 
 		Parameters
 		----------
@@ -173,7 +179,7 @@ class FacilityLocationSelection(BaseGraphSelection):
 		Returns
 		-------
 		self : FacilityLocationSelection
-			The fit step returns itself.
+			The fit step returns this selector object.
 		"""
 
 		return super(FacilityLocationSelection, self).fit(X, y)

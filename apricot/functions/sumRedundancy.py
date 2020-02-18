@@ -15,20 +15,22 @@ import numpy
 from .base import BaseGraphSelection
 
 from tqdm import tqdm
-from scipy.sparse import diags
 
 class SumRedundancySelection(BaseGraphSelection):
-	"""A saturated coverage submodular selection algorithm.
+	"""A selector based off a sum redundancy submodular function.
 
 	NOTE: All ~pairwise~ values in your data must be positive for this 
 	selection to work.
 
-	This function uses a saturated coverage based submodular selection algorithm
-	to identify a representative subset of the data. This function works on 
-	pairwise measures between each of the samples. These measures can be
-	the correlation, a dot product, or any other such function where a higher
-	value corresponds to a higher similarity and a lower value corresponds to
-	a lower similarity.
+	This selector uses a sum redundancy function to perform selection. The
+	sum redundancy function is based on maximizing the difference between
+	the 
+
+	This selector uses a sum redundancy submodular function to perform
+	selection. The sum redundancy function is based on maximizing the
+	pairwise similarities between the points in the data set and their nearest
+	chosen point. The similarity function can be species by the user but must
+	be non-negative where a higher value indicates more similar.
 
 	This implementation allows users to pass in either their own symmetric
 	square matrix of similarity values, or a data matrix as normal and a function
@@ -113,27 +115,27 @@ class SumRedundancySelection(BaseGraphSelection):
 	"""
 
 	def __init__(self, n_samples=10, metric='euclidean', 
-		n_naive_samples=1, initial_subset=None, optimizer='two-stage', 
-		optimizer1='naive', optimizer2='naive', epsilon=0.9, l=2, m=4, 
-		n_neighbors=None, alpha=0.1, n_jobs=1, random_state=None, 
-		verbose=False):
-		self.alpha = alpha
+		initial_subset=None, optimizer='two-stage', n_neighbors=None, n_jobs=1, 
+		random_state=None, optimizer_kwds={}, verbose=False):
 
 		super(SumRedundancySelection, self).__init__(n_samples=n_samples, 
-			metric=metric, n_naive_samples=n_naive_samples, 
-			initial_subset=initial_subset, optimizer=optimizer, 
-			optimizer1=optimizer1, optimizer2=optimizer2, epsilon=epsilon, 
-			l=l, m=m, n_neighbors=n_neighbors, n_jobs=n_jobs, 
-			random_state=random_state, verbose=verbose)
+			metric=metric, initial_subset=initial_subset, optimizer=optimizer, 
+			n_neighbors=n_neighbors, n_jobs=n_jobs, random_state=random_state, 
+			optimizer_kwds=optimizer_kwds, verbose=verbose)
 
 	def fit(self, X, y=None):
-		"""Perform selection and return the subset of the data set.
+		"""Run submodular optimization to select the examples.
 
-		This method will take in a full data set and return the selected subset
-		according to the saturated coverage function. The data will be returned in
-		the order that it was selected, with the first row corresponding to
-		the best first selection, the second row corresponding to the second
-		best selection, etc.
+		This method is a wrapper for the full submodular optimization process.
+		It takes in some data set (and optionally labels that are ignored
+		during this process) and selects `n_samples` from it in the greedy
+		manner specified by the optimizer.
+
+		This method will return the selector object itself, not the transformed
+		data set. The `transform` method will then transform a data set to the
+		selected points, or alternatively one can use the ranking stored in
+		the `self.ranking` attribute. The `fit_transform` method will perform
+		both optimization and selection and return the selected items.
 
 		Parameters
 		----------
@@ -148,24 +150,30 @@ class SumRedundancySelection(BaseGraphSelection):
 		Returns
 		-------
 		self : SumRedundancySelection
-			The fit step returns itself.
+			The fit step returns this selector object.
 		"""
 
 		return super(SumRedundancySelection, self).fit(X, y)
 
-	def _initialize(self, X_pairwise):
-		super(SumRedundancySelection, self)._initialize(X_pairwise)
+	def _initialize(self, X_pairwise, idxs=None):
+		super(SumRedundancySelection, self)._initialize(X_pairwise, idxs=idxs)
+		idxs = idxs if idxs is not None else numpy.arange(X_pairwise.shape[0])
 
-		if self.sparse:
-			self.current_values = X_pairwise.diagonal()
-		else:
-			self.current_values = numpy.diag(X_pairwise).astype('float64')
+		for i, idx in enumerate(idxs):
+			self.current_values[i] = X_pairwise[i, idx]
 
 		if self.initial_subset is None:
 			return
 		elif self.initial_subset.ndim == 2:
 			raise ValueError("When using saturated coverage, the initial subset"\
 				" must be a one dimensional array of indices.")
+		elif self.initial_subset.ndim == 1:
+			if not self.sparse:
+				for i in self.initial_subset:
+					self.current_values += X_pairwise[i] * 2 
+			else:
+				for i in self.initial_subset:
+					self.current_values += X_pairwise[i].toarray()[0] * 2
 		else:
 			raise ValueError("The initial subset must be either a two dimensional" \
 				" matrix of examples or a one dimensional mask.")

@@ -22,6 +22,7 @@ from ..optimizers import TwoStageGreedy
 from ..optimizers import StochasticGreedy
 from ..optimizers import BidirectionalGreedy
 from ..optimizers import GreeDi
+from ..optimizers import OPTIMIZERS
 
 from ..utils import PriorityQueue
 
@@ -30,6 +31,43 @@ from scipy.sparse import csr_matrix
 from sklearn.metrics import pairwise_distances
 from sklearn.neighbors import KNeighborsTransformer
 
+def _calculate_pairwise_distances(X, metric, n_neighbors=None):
+	if metric in ('precomputed', 'ignore'):
+		return X
+
+	if n_neighbors is None:
+		if metric == 'euclidean':
+			X_pairwise = pairwise_distances(X, metric=metric, squared=True)
+		elif metric == 'correlation' or metric == 'cosine':
+			X_pairwise = 1 - (1 - pairwise_distances(X, metric=metric)) ** 2
+		else:
+			X_pairwise = pairwise_distances(X, metric=metric)
+	else:
+		if metric == 'correlation' or metric == 'cosine':
+			X = 1 - (1 - pairwise_distances(X, metric=metric)) ** 2
+			metric = 'precomputed'
+
+		if isinstance(n_neighbors, int):
+			params = {'squared': True} if metric == 'euclidean' else None
+			X_pairwise = KNeighborsTransformer(
+				n_neighbors=n_neighbors, metric=metric, 
+				metric_params=params).fit_transform(X)
+
+		elif isinstance(n_neighbors, KNeighborsTransformer):
+			X_pairwise = n_neighbors.fit_transform(X)
+
+	if metric == 'correlation' or metric == 'cosine':
+		if isinstance(X_pairwise, csr_matrix):
+			X_pairwise.data = 1 - X_pairwise.data
+		else:
+			X_pairwise = 1 - X_pairwise
+	else:
+		if isinstance(X_pairwise, csr_matrix):
+			X_pairwise.data = X_pairwise.max() - X_pairwise.data
+		else:
+			X_pairwise = X_pairwise.max() - X_pairwise
+
+	return numpy.array(X_pairwise, dtype='float64')
 
 class BaseSelection(object):
 	"""The base selection object.
@@ -43,7 +81,7 @@ class BaseSelection(object):
 	n_samples : int
 		The number of samples to return.
 
-	n_naive_samples : int, optional
+	n_first_samples : int, optional
 		The number of samples to perform the naive greedy algorithm on
 		before switching to the lazy greedy algorithm. The lazy greedy
 		algorithm is faster once features begin to saturate, but is slower
@@ -74,10 +112,6 @@ class BaseSelection(object):
 
 		Default is 'naive'.
 
-	epsilon : float, optional
-		The inverse of the sampling probability of any particular point being 
-		included in the subset, such that 1 - epsilon is the probability that
-		a point is included. Only used for stochastic greedy. Default is 0.9.
 
 	random_state : int or RandomState or None, optional
 		The random seed to use for the random selection process. Only used
@@ -106,21 +140,12 @@ class BaseSelection(object):
 		sample, and so forth.
 	"""
 
-	def __init__(self, n_samples, n_naive_samples=1, initial_subset=None, 
-		optimizer='two-stage', optimizer1='lazy', optimizer2='lazy', 
-		epsilon=0.9, beta=0.9, l=2, m=4, n_jobs=1, random_state=None, 
-		verbose=False):
+	def __init__(self, n_samples, initial_subset=None, optimizer='two-stage', 
+		optimizer_kwds={}, n_jobs=1, random_state=None, verbose=False):
 		if type(n_samples) != int:
 			raise ValueError("n_samples must be a positive integer.")
 		if n_samples < 1:
 			raise ValueError("n_samples must be a positive integer.")
-
-		if type(n_naive_samples) != int:
-			raise ValueError("n_naive_samples must be a positive integer")
-		if n_naive_samples < 1:
-			raise ValueError("n_naive_samples must be a positive integer.")
-		if n_naive_samples > n_samples:
-			raise ValueError("n_samples must be larger than n_naive_samples")
 
 		if not isinstance(initial_subset, (list, numpy.ndarray)) and initial_subset is not None: 
 			raise ValueError("initial_subset must be a list, numpy array, or None")
@@ -128,9 +153,9 @@ class BaseSelection(object):
 			initial_subset = numpy.array(initial_subset)
 
 		if not isinstance(optimizer, BaseOptimizer):
-			if optimizer not in ('naive', 'lazy', 'approximate-lazy', 
-				'two-stage', 'stochastic', 'bidirectional', 'greedi'):
-				raise ValueError("Optimizer must be a string or an optimizer object.")
+			if optimizer not in OPTIMIZERS.keys():
+				raise ValueError("Optimizer must be an optimizer object or " \
+					"a str in {}.".format(str(OPTIMIZERS.keys())))
 
 		if isinstance(optimizer, BaseOptimizer):
 			optimizer.function = self
@@ -139,16 +164,10 @@ class BaseSelection(object):
 			raise ValueError("verbosity must be True or False")
 
 		self.n_samples = n_samples
-		self.n_naive_samples = n_naive_samples
-		self.epsilon = epsilon
-		self.beta = beta
 		self.random_state = random_state
 		self.optimizer = optimizer
-		self.optimizer1 = optimizer1
-		self.optimizer2 = optimizer2
+		self.optimizer_kwds = optimizer_kwds
 		self.n_jobs = n_jobs
-		self.l = l
-		self.m = m
 		self.verbose = verbose
 		self.ranking = None
 		self.idxs = None
@@ -158,12 +177,18 @@ class BaseSelection(object):
 		self.initial_subset = initial_subset
 
 	def fit(self, X, y=None):
-		"""Fit a ranking to the data set of the top n_sample elements.
+		"""Run submodular optimization to select the examples.
 
-		This method will take in the data set (and optionally a label) set
-		and fit a ranking to it. This runs the greedy select procedure n_samples
-		times, selecting at each iteration the next best element. The ranking
-		is then stored for future use.
+		This method is a wrapper for the full submodular optimization process.
+		It takes in some data set (and optionally labels that are ignored
+		during this process) and selects `n_samples` from it in the greedy
+		manner specified by the optimizer.
+
+		This method will return the selector object itself, not the transformed
+		data set. The `transform` method will then transform a data set to the
+		selected points, or alternatively one can use the ranking stored in
+		the `self.ranking` attribute. The `fit_transform` method will perform
+		both optimization and selection and return the selected items.
 
 		Parameters
 		----------
@@ -178,6 +203,7 @@ class BaseSelection(object):
 		Returns
 		-------
 		self : BaseSelection
+			The fit step returns this selector object.
 		"""
 
 		allowed_dtypes = list, numpy.ndarray, csr_matrix, cupy.ndarray
@@ -200,21 +226,10 @@ class BaseSelection(object):
 			if X.dtype != 'float64':
 				X = X.astype('float64')
 
-		optimizers = {
-			'naive' : NaiveGreedy(self, self.verbose),
-			'lazy' : LazyGreedy(self, self.verbose),
-			'approximate-lazy' : ApproximateLazyGreedy(self, self.beta, 
-				self.verbose),
-			'two-stage' : TwoStageGreedy(self, self.n_naive_samples, self.verbose),
-			'stochastic' : StochasticGreedy(self, self.epsilon, self.random_state,
-				self.verbose),
-			'bidirectional' : BidirectionalGreedy(self, self.verbose),
-			'greedi' : GreeDi(self, self.m, self.l, self.optimizer1, 
-				self.optimizer2, self.n_jobs, self.random_state, self.verbose)
-		}
-
 		if isinstance(self.optimizer, str):
-			optimizer = optimizers[self.optimizer]
+			optimizer = OPTIMIZERS[self.optimizer](function=self, 
+				verbose=self.verbose, random_state=self.random_state,
+				**self.optimizer_kwds)
 		else:
 			optimizer = self.optimizer
 
@@ -292,7 +307,7 @@ class BaseSelection(object):
 
 		return self.fit(X, y).transform(X, y)
 
-	def _initialize(self, X):
+	def _initialize(self, X, idxs=None):
 		self.sparse = isinstance(X, csr_matrix)
 		self.cupy = isinstance(X, cupy.ndarray) and not isinstance(X, numpy.ndarray)
 		self.ranking = []
@@ -306,7 +321,6 @@ class BaseSelection(object):
 			self.current_values = numpy.zeros(X.shape[1], dtype='float64')
 			self.current_concave_values = numpy.zeros(X.shape[1], dtype='float64')
 			self.mask = numpy.zeros(X.shape[0], dtype='int8')
-
 
 		if self.initial_subset is not None:
 			if self.initial_subset.ndim == 1:
@@ -371,14 +385,6 @@ class BaseGraphSelection(BaseSelection):
 		is performed on the resulting distances. For backcompatibility,
 		'corr' will be read as 'correlation'.
 
-	n_naive_samples : int
-		The number of samples to perform the naive greedy algorithm on
-		before switching to the lazy greedy algorithm. The lazy greedy
-		algorithm is faster once features begin to saturate, but is slower
-		in the initial few selections. This is, in part, because the naive
-		greedy algorithm is parallelized whereas the lazy greedy
-		algorithm currently is not.
-
 	initial_subset : list, numpy.ndarray or None
 		If provided, this should be a list of indices into the data matrix
 		to use as the initial subset, or a group of examples that may not be
@@ -401,11 +407,6 @@ class BaseGraphSelection(BaseSelection):
 			'bidirectional' : the bidirectional greedy algorithm
 
 		Default is 'naive'.
-
-	epsilon : float, optional
-		The inverse of the sampling probability of any particular point being 
-		included in the subset, such that 1 - epsilon is the probability that
-		a point is included. Only used for stochastic greedy. Default is 0.9.
 
 	random_state : int or RandomState or None, optional
 		The random seed to use for the random selection process. Only used
@@ -433,28 +434,31 @@ class BaseGraphSelection(BaseSelection):
 		sample, and so forth.
 	"""
 
-	def __init__(self, n_samples=10, metric='euclidean', n_naive_samples=1, 
-		initial_subset=None, optimizer='two-stage', optimizer1='naive', 
-		optimizer2='naive', epsilon=0.9, beta=0.9, l=2, m=4, n_neighbors=None, 
-		n_jobs=1, random_state=None, verbose=False):
+	def __init__(self, n_samples=10, metric='euclidean', 
+		initial_subset=None, optimizer='two-stage', optimizer_kwds={},
+		n_neighbors=None, n_jobs=1, random_state=None, verbose=False):
 		
 		self.metric = metric.replace("corr", "correlation")
 		self.n_neighbors = n_neighbors
 
 		super(BaseGraphSelection, self).__init__(n_samples=n_samples, 
-			n_naive_samples=n_naive_samples, initial_subset=initial_subset, 
-			optimizer=optimizer, optimizer1=optimizer1, optimizer2=optimizer2,
-			epsilon=epsilon, beta=beta, l=l, m=m, n_jobs=n_jobs, 
-			random_state=random_state,verbose=verbose)
+			initial_subset=initial_subset, optimizer=optimizer, 
+			optimizer_kwds=optimizer_kwds, n_jobs=n_jobs, 
+			random_state=random_state, verbose=verbose)
 
 	def fit(self, X, y=None):
-		"""Perform selection and return the subset of the data set.
+		"""Run submodular optimization to select the examples.
 
-		This method will take in a full data set and return the selected subset
-		according to the graph selection function. The data will be returned in
-		the order that it was selected, with the first row corresponding to
-		the best first selection, the second row corresponding to the second
-		best selection, etc.
+		This method is a wrapper for the full submodular optimization process.
+		It takes in some data set (and optionally labels that are ignored
+		during this process) and selects `n_samples` from it in the greedy
+		manner specified by the optimizer.
+
+		This method will return the selector object itself, not the transformed
+		data set. The `transform` method will then transform a data set to the
+		selected points, or alternatively one can use the ranking stored in
+		the `self.ranking` attribute. The `fit_transform` method will perform
+		both optimization and selection and return the selected items.
 
 		Parameters
 		----------
@@ -468,11 +472,11 @@ class BaseGraphSelection(BaseSelection):
 
 		Returns
 		-------
-		self : GraphSelectionSelection
-			The fit step returns itself.
+		self : BaseGraphSelection
+			The fit step returns this selector object.
 		"""
 
-		if isinstance(X, csr_matrix) and self.metric != "precomputed":
+		if isinstance(X, csr_matrix) and self.metric not in ("precomputed", "ignore"):
 			raise ValueError("Must passed in a precomputed sparse " \
 				"similarity matrix or a dense feature matrix.")
 		if self.metric == 'precomputed' and X.shape[0] != X.shape[1]:
@@ -482,40 +486,13 @@ class BaseGraphSelection(BaseSelection):
 		if self.verbose == True:
 			self.pbar = tqdm(total=self.n_samples)
 
-
-		if self.n_neighbors is None:
-			if self.metric == 'euclidean':
-				X_pairwise = pairwise_distances(X, metric=self.metric, squared=True)
-			else:
-				X_pairwise = pairwise_distances(X, metric=self.metric)
-		else:
-			if isinstance(self.n_neighbors, int):
-				transformer = KNeighborsTransformer(
-					n_neighbors=self.n_neighbors, metric=self.metric)
-				X_pairwise = transformer.fit_transform(X)
-			elif isinstance(self.n_neighbors, KNeighborsTransformer):
-				X_pairwise = self.n_neighbors.fit_transform(X)
-
-		if self.metric == 'correlation':
-			if isinstance(X_pairwise, csr_matrix):
-				X_pairwise.data = (1 - X_pairwise.data) ** 2
-			else:
-				X_pairwise = (1 - X_pairwise) ** 2
-		elif self.metric == 'cosine':
-			if isinstance(X_pairwise, csr_matrix):
-				X_pairwise.data = 1 - X_pairwise.data
-			else:
-				X_pairwise = 1 - X_pairwise
-		elif self.metric != 'precomputed':
-			if isinstance(X_pairwise, csr_matrix):
-				X_pairwise.data = X_pairwise.max() - X_pairwise.data
-			else:
-				X_pairwise = X_pairwise.max() - X_pairwise
-
+		X_pairwise = _calculate_pairwise_distances(X, metric=self.metric, 
+			n_neighbors=self.n_neighbors)
+	
 		return super(BaseGraphSelection, self).fit(X_pairwise, y)
 
-	def _initialize(self, X_pairwise):
-		super(BaseGraphSelection, self)._initialize(X_pairwise)
+	def _initialize(self, X_pairwise, idxs=None):
+		super(BaseGraphSelection, self)._initialize(X_pairwise, idxs=idxs)
 
 	def _calculate_gains(self, X_pairwise):
 		super(BaseGraphSelection, self)._calculate_gains(X_pairwise)

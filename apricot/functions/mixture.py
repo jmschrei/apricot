@@ -10,17 +10,13 @@ try:
 except:
 	import numpy as cupy
 	
-import time
 import numpy
 
-from .base import BaseSelection
+from .base import BaseGraphSelection
 
 from tqdm import tqdm
 
-from numba import njit, jit
-from numba import prange
-
-class SubmodularMixtureSelection(BaseSelection):
+class MixtureSelection(BaseGraphSelection):
 	"""A selection approach based on a mixture of submodular functions.
 
 	This class implements a simple mixture of submodular functions for the
@@ -44,27 +40,51 @@ class SubmodularMixtureSelection(BaseSelection):
 		The list of submodular functions to mix together. The submodular
 		functions should be instantiated.
 
-	weights : list, numpy.ndarray or None
+	weights : list, numpy.ndarray or None, optional
 		The relative weight of each submodular function. This is the value
 		that the gain from each submodular function is multiplied by before
 		being added together. The default is equal weight for each function.
 
-	n_greedy_samples : int
-		The number of samples to perform the naive greedy algorithm on
-		before switching to the lazy greedy algorithm. The lazy greedy
-		algorithm is faster once features begin to saturate, but is slower
-		in the initial few selections. This is, in part, because the naive
-		greedy algorithm is parallelized whereas the lazy greedy
-		algorithm currently is not.
-
-	initial_subset : list, numpy.ndarray or None
+	initial_subset : list, numpy.ndarray or None, optional
 		If provided, this should be a list of indices into the data matrix
 		to use as the initial subset, or a group of examples that may not be
 		in the provided data should beused as the initial subset. If indices, 
 		the provided array should be one-dimensional. If a group of examples,
 		the data should be 2 dimensional.
 
-	verbose : bool
+	optimizer : string or optimizers.BaseOptimizer, optional
+		The optimization approach to use for the selection. Default is
+		'two-stage', which makes selections using the naive greedy algorithm
+		initially and then switches to the lazy greedy algorithm. Must be
+		one of
+
+			'random' : randomly select elements (dummy optimizer)
+			'modular' : approximate the function using its modular upper bound
+			'naive' : the naive greedy algorithm
+			'lazy' : the lazy (or accelerated) greedy algorithm
+			'approximate-lazy' : the approximate lazy greedy algorithm
+			'two-stage' : starts with naive and switches to lazy
+			'stochastic' : the stochastic greedy algorithm
+			'sample' : randomly take a subset and perform selection on that
+			'greedi' : the GreeDi distributed algorithm
+			'bidirectional' : the bidirectional greedy algorithm
+
+		Default is 'two-stage'.
+
+	optimizer_kwds : dict, optional
+		Arguments to pass into the optimizer object upon initialization.
+		Default is {}.
+
+	n_jobs : int, optional
+		The number of cores to use for processing. This value is multiplied
+		by 2 when used to set the number of threads. If set to -1, use all
+		cores and threads. Default is -1.
+
+	random_state : int or RandomState or None, optional
+		The random seed to use for the random selection process. Only used
+		for stochastic greedy.
+
+	verbose : bool, optional
 		Whether to print output during the selection process.
 
 	Attributes
@@ -94,33 +114,48 @@ class SubmodularMixtureSelection(BaseSelection):
 		sample, and so forth.
 	"""
 
-	def __init__(self, n_samples, submodular_functions, weights=None, 
-		n_greedy_samples=3, initial_subset=None, optimizer='two-stage',
-		verbose=False):
+	def __init__(self, n_samples, functions, weights=None, metric='ignore',
+		initial_subset=None, optimizer='two-stage', optimizer_kwds={}, n_jobs=1, 
+		random_state=None, verbose=False):
 
-		if len(submodular_functions) < 2:
-			raise ValueError("Must mix at least two submodular functions.")
+		if len(functions) < 2:
+			raise ValueError("Must mix at least two functions.")
 
-		self.m = len(submodular_functions)
-		self.submodular_functions = submodular_functions
+		self.m = len(functions)
+		self.functions = functions
 
 		if weights is None:
 			self.weights = numpy.ones(self.m, dtype='float64')
 		else:
 			self.weights = weights
 
-		super(SubmodularMixtureSelection, self).__init__(n_samples=n_samples, 
-			n_greedy_samples=n_greedy_samples, initial_subset=initial_subset,
-			optimizer=optimizer, verbose=verbose) 
+		super(MixtureSelection, self).__init__(n_samples=n_samples, 
+			metric=metric, initial_subset=initial_subset, 
+			optimizer=optimizer, optimizer_kwds=optimizer_kwds, 
+			n_jobs=n_jobs, random_state=random_state, verbose=verbose)
+
+		for function in self.functions:
+			function.initial_subset = self.initial_subset
+			function.random_state = self.random_state
+			function.n_jobs = self.n_jobs
+			function.verbose = self.verbose
+
+			if isinstance(function, BaseGraphSelection):
+				function.metric = self.metric
 
 	def fit(self, X, y=None):
-		"""Perform selection and return the subset of the data set.
+		"""Run submodular optimization to select the examples.
 
-		This method will take in a full data set and return the selected subset
-		according to the feature based function. The data will be returned in
-		the order that it was selected, with the first row corresponding to
-		the best first selection, the second row corresponding to the second
-		best selection, etc.
+		This method is a wrapper for the full submodular optimization process.
+		It takes in some data set (and optionally labels that are ignored
+		during this process) and selects `n_samples` from it in the greedy
+		manner specified by the optimizer.
+
+		This method will return the selector object itself, not the transformed
+		data set. The `transform` method will then transform a data set to the
+		selected points, or alternatively one can use the ranking stored in
+		the `self.ranking` attribute. The `fit_transform` method will perform
+		both optimization and selection and return the selected items.
 
 		Parameters
 		----------
@@ -134,22 +169,22 @@ class SubmodularMixtureSelection(BaseSelection):
 
 		Returns
 		-------
-		self : FeatureBasedSelection
-			The fit step returns itself.
+		self : MixtureSelection
+			The fit step returns this selector object.
 		"""
 
 		if self.verbose:
 			self.pbar = tqdm(total=self.n_samples)
 
-		return super(SubmodularMixtureSelection, self).fit(X, y)
+		return super(MixtureSelection, self).fit(X, y)
 
 	def _initialize(self, X):
-		super(SubmodularMixtureSelection, self)._initialize(X)
+		super(MixtureSelection, self)._initialize(X)
 
-		for function in self.submodular_functions:
+		for function in self.functions:
 			function._initialize(X)
 
-	def _calculate_gains(self, X):
+	def _calculate_gains(self, X, idxs=None):
 		"""This function will return the gain that each example would give.
 
 		This function will return the gains that each example would give if
@@ -157,28 +192,22 @@ class SubmodularMixtureSelection(BaseSelection):
 		vector will be returned showing the gain for each example. When
 		a single element is passed in, it will return a singe value."""
 
-		if len(X.shape) == 1:
-			gain = 0.0
-			for function in self.submodular_functions:
-				gain += function._calculate_gains(X)
+		idxs = idxs if idxs is not None else self.idxs
 
-			return gain
-
+		if self.cupy:
+			gains = cupy.zeros(idxs.shape[0], dtype='float64')
 		else:
-			if self.cupy:
-				gains = cupy.zeros(X.shape[0], dtype='float64')
-			else:
-				gains = numpy.zeros(X.shape[0], dtype='float64')
+			gains = numpy.zeros(idxs.shape[0], dtype='float64')
 
-			for i, function in enumerate(self.submodular_functions):
-				gains += function._calculate_gains(X) * self.weights[i]
+		for i, function in enumerate(self.functions):
+			gains += function._calculate_gains(X, idxs) * self.weights[i]
 
-			return gains
+		return gains
 
 	def _select_next(self, X, gain, idx):
 		"""This function will add the given item to the selected set."""
 
-		for function in self.submodular_functions:
+		for function in self.functions:
 			function._select_next(X, gain, idx)
 
-		super(SubmodularMixtureSelection, self)._select_next(X, gain, idx)
+		super(MixtureSelection, self)._select_next(X, gain, idx)

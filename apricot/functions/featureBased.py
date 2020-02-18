@@ -11,7 +11,6 @@ try:
 except:
 	import numpy as cupy
 	
-import time
 import numpy
 
 from .base import BaseSelection
@@ -115,22 +114,18 @@ def select_min_next_cupy(X, gains, current_values, idxs):
 
 
 class FeatureBasedSelection(BaseSelection):
-	"""A feature based submodular selection algorithm.
+	"""A selector based off a feature based submodular function.
 
 	NOTE: All values in your data must be positive for this selection to work.
 
-	This function will use a feature based submodular selection algorithm to
-	identify a representative subset of the data. The feature based functions
-	use the values of the features themselves, rather than a transformation of
-	the values, in order to select a diverse subset. The goal of this approach
-	is to find a representative subset that sees each ~feature~ at a certain
-	saturation across the selected points, rather than trying to uniformly
-	sample the space.
+	This selector will optimize a feature based submodular function. Feature
+	based functions are those that use feature values of the examples directly,
+	like most machine learning methods do, rather than only using them 
+	indirectly through the calculation of similarity matrices, as kernel methods 
+	and facility location functions do.
 
-	This implementation uses the lazy greedy algorithm so that multiple passes
-	over the whole data set are not required each time a sample is selected. The
-	benefit of this effect is not typically seen until many (over 100) passes are
-	seen of the data set.
+	See https://ieeexplore.ieee.org/document/6854213 for more details on
+	feature based functions.
 
 	Parameters
 	----------
@@ -145,15 +140,7 @@ class FeatureBasedSelection(BaseSelection):
 			'log' : log(1 + X)
 			'sqrt' : sqrt(X)
 			'min' : min(X, 1)
-			'inverse' : X / (1 + X)
-
-	n_naive_samples : int
-		The number of samples to perform the naive greedy algorithm on
-		before switching to the lazy greedy algorithm. The lazy greedy
-		algorithm is faster once features begin to saturate, but is slower
-		in the initial few selections. This is, in part, because the naive
-		greedy algorithm is parallelized whereas the lazy greedy
-		algorithm currently is not.
+			'sigmoid' : X / (1 + X)
 
 	initial_subset : list, numpy.ndarray or None
 		If provided, this should be a list of indices into the data matrix
@@ -168,20 +155,27 @@ class FeatureBasedSelection(BaseSelection):
 		initially and then switches to the lazy greedy algorithm. Must be
 		one of
 
+			'random' : randomly select elements (dummy optimizer)
+			'modular' : approximate the function using its modular upper bound
 			'naive' : the naive greedy algorithm
 			'lazy' : the lazy (or accelerated) greedy algorithm
 			'approximate-lazy' : the approximate lazy greedy algorithm
 			'two-stage' : starts with naive and switches to lazy
 			'stochastic' : the stochastic greedy algorithm
+			'sample' : randomly take a subset and perform selection on that
 			'greedi' : the GreeDi distributed algorithm
 			'bidirectional' : the bidirectional greedy algorithm
 
-		Default is 'naive'.
+		Default is 'two-stage'.
 
-	epsilon : float, optional
-		The inverse of the sampling probability of any particular point being 
-		included in the subset, such that 1 - epsilon is the probability that
-		a point is included. Only used for stochastic greedy. Default is 0.9.
+	optimizer_kwds : dict, optional
+		Arguments to pass into the optimizer object upon initialization.
+		Default is {}.
+
+	n_jobs : int, optional
+		The number of cores to use for processing. This value is multiplied
+		by 2 when used to set the number of threads. If set to -1, use all
+		cores and threads. Default is -1.
 
 	random_state : int or RandomState or None, optional
 		The random seed to use for the random selection process. Only used
@@ -192,15 +186,8 @@ class FeatureBasedSelection(BaseSelection):
 
 	Attributes
 	----------
-	pq : PriorityQueue
-		The priority queue used to implement the lazy greedy algorithm.
-
 	n_samples : int
 		The number of samples to select.
-
-	concave_func : callable
-		A concave function for transforming feature values, often referred to as
-		phi in the literature.
 
 	ranking : numpy.array int
 		The selected samples in the order of their gain with the first number in
@@ -214,9 +201,8 @@ class FeatureBasedSelection(BaseSelection):
 		sample, and so forth.
 	"""
 
-	def __init__(self, n_samples, concave_func='sqrt', n_naive_samples=3, 
-		initial_subset=None, optimizer='two-stage', optimizer1='lazy', 
-		optimizer2='lazy', epsilon=0.9, beta=0.9, l=2, m=4, n_jobs=1, random_state=None, 
+	def __init__(self, n_samples, concave_func='sqrt', initial_subset=None, 
+		optimizer='two-stage', optimizer_kwds={}, n_jobs=1, random_state=None, 
 		verbose=False):
 		self.concave_func_name = concave_func
 
@@ -226,27 +212,31 @@ class FeatureBasedSelection(BaseSelection):
 			self.concave_func = lambda X: numpy.sqrt(X)
 		elif concave_func == 'min':
 			self.concave_func = lambda X: numpy.fmin(X, numpy.ones_like(X))
-		elif concave_func == 'inverse':
+		elif concave_func == 'sigmoid':
 			self.concave_func = lambda X: X / (1. + X)
 		elif callable(concave_func):
 			self.concave_func = concave_func
 		else:
-			raise KeyError("Must be one of 'log', 'sqrt', 'min', 'inverse', or a custom function.")
+			raise KeyError("Must be one of 'log', 'sqrt', 'min', 'sigmoid', or a custom function.")
 
 		super(FeatureBasedSelection, self).__init__(n_samples=n_samples, 
-			n_naive_samples=n_naive_samples, initial_subset=initial_subset,
-			optimizer=optimizer, optimizer1=optimizer1, optimizer2=optimizer2,
-			epsilon=epsilon, beta=beta, l=l, m=m, n_jobs=n_jobs, random_state=random_state,
-			verbose=verbose) 
+			initial_subset=initial_subset, optimizer=optimizer, 
+			optimizer_kwds=optimizer_kwds, n_jobs=n_jobs, 
+			random_state=random_state, verbose=verbose) 
 
 	def fit(self, X, y=None):
-		"""Perform selection and return the subset of the data set.
+		"""Run submodular optimization to select the examples.
 
-		This method will take in a full data set and return the selected subset
-		according to the feature based function. The data will be returned in
-		the order that it was selected, with the first row corresponding to
-		the best first selection, the second row corresponding to the second
-		best selection, etc.
+		This method is a wrapper for the full submodular optimization process.
+		It takes in some data set (and optionally labels that are ignored
+		during this process) and selects `n_samples` from it in the greedy
+		manner specified by the optimizer.
+
+		This method will return the selector object itself, not the transformed
+		data set. The `transform` method will then transform a data set to the
+		selected points, or alternatively one can use the ranking stored in
+		the `self.ranking` attribute. The `fit_transform` method will perform
+		both optimization and selection and return the selected items.
 
 		Parameters
 		----------
@@ -261,7 +251,7 @@ class FeatureBasedSelection(BaseSelection):
 		Returns
 		-------
 		self : FeatureBasedSelection
-			The fit step returns itself.
+			The fit step returns this selector object.
 		"""
 
 		if self.verbose:
@@ -300,9 +290,9 @@ class FeatureBasedSelection(BaseSelection):
 			'log': select_log_next,
 			'log_sparse': select_log_next_sparse,
 			'log_cupy': select_log_next_cupy,
-			'inverse': select_inv_next,
-			'inverse_sparse': select_inv_next_sparse,
-			'inverse_cupy': select_inv_next_cupy,
+			'sigmoid': select_inv_next,
+			'sigmoid_sparse': select_inv_next_sparse,
+			'sigmoid_cupy': select_inv_next_cupy,
 			'min': select_min_next,
 			'min_sparse': select_min_next_sparse,
 			'min_cupy': select_min_next_cupy
