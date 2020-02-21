@@ -4,19 +4,35 @@
 
 Please consider citing the [manuscript](https://arxiv.org/abs/1906.03543) if you use apricot in your academic work!
 
-apricot is a package for the greedy selection of diverse subsets of data from massive data sets using submodular selection. While there are many uses of a diverse subset of data, the primary goal of apricot is to yield subsets that yield accurate machine learning models with just a fraction of the samples. To this end, apricot implements **feature based functions** that easily scale to millions of examples and **facility location functions** that are slower but are more broadly applicable. These functions are agnostic to the machine learning model that will eventually be used and so apricot can be dropped in to your system with minimal interference. apricot uses numba to accelerate its computationally intensive aspects and many algorithmic optimizations to be orders of magnitude faster than a simple NumPy implementation of the same functions.
+apricot implements submodular optimization for the purpose of selecting diverse, minimally redundant, subsets of data from massive data sets. While there are many uses for these subsets, their primary usages are likely for visualizing the modalities in the data and to train accurate machine learning models with just a fraction of the examples and compute. 
+
+![](img/embeddings.png)
+
+There are many built-in submodular functions and optimizers in apricot. These include:
+
+**Functions**
+* Feature-based
+* Max (Set) Coverage
+* Facility Location
+* Graph Cut
+* Sum Redundancy
+* Saturated Coverage
+* Mixtures of Functions
+
+**Optimizers**
+* Naive Greedy
+* Lazy Greedy
+* Approximate Lazy Greedy
+* Stochastic Greedy
+* Sample Greedy
+* GreeDi
+* Monotone Approximation
+* Two-Stage
+* Bidirectional Greedy
 
 ### Installation
 
-apricot can be installed easily from PyPI with
-
-`pip install apricot-select`
-
-If you get an error that looks like 
-
-```Inconsistency detected by ld.so: dl-version.c: 224: _dl_check_map_versions: Assertion `needed != NULL' failed!``` 
-
-or a segmentation fault when importing apricot for the first time then you should try upgrading numba, as v0.40.0 appears to cause the issue. 
+apricot can be installed easily from PyPI with `pip install apricot-select`
 
 ### Usage
 
