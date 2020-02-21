@@ -5,7 +5,7 @@ setup(
     version='0.5.0rc',
     author='Jacob Schreiber',
     author_email='jmschreiber91@gmail.com',
-    packages=['apricot'],
+    packages=['apricot', 'apricot/functions'],
     url='http://pypi.python.org/pypi/apricot-select/',
     license='LICENSE.txt',
     description='apricot is a package for submodular selection of representative sets for machine learning models.',

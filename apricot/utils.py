@@ -6,10 +6,13 @@ This code contains utility functions to support the main functionality of
 the code.
 """
 
+import numbers
+import numpy
 import itertools
 
 from heapq import heappush
 from heapq import heappop
+from heapq import heapify
 
 class PriorityQueue(object):
     """A priority queue implementation.
@@ -39,10 +42,18 @@ class PriorityQueue(object):
         constant time lookups and deletions.
     """
 
-    def __init__(self):
-        self.pq = []
-        self.lookup = {}
+    def __init__(self, items=None, weights=None):
         self.counter = itertools.count()
+        self.lookup = {}
+        self.pq = []
+
+        if items is not None and weights is not None:
+            for item, weight in zip(items, weights):
+                entry = [weight, next(self.counter), item]
+                self.pq.append(entry)
+                self.lookup[item] = entry
+
+            heapify(self.pq)
     
     def add(self, item, weight):
         """Add an element to the priority queue. Runtime is O(log n).
@@ -120,3 +131,29 @@ class PriorityQueue(object):
                 return weight, item
         
         raise KeyError("No elements left in the priority queue.")
+
+def check_random_state(seed):
+    """Turn seed into a np.random.RandomState instance.
+
+    This function will check to see whether the input seed is a valid seed
+    for generating random numbers. This is a slightly modified version of
+    the code from sklearn.utils.validation.
+
+    Parameters
+    ----------
+    seed : None | int | instance of RandomState
+        If seed is None, return the RandomState singleton used by np.random.
+        If seed is an int, return a new RandomState instance seeded with seed.
+        If seed is already a RandomState instance, return it.
+        Otherwise raise ValueError.
+    """
+
+    if seed is None or seed is numpy.random:
+        return numpy.random.mtrand._rand
+    if isinstance(seed, (numbers.Integral, numpy.integer)):
+        return numpy.random.RandomState(seed)
+    if isinstance(seed, numpy.random.RandomState):
+        return seed
+    raise ValueError('%r cannot be used to seed a numpy.random.RandomState'
+                     ' instance' % seed)
+    
