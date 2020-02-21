@@ -127,7 +127,7 @@ class GraphCutSelection(BaseGraphSelection):
 			n_neighbors=n_neighbors, n_jobs=n_jobs, random_state=random_state, 
 			optimizer_kwds={}, verbose=verbose)
 
-	def fit(self, X, y=None):
+	def fit(self, X, y=None, sample_weight=None, sample_cost=None):
 		"""Run submodular optimization to select the examples.
 
 		This method is a wrapper for the full submodular optimization process.
@@ -146,10 +146,18 @@ class GraphCutSelection(BaseGraphSelection):
 		X : list or numpy.ndarray, shape=(n, d)
 			The data set to transform. Must be numeric.
 
-		y : list or numpy.ndarray, shape=(n,), optional
+		y : list or numpy.ndarray or None, shape=(n,), optional
 			The labels to transform. If passed in this function will return
 			both the data and th corresponding labels for the rows that have
 			been selected.
+
+		sample_weight : list or numpy.ndarray or None, shape=(n,), optional
+			The weight of each example. Currently ignored in apricot but
+			included to maintain compatibility with sklearn pipelines. 
+
+		sample_cost : list or numpy.ndarray or None, shape=(n,), optional
+			The cost of each item. If set, indicates that optimization should
+			be performed with respect to a knapsack constraint.
 
 		Returns
 		-------
@@ -157,7 +165,8 @@ class GraphCutSelection(BaseGraphSelection):
 			The fit step returns this selector object.
 		"""
 
-		return super(GraphCutSelection, self).fit(X, y)
+		return super(GraphCutSelection, self).fit(X, y=y, 
+			sample_weight=sample_weight, sample_cost=sample_cost)
 
 	def _initialize(self, X_pairwise):
 		super(GraphCutSelection, self)._initialize(X_pairwise)

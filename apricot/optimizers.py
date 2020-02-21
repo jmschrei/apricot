@@ -40,10 +40,6 @@ class BaseOptimizer(object):
 
 	self.verbose : bool
 		Whether to display a progress bar during the optimization process.
-
-	self.gains_ : numpy.ndarray or None
-		The gain that each example would give the last time that it was
-		evaluated.
 	"""
 
 	def __init__(self, function=None, random_state=None, n_jobs=None, 
@@ -88,10 +84,6 @@ class RandomGreedy(BaseOptimizer):
 
 	self.verbose : bool
 		Whether to display a progress bar during the optimization process.
-
-	self.gains_ : numpy.ndarray or None
-		The gain that each example would give the last time that it was
-		evaluated.
 	"""
 
 	def __init__(self, function=None, random_state=None, n_jobs=None, 
@@ -99,17 +91,25 @@ class RandomGreedy(BaseOptimizer):
 		super(NaiveGreedy, self).__init__(function=function, 
 			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
-	def select(self, X, k):
-		"""Select elements in a naive greedy manner."""
+	def select(self, X, k, sample_cost=None):
+		cost = 0.0
+		if sample_cost is None:
+			sample_cost = numpy.ones(X.shape[0], dtype='float64')
 
-		random_idxs = self.random_state.choice(X.shape[0], size=k)
+		i = 0
+		while cost < k:
+			idx = self.random_state.choice(self.random.idxs)
+		
+			if cost + sample_cost[idx] > k:
+				continue
 
-		for idx in random_idxs:
-			gains = self.function._calculate_gains(X, idxs=numpy.array([i]))[0]
+			cost += sample_cost[idx]
+			gain = self.function._calculate_gains(X, idxs=numpy.array([idx]))[0]
+
 			self.function._select_next(X[idx], gain, idx)
 
 			if self.verbose == True:
-				self.function.pbar.update(1)
+				self.function.pbar.update(round(sample_cost[idx], 2))
 
 
 class ModularGreedy(BaseOptimizer):
@@ -161,14 +161,23 @@ class ModularGreedy(BaseOptimizer):
 		super(ModularGreedy, self).__init__(function=function, 
 			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
-	def select(self, X, k):
+	def select(self, X, k, sample_cost=None):
 		"""Select elements in a naive greedy manner."""
 
-		gains = self.function._calculate_gains(X)
+		cost = 0.0
+		if sample_cost is None:
+			sample_cost = numpy.ones(X.shape[0], dtype='float64')
+
+		gains = self.function._calculate_gains(X) / sample_cost[self.function.idxs]
 		idxs = gains.argsort()[::-1]
 
-		for idx in idxs[:k]:
+		for idx in idxs:
+			if cost + sample_cost[idx] > k:
+				continue
+
+			cost += sample_cost[idx]
 			gain = self.function._calculate_gains(X, idxs=numpy.array([idx]))[0]
+
 			self.function._select_next(X[idx], gain, idx)
 
 			if self.verbose == True:
@@ -216,19 +225,28 @@ class NaiveGreedy(BaseOptimizer):
 		super(NaiveGreedy, self).__init__(function=function, 
 			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
-	def select(self, X, k):
-		"""Select elements in a naive greedy manner."""
+	def select(self, X, k, sample_cost=None):
+		cost = 0.0
+		if sample_cost is None:
+			sample_cost = numpy.ones(X.shape[0], dtype='float64')
 
-		for i in range(k):
-			gains = self.function._calculate_gains(X)
-			best_idx = gains.argmax()
-			best_gain = gains[best_idx]
-			best_idx = self.function.idxs[best_idx]
+		while cost < k:
+			gains = self.function._calculate_gains(X) / sample_cost[self.function.idxs]
+			idxs = numpy.lexsort((numpy.arange(gains.shape[0]), -gains))
 
-			self.function._select_next(X[best_idx], best_gain, best_idx)
+			for idx in idxs:
+				best_idx = self.function.idxs[idx]
+				if cost + sample_cost[best_idx] <= k:
+					break
+			else:
+				break
+
+			cost += sample_cost[best_idx]
+			gain = gains[idx] * sample_cost[best_idx]
+			self.function._select_next(X[best_idx], gain, best_idx)
 
 			if self.verbose == True:
-				self.function.pbar.update(1)
+				self.function.pbar.update(round(sample_cost[best_idx], 1))
 
 
 class LazyGreedy(BaseOptimizer):
@@ -277,34 +295,45 @@ class LazyGreedy(BaseOptimizer):
 		super(LazyGreedy, self).__init__(function=function, 
 			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
-	def select(self, X, k):
-		gains = self.function._calculate_gains(X)
+	def select(self, X, k, sample_cost=None):
+		cost = 0.0
+		if sample_cost is None:
+			sample_cost = numpy.ones(X.shape[0], dtype='float64')
+
+		gains = self.function._calculate_gains(X) / sample_cost[self.function.idxs]
 		self.pq = PriorityQueue(self.function.idxs, -gains)
 
-		for i in range(k):
+		while cost < k:
 			best_gain = float("-inf")
 			best_idx = None
 			
 			while True:
+				if len(self.pq.pq) == 0:
+					return
+
 				prev_gain, idx = self.pq.pop()
 				prev_gain = -prev_gain
+
+				if cost + sample_cost[idx] > k:
+					continue
 
 				if best_idx == idx:
 					break
 				
 				idxs = numpy.array([idx])
-				gain = self.function._calculate_gains(X, idxs)[0]
+				gain = self.function._calculate_gains(X, idxs)[0] / sample_cost[idx]
 				self.pq.add(idx, -gain)
 
 				if gain > best_gain:
 					best_gain = gain
 					best_idx = idx
 
+			cost += sample_cost[best_idx]
+			best_gain *= sample_cost[best_idx]
 			self.function._select_next(X[best_idx], best_gain, best_idx)
 
 			if self.verbose == True:
 				self.function.pbar.update(1)
-
 
 class ApproximateLazyGreedy(BaseOptimizer):
 	"""The approximate lazy/accelerated greedy algorithm for optimization.
@@ -353,17 +382,27 @@ class ApproximateLazyGreedy(BaseOptimizer):
 		super(ApproximateLazyGreedy, self).__init__(function=function, 
 			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
-	def select(self, X, k):
-		gains = self.function._calculate_gains(X)
+	def select(self, X, k, sample_cost=None):
+		cost = 0.0
+		if sample_cost is None:
+			sample_cost = numpy.ones(X.shape[0], dtype='float64')
+
+		gains = self.function._calculate_gains(X) / sample_cost[self.function.idxs]
 		self.pq = PriorityQueue(self.function.idxs, -gains)
 
-		for i in range(k):
+		while cost < k:
 			while True:
+				if len(self.pq.pq) == 0:
+					return
+
 				prev_gain, idx = self.pq.pop()
 				prev_gain = -prev_gain
 				
+				if cost + sample_cost[idx] > k:
+					continue
+
 				idxs = numpy.array([idx])
-				gain = self.function._calculate_gains(X, idxs)[0]
+				gain = self.function._calculate_gains(X, idxs)[0] / sample_cost[idx]
 
 				if gain >= self.beta * prev_gain:
 					best_gain = gain
@@ -372,6 +411,9 @@ class ApproximateLazyGreedy(BaseOptimizer):
 				else:
 					self.pq.add(idx, -gain)
 
+
+			cost += sample_cost[best_idx]
+			best_gain *= sample_cost[best_idx]
 			self.function._select_next(X[best_idx], best_gain, best_idx)
 
 			if self.verbose == True:
@@ -416,13 +458,6 @@ class TwoStageGreedy(BaseOptimizer):
 
 	self.verbose : bool
 		Whether to display a progress bar during the optimization process.
-
-	self.pq : utils.PriorityQueue
-		The priority queue used to order examples for evaluation.
-
-	self.gains_ : numpy.ndarray or None
-		The gain that each example would give the last time that it was
-		evaluated.
 	"""
 
 	def __init__(self, function=None, n_first_selections=10, 
@@ -434,7 +469,7 @@ class TwoStageGreedy(BaseOptimizer):
 		super(TwoStageGreedy, self).__init__(function=function, 
 			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
-	def select(self, X, k):
+	def select(self, X, k, sample_cost=None):
 		if isinstance(self.optimizer1, str):
 			optimizer1 = OPTIMIZERS[self.optimizer1](function=self.function,
 				verbose=self.verbose)
@@ -453,9 +488,10 @@ class TwoStageGreedy(BaseOptimizer):
 		else:
 			optimizer2 = self.optimizer2
 
-		optimizer1.select(X, self.n_first_selections)
+		optimizer1.select(X, self.n_first_selections, sample_cost=sample_cost)
 		if k > self.n_first_selections:
-			optimizer2.select(X, k - self.n_first_selections)
+			m = k - self.n_first_selections
+			optimizer2.select(X, m, sample_cost=sample_cost)
 
 
 class StochasticGreedy(BaseOptimizer):
@@ -508,25 +544,32 @@ class StochasticGreedy(BaseOptimizer):
 		super(StochasticGreedy, self).__init__(function=function, 
 			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
-	def select(self, X, k):
-		"""Select elements in a naive greedy manner."""
+	def select(self, X, k, sample_cost=None):
+		cost = 0.0
+		if sample_cost is None:
+			sample_cost = numpy.ones(X.shape[0], dtype='float64')
 
 		n = X.shape[0]
 		subset_size = -numpy.log(self.epsilon) * n / k
 		subset_size = max(int(subset_size), 1)
 
-		for i in range(k):
+		while cost < k:
 			idxs = self.random_state.choice(self.function.idxs, 
 				replace=False, size=min(subset_size, 
 					self.function.idxs.shape[0]))
 
-			gains = self.function._calculate_gains(X, idxs)
+			gains = self.function._calculate_gains(X, idxs) / sample_cost[idxs]
+			idxs_ = numpy.lexsort((numpy.arange(gains.shape[0]), -gains))
 
-			best_idx = gains.argmax()
-			best_gain = gains[best_idx]
-			best_idx = idxs[best_idx]
+			for idx in idxs_:
+				best_idx = idxs[idx]
+				if cost + sample_cost[best_idx] <= k:
+					break
+			else:
+				return
 
-			self.function._select_next(X[best_idx], best_gain, best_idx)
+			cost += sample_cost[best_idx]
+			self.function._select_next(X[best_idx], gains[idx], best_idx)
 
 			if self.verbose == True:
 				self.function.pbar.update(1)
@@ -582,9 +625,7 @@ class SampleGreedy(BaseOptimizer):
 		super(SampleGreedy, self).__init__(function=function, 
 			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
-	def select(self, X, k):
-		"""Select elements in a naive greedy manner."""
-
+	def select(self, X, k, sample_cost=None):
 		n = X.shape[0]
 		subset_size = max(int(n * self.epsilon), 1)
 
@@ -602,7 +643,7 @@ class SampleGreedy(BaseOptimizer):
 
 		self.function.mask[idxs] = 1
 		self.function.idxs = numpy.where(self.function.mask == 0)[0]
-		optimizer.select(X, k)
+		optimizer.select(X, k, sample_cost=sample_cost)
 
 
 class GreeDi(BaseOptimizer):
@@ -679,10 +720,13 @@ class GreeDi(BaseOptimizer):
 		super(GreeDi, self).__init__(function=function, 
 			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
-	def select(self, X, k):
+	def select(self, X, k, sample_cost=None):
 		if self.m is None and self.l is None:
 			self.m = 8
 			self.l = min(k // 4, X.shape[0] // self.m)
+
+		if sample_cost is None:
+			sample_cost = numpy.ones(X.shape[0], dtype='float64')
 
 		if k > (self.m * self.l):
 			raise ValueError("k must be smaller than m * l")
@@ -705,7 +749,7 @@ class GreeDi(BaseOptimizer):
 				X_subset = X_subset[:, idxs]
 
 			self.function._initialize(X_subset)
-			optimizer1.select(X_subset, self.l)
+			optimizer1.select(X_subset, self.l, sample_cost=sample_cost[idxs])
 
 			rankings.append(idxs[self.function.ranking])
 
@@ -720,13 +764,13 @@ class GreeDi(BaseOptimizer):
 			X_subset = X_subset[:, rankings]
 
 		self.function._initialize(X_subset)
-		optimizer2.select(X_subset, k)
+		optimizer2.select(X_subset, k, sample_cost=sample_cost[rankings])
 		rankings = rankings[self.function.ranking]
 
 		self.function._initialize(X)
 		for idx in rankings:
 			gain = self.function._calculate_gains(X, numpy.array([idx]))[0]
-			self.function._select_next(X[idx], gain, idx) 
+			self.function._select_next(X[idx], gain, idx)
 
 
 class BidirectionalGreedy(BaseOptimizer):
@@ -778,8 +822,12 @@ class BidirectionalGreedy(BaseOptimizer):
 		super(BidirectionalGreedy, self).__init__(function=function, 
 			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
-	def select(self, X, k):
+	def select(self, X, k, sample_cost=None):
 		"""Select elements in a naive greedy manner."""
+
+		cost = 0.0
+		if sample_cost is None:
+			sample_cost = numpy.ones(X.shape[0], dtype='float64')
 
 		A = numpy.zeros(X.shape[0], dtype=bool)
 		B = numpy.ones(X.shape[0], dtype=bool)

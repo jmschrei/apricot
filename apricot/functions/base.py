@@ -39,12 +39,24 @@ def _calculate_pairwise_distances(X, metric, n_neighbors=None):
 		if metric == 'euclidean':
 			X_pairwise = pairwise_distances(X, metric=metric, squared=True)
 		elif metric == 'correlation' or metric == 'cosine':
-			X_pairwise = 1 - (1 - pairwise_distances(X, metric=metric)) ** 2
+			# An in-place version of:
+			# X_pairwise = 1 - (1 - pairwise_distances(X, metric=metric)) ** 2
+			
+			X_pairwise = pairwise_distances(X, metric=metric)
+			X_pairwise = numpy.subtract(1, X_pairwise, out=X_pairwise)
+			X_pairwise = numpy.square(X_pairwise, out=X_pairwise)
+			X_pairwise = numpy.subtract(1, X_pairwise, out=X_pairwise)
 		else:
 			X_pairwise = pairwise_distances(X, metric=metric)
 	else:
 		if metric == 'correlation' or metric == 'cosine':
-			X = 1 - (1 - pairwise_distances(X, metric=metric)) ** 2
+			# An in-place version of:
+			# X = 1 - (1 - pairwise_distances(X, metric=metric)) ** 2
+
+			X = pairwise_distances(X, metric=metric)
+			X = numpy.subtract(1, X, out=X)
+			X = numpy.square(X, out=X)
+			X = numpy.subtract(1, X, out=X)
 			metric = 'precomputed'
 
 		if isinstance(n_neighbors, int):
@@ -58,16 +70,21 @@ def _calculate_pairwise_distances(X, metric, n_neighbors=None):
 
 	if metric == 'correlation' or metric == 'cosine':
 		if isinstance(X_pairwise, csr_matrix):
-			X_pairwise.data = 1 - X_pairwise.data
+			X_pairwise.data = numpy.subtract(1, X_pairwise.data, 
+				out=X_pairwise.data)
 		else:
-			X_pairwise = 1 - X_pairwise
+			X_pairwise = numpy.subtract(1, X_pairwise,
+				out=X_pairwise)
 	else:
 		if isinstance(X_pairwise, csr_matrix):
-			X_pairwise.data = X_pairwise.max() - X_pairwise.data
+			X_pairwise.data = numpy.subtract(X_pairwise.max(),
+				X_pairwise.data, out=X_pairwise.data)
 		else:
-			X_pairwise = X_pairwise.max() - X_pairwise
+			X_pairwise = numpy.subtract(X_pairwise.max(), X_pairwise,
+				out=X_pairwise)
 
-	return numpy.array(X_pairwise, dtype='float64')
+	return numpy.array(X_pairwise, copy=False, dtype='float64')
+
 
 class BaseSelection(object):
 	"""The base selection object.
@@ -80,14 +97,6 @@ class BaseSelection(object):
 	----------
 	n_samples : int
 		The number of samples to return.
-
-	n_first_samples : int, optional
-		The number of samples to perform the naive greedy algorithm on
-		before switching to the lazy greedy algorithm. The lazy greedy
-		algorithm is faster once features begin to saturate, but is slower
-		in the initial few selections. This is, in part, because the naive
-		greedy algorithm is parallelized whereas the lazy greedy
-		algorithm currently is not.
 
 	initial_subset : list, numpy.ndarray or None, optional
 		If provided, this should be a list of indices into the data matrix
@@ -122,9 +131,6 @@ class BaseSelection(object):
 
 	Attributes
 	----------
-	pq : PriorityQueue
-		The priority queue used to implement the lazy greedy algorithm.
-
 	n_samples : int
 		The number of samples to select.
 
@@ -142,10 +148,8 @@ class BaseSelection(object):
 
 	def __init__(self, n_samples, initial_subset=None, optimizer='two-stage', 
 		optimizer_kwds={}, n_jobs=1, random_state=None, verbose=False):
-		if type(n_samples) != int:
-			raise ValueError("n_samples must be a positive integer.")
-		if n_samples < 1:
-			raise ValueError("n_samples must be a positive integer.")
+		if n_samples <= 0:
+			raise ValueError("n_samples must be a positive value.")
 
 		if not isinstance(initial_subset, (list, numpy.ndarray)) and initial_subset is not None: 
 			raise ValueError("initial_subset must be a list, numpy array, or None")
@@ -176,8 +180,8 @@ class BaseSelection(object):
 		self.cupy = None
 		self.initial_subset = initial_subset
 
-	def fit(self, X, y=None):
-		"""Run submodular optimization to select the examples.
+	def fit(self, X, y=None, sample_weight=None, sample_cost=None):
+		"""Run submodular optimization to select a subset of examples.
 
 		This method is a wrapper for the full submodular optimization process.
 		It takes in some data set (and optionally labels that are ignored
@@ -195,14 +199,22 @@ class BaseSelection(object):
 		X : list or numpy.ndarray, shape=(n, d)
 			The data set to transform. Must be numeric.
 
-		y : list or numpy.ndarray, shape=(n,), optional
+		y : list or numpy.ndarray or None, shape=(n,), optional
 			The labels to transform. If passed in this function will return
 			both the data and th corresponding labels for the rows that have
 			been selected.
 
+		sample_weight : list or numpy.ndarray or None, shape=(n,), optional
+			The weight of each example. Currently ignored in apricot but
+			included to maintain compatibility with sklearn pipelines. 
+
+		sample_cost : list or numpy.ndarray or None, shape=(n,), optional
+			The cost of each item. If set, indicates that optimization should
+			be performed with respect to a knapsack constraint.
+
 		Returns
 		-------
-		self : BaseSelection
+		self : BaseGraphSelection
 			The fit step returns this selector object.
 		"""
 
@@ -233,7 +245,10 @@ class BaseSelection(object):
 		else:
 			optimizer = self.optimizer
 
-		optimizer.select(X, self.n_samples)
+		if self.verbose:
+			self.pbar = tqdm(total=self.n_samples, unit_scale=True)
+
+		optimizer.select(X, self.n_samples, sample_cost=sample_cost)
 
 		if self.verbose == True:
 			self.pbar.close()
@@ -242,23 +257,30 @@ class BaseSelection(object):
 		self.gains = numpy.array(self.gains)
 		return self
 
-	def transform(self, X, y=None):
-		"""Transform the data set by selecting the top n_samples samples.
+	def transform(self, X, y=None, sample_weight=None):
+		"""Transform a data set to include only the selected examples.
 
-		This method will use the fit ranking to transform the data set by
-		returning only the top n_samples elements as defined by the
-		ranking. The data will be returned in the order that it was selected
-		during the selection process.
+		This method will return a selection of X and optionally selections
+		of y and sample_weight. The default setting is to select items based
+		on the ranking determined in the `fit` step with examples in the same
+		order as that ranking. Optionally, the whole data set can be returned,
+		with the weights corresponding to samples that were not selected set
+		to 0. This setting can be controlled by setting `pipeline=True`. 
 
 		Parameters
 		----------
 		X : list or numpy.ndarray, shape=(n, d)
 			The data set to transform. Must be numeric.
 
-		y : list or numpy.ndarray, shape=(n,), optional
+		y : list or numpy.ndarray or None, shape=(n,), optional
 			The labels to transform. If passed in this function will return
-			both the data and th corresponding labels for the rows that have
-			been selected.
+			both the data and the corresponding labels for the rows that have
+			been selected. Default is None. 
+
+		sample_weight : list or numpy.ndarray or None, shape=(n,), optional
+			The sample weights to transform. If passed in this function will
+			return the selected labels (y) and the selected samples, even
+			if no labels were passed in. Default is None.
 
 		Returns
 		-------
@@ -266,33 +288,52 @@ class BaseSelection(object):
 			A subset of the data such that n_samples < n and n_samples is the
 			integer provided at initialization.
 
-		y_subset : numpy.ndarray, shape=(n_samples,)
+		y_subset : numpy.ndarray, shape=(n_samples,), optional
 			The labels that match with the indices of the samples if y is
 			passed in. Only returned if passed in.
+
+		sample_weight_subset : numpy.ndarray, shape=(n_samples,), optional
+			The weight of each example.
 		"""
 
-		if y is not None:
-			return X[self.ranking], y[self.ranking]
-		return X[self.ranking]
+		r = self.ranking
 
-	def fit_transform(self, X, y=None):
-		"""Perform selection and return the subset of the data set.
+		if sample_weight is not None:
+			if y is None:
+				return X[r], None, sample_weight[r]
+			else:
+				return X[r], y[r], sample_weight[r]
 
-		This method will take in a full data set and return the selected subset
-		according to the feature based function. The data will be returned in
-		the order that it was selected, with the first row corresponding to
-		the best first selection, the second row corresponding to the second
-		best selection, etc.
+		else:
+			if y is None:
+				return X[r]
+			else:
+				return X[r], y[r]
+
+	def fit_transform(self, X, y=None, sample_weight=None, sample_cost=None):
+		"""Run optimization and select a subset of examples.
+
+		This method will first perform the `fit` step and then perform the
+		`transform` step, returning a transformed data set. 
 
 		Parameters
 		----------
 		X : list or numpy.ndarray, shape=(n, d)
 			The data set to transform. Must be numeric.
 
-		y : list or numpy.ndarray, shape=(n,), optional
+		y : list or numpy.ndarray or None, shape=(n,), optional
 			The labels to transform. If passed in this function will return
-			both the data and th corresponding labels for the rows that have
-			been selected.
+			both the data and the corresponding labels for the rows that have
+			been selected. Default is None. 
+
+		sample_weight : list or numpy.ndarray or None, shape=(n,), optional
+			The sample weights to transform. If passed in this function will
+			return the selected labels (y) and the selected samples, even
+			if no labels were passed in. Default is None.
+
+		sample_cost : list or numpy.ndarray or None, shape=(n,), optional
+			The cost of each item. If set, indicates that optimization should
+			be performed with respect to a knapsack constraint.
 
 		Returns
 		-------
@@ -300,12 +341,17 @@ class BaseSelection(object):
 			A subset of the data such that n_samples < n and n_samples is the
 			integer provided at initialization.
 
-		y_subset : numpy.ndarray, shape=(n_samples,)
+		y_subset : numpy.ndarray, shape=(n_samples,), optional
 			The labels that match with the indices of the samples if y is
 			passed in. Only returned if passed in.
+
+		sample_weight_subset : numpy.ndarray, shape=(n_samples,), optional
+			The weight of each example.
 		"""
 
-		return self.fit(X, y).transform(X, y)
+		return self.fit(X, y=y, sample_weight=sample_weight, 
+			sample_cost=sample_cost).transform(X, y=y, 
+			sample_weight=sample_weight)
 
 	def _initialize(self, X, idxs=None):
 		self.sparse = isinstance(X, csr_matrix)
@@ -446,8 +492,8 @@ class BaseGraphSelection(BaseSelection):
 			optimizer_kwds=optimizer_kwds, n_jobs=n_jobs, 
 			random_state=random_state, verbose=verbose)
 
-	def fit(self, X, y=None):
-		"""Run submodular optimization to select the examples.
+	def fit(self, X, y=None, sample_weight=None, sample_cost=None):
+		"""Run submodular optimization to select a subset of examples.
 
 		This method is a wrapper for the full submodular optimization process.
 		It takes in some data set (and optionally labels that are ignored
@@ -465,10 +511,18 @@ class BaseGraphSelection(BaseSelection):
 		X : list or numpy.ndarray, shape=(n, d)
 			The data set to transform. Must be numeric.
 
-		y : list or numpy.ndarray, shape=(n,), optional
+		y : list or numpy.ndarray or None, shape=(n,), optional
 			The labels to transform. If passed in this function will return
 			both the data and th corresponding labels for the rows that have
 			been selected.
+
+		sample_weight : list or numpy.ndarray or None, shape=(n,), optional
+			The weight of each example. Currently ignored in apricot but
+			included to maintain compatibility with sklearn pipelines. 
+
+		sample_cost : list or numpy.ndarray or None, shape=(n,), optional
+			The cost of each item. If set, indicates that optimization should
+			be performed with respect to a knapsack constraint.
 
 		Returns
 		-------
@@ -483,13 +537,11 @@ class BaseGraphSelection(BaseSelection):
 			raise ValueError("Precomputed similarity matrices " \
 				"must be square and symmetric.")
 
-		if self.verbose == True:
-			self.pbar = tqdm(total=self.n_samples)
-
 		X_pairwise = _calculate_pairwise_distances(X, metric=self.metric, 
 			n_neighbors=self.n_neighbors)
 	
-		return super(BaseGraphSelection, self).fit(X_pairwise, y)
+		return super(BaseGraphSelection, self).fit(X_pairwise, y=y,
+			sample_weight=sample_weight, sample_cost=sample_cost)
 
 	def _initialize(self, X_pairwise, idxs=None):
 		super(BaseGraphSelection, self)._initialize(X_pairwise, idxs=idxs)
