@@ -26,7 +26,7 @@ There are many built-in submodular functions and optimizers in apricot. These in
 * Stochastic Greedy
 * Sample Greedy
 * GreeDi
-* Monotone Approximation
+* Modular Approximation
 * Two-Stage
 * Bidirectional Greedy
 
