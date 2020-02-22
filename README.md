@@ -4,13 +4,14 @@
 
 Please consider citing the [manuscript](https://arxiv.org/abs/1906.03543) if you use apricot in your academic work!
 
-apricot implements submodular optimization for the purpose of selecting diverse, minimally redundant, subsets of data from massive data sets. While there are many uses for these subsets, their primary usages are likely for visualizing the modalities in the data (such as in the two data sets below) and to train accurate machine learning models with just a fraction of the examples and compute. 
+apricot implements submodular optimization for the purpose of selecting diverse, minimally redundant, subsets of data from massive data sets. These subsets are useful for both visualizing the modalities in the data (such as in the two data sets below) and for training accurate machine learning models with just a fraction of the examples and compute.
 
 ![](img/embeddings.png)
 
-There are many built-in submodular functions and optimizers in apricot. These include:
+Submodular optimization is a well studied field that focuses on set functions that have the *diminishing return* property. These set functions $f$ have the dimishing return property, such that adding an item to a set produces a smaller marginal gain than adding the same item to a superset of that set. More formally, for $X \subset Y$, the property is $f(X + {v}) - f(X) \leq f(Y + {v}) - f(Y)$.  There are many built-in submodular functions and optimizers in apricot. These include:
 
 **Functions**
+
 * Feature-based
 * Max (Set) Coverage
 * Facility Location
