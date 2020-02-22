@@ -1,6 +1,6 @@
 <img src="https://github.com/jmschrei/apricot/blob/master/docs/logos/apricot-logo.png" width=600>
 
-[![Build Status](https://travis-ci.org/jmschrei/apricot.svg?branch=master)](https://travis-ci.org/jmschrei/pomegranate)
+[![Build Status](https://travis-ci.org/jmschrei/apricot.svg?branch=master)](https://travis-ci.org/jmschrei/apricot)
 
 Please consider citing the [manuscript](https://arxiv.org/abs/1906.03543) if you use apricot in your academic work!
 
