@@ -29,6 +29,10 @@ release = 'v0.5.0'
 
 import sys
 import os
+
+import mock
+sys.modules['sklearn'] = mock.Mock()
+
 import subprocess
 
 subprocess.call('pip install numpydoc', shell=True)
