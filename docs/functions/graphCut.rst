@@ -16,6 +16,6 @@ where :math:`f` indicates the function, :math:`X` is a subset, :math:`Y` is the 
 API Reference
 -------------
 
-.. automodule:: apricot.graphCut
+.. automodule:: apricot.functions.graphCut
 	:members:
 	:inherited-members:

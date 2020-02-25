@@ -16,6 +16,6 @@ where :math:`f` indicates the function that operates on a subset :math:`X` that 
 API Reference
 -------------
 
-.. automodule:: apricot.maxCoverage
+.. automodule:: apricot.functions.maxCoverage
 	:members:
 	:inherited-members:

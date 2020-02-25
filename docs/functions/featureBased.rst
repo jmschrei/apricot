@@ -16,6 +16,6 @@ where :math:`f` indicates the function that uses the concave function :math:`\ph
 API Reference
 -------------
 
-.. automodule:: apricot.featureBased
+.. automodule:: apricot.functions.featureBased
 	:members:
 	:inherited-members:

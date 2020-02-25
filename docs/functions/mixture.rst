@@ -16,6 +16,6 @@ where :math:`f` indicates the mixture function, :math:`M` is the number of funct
 API Reference
 -------------
 
-.. automodule:: apricot.mixture
+.. automodule:: apricot.functions.mixture
 	:members:
 	:inherited-members:
