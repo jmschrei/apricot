@@ -32,7 +32,7 @@ import os
 import subprocess
 
 subprocess.call('pip install numpydoc', shell=True)
-subprocess.call('pip install sklean', shell=True)
+subprocess.call('pip install sklearn', shell=True)
 sys.path.insert(0, os.path.abspath('../../apricot'))
 
 # Add any Sphinx extension module names here, as strings. They can be
