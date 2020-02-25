@@ -29,13 +29,10 @@ release = 'v0.5.0'
 
 import sys
 import os
-
-import mock
-sys.modules['sklearn'] = mock.Mock()
-
 import subprocess
 
 subprocess.call('pip install numpydoc', shell=True)
+subprocess.call('pip install sklean', shell=True)
 sys.path.insert(0, os.path.abspath('../../apricot'))
 
 # Add any Sphinx extension module names here, as strings. They can be
