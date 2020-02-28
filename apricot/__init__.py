@@ -11,4 +11,4 @@ from .functions import GraphCutSelection
 
 from .functions import MixtureSelection
 
-__version__ = '0.5.0rc'
+__version__ = '0.5.0'
