@@ -51,7 +51,31 @@ X = numpy.random.normal(100, 1, size=(5000, 25))
 X_subset = FacilityLocationSelection(100, metric='euclidean', optimizer='lazy').fit_transform(X)
 ```
 
-#### Feature based functions quickly select subsets for machine learning models
+#### Facility location functions are general purpose
+
+Facility location functions are more general purpose than feature based functions and work whenever a similarity measure can be defined over pairs of examples. When these functions are maximized, elements are selected that represent elements that are currently underrepresented. However, a downside of facility location functions (and all other submodular functions that rely on a similarity matrix) when compared to feature based functions is that the full similarity matrix requires quadratic memory with the number of examples and is generally impractical to store.
+
+Here is an example of applying facility location selection to the MNIST data set.
+
+```python
+from apricot import FacilityLocationSelection
+from sklearn.datasets import load_digits
+
+data = load_digits()
+X_train = data.data[:1250]
+
+selector = FacilityLocationSelection(n_samples, metric='euclidean', optimizer='lazy', verbose=False)
+selector.fit(X_train)
+```
+And here is the performance of logistic regression models trained on subsets of either the MNIST or Fashion MNIST data sets where the subsets are selected using either facility location (orange) or random selection (grey).
+
+![](img/fl-ml.png)
+
+The selected examples from facility location selection can be used in several ways other than training machine learning models, such as for visualizing the modalities of data (see the example at the start) or as centroids in a greedy version of k-means clustering. The animation below shows samples being selected according to facility location and compared to random selection, with facility location first selecting a sample that represents the entire data set, then selecting a sample that is in the largest cluster but near the second largest, and then the centers of local neighborhoods. This selection process is much faster than finding centroids using the EM based approaches of K-means or GMMs.
+
+![](img/facilitylocation.gif)
+
+#### Feature based functions scale to summarize massive data sets
 
 Feature-based functions work well when the features correspond to some notion of quantity or importance, e.g. when the features are number of times a word appears in a document, or the strength of a signal at a sensor. When these functions are maximized, the resulting subsets are comprised of examples that are enriched in value in different sets of features. The intuition behind using a feature-based function is that different modalities in the data (like classes or clusters) will exhibit high values in different sets of features, and so selecting examples enriched for different features means covering these modalities better. 
 
@@ -72,28 +96,6 @@ selector.fit(X_train)
 ```
 
 ![](img/20newsgroups.png)
-
-#### Facility location functions work in a variety of situations
-
-Facility location functions are more general purpose than feature based functions and work whenever a similarity measure can be defined over pairs of examples. When these functions are maximized, elements are selected that represent elements that are currently underrepresented. However, a downside of facility location functions (and all other submodular functions that rely on a similarity matrix) when compared to feature based functions is that the full similarity matrix requires quadratic memory with the number of examples and is generally impractical to store.
-
-Here is an example of applying facility location selection to the MNIST data set.
-
-```python
-from apricot import FacilityLocationSelection
-from sklearn.datasets import load_digits
-
-data = load_digits()
-X_train = data.data[:1250]
-
-selector = FacilityLocationSelection(n_samples, metric='euclidean', optimizer='lazy', verbose=False)
-selector.fit(X_train)
-```
-
-The selected examples from facility location selection can be used in several ways other than training machine learning models, such as for visualizing the modalities of data (see the example at the start) or as centroids in a greedy version of k-means clustering. The animation below shows samples being selected according to facility location and compared to random selection, with facility location first selecting a sample that represents the entire data set, then selecting a sample that is in the largest cluster but near the second largest, and then the centers of local neighborhoods. This selection process is much faster than finding centroids using the EM based approaches of K-means or GMMs.
-
-![](img/facilitylocation.gif)
-
 
 #### Initial subsets
 
