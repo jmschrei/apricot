@@ -54,145 +54,29 @@ class BaseOptimizer(object):
 		raise NotImplementedError
 
 
-class RandomGreedy(BaseOptimizer):
-	"""The naive greedy algorithm for optimization.
-
-	This optimization approach is the naive greedy algorithm. At each iteration
-	of selection it will simply calculate the gain one would get from adding
-	each example, and then will select the example that has the highest gain.
-	This algorithm is conceptually simple and easy to parallelize and put on a
-	GPU, but can be slower than other alternatives because it involves
-	repeatedly evaluating examples that are not likely to be selected next.
-
-	Parameters
-	----------
-	self.function : base.SubmodularSelection
-		A submodular function that implements the `_calculate_gains` and
-		`_select_next` methods. This is the function that will be
-		optimized.
-
-	self.verbose : bool
-		Whether to display a progress bar during the optimization process.
-
-
-	Attributes
-	----------
-	self.function : base.SubmodularSelection
-		A submodular function that implements the `_calculate_gains` and
-		`_select_next` methods. This is the function that will be
-		optimized.
-
-	self.verbose : bool
-		Whether to display a progress bar during the optimization process.
-	"""
-
-	def __init__(self, function=None, random_state=None, n_jobs=None, 
-		verbose=False):
-		super(NaiveGreedy, self).__init__(function=function, 
-			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
-
-	def select(self, X, k, sample_cost=None):
-		cost = 0.0
-		if sample_cost is None:
-			sample_cost = numpy.ones(X.shape[0], dtype='float64')
-
-		i = 0
-		while cost < k:
-			idx = self.random_state.choice(self.random.idxs)
-		
-			if cost + sample_cost[idx] > k:
-				continue
-
-			cost += sample_cost[idx]
-			gain = self.function._calculate_gains(X, idxs=numpy.array([idx]))[0]
-
-			self.function._select_next(X[idx], gain, idx)
-
-			if self.verbose == True:
-				self.function.pbar.update(round(sample_cost[idx], 2))
-
-
-class ModularGreedy(BaseOptimizer):
-	"""The stochastic greedy algorithm for optimization.
-
-	This optimization approach is the stochastic greedy algorithm proposed by
-	Mirzasoleiman et al. (https://las.inf.ethz.ch/files/mirzasoleiman15lazier.pdf).
-	This approach is conceptually similar to the naive greedy algorithm except
-	that it only evaluates a subset of examples at each iteration. Thus, it is
-	easy to parallelize and amenable to acceleration using a GPU while 
-	maintaining nice theoretical guarantees.
-
-	Parameters
-	----------
-	self.function : base.SubmodularSelection
-		A submodular function that implements the `_calculate_gains` and
-		`_select_next` methods. This is the function that will be
-		optimized.
-
-	epsilon : float, optional
-		The inverse of the sampling probability of any particular point being 
-		included in the subset, such that 1 - epsilon is the probability that
-		a point is included. Default is 0.9.
-
-	random_state : int or RandomState or None, optional
-		The random seed to use for the random selection process.
-
-	self.verbose : bool
-		Whether to display a progress bar during the optimization process.
-
-
-	Attributes
-	----------
-	self.function : base.SubmodularSelection
-		A submodular function that implements the `_calculate_gains` and
-		`_select_next` methods. This is the function that will be
-		optimized.
-
-	self.verbose : bool
-		Whether to display a progress bar during the optimization process.
-
-	self.gains_ : numpy.ndarray or None
-		The gain that each example would give the last time that it was
-		evaluated.
-	"""
-
-	def __init__(self, function=None, random_state=None, n_jobs=None, 
-		verbose=False):
-		super(ModularGreedy, self).__init__(function=function, 
-			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
-
-	def select(self, X, k, sample_cost=None):
-		"""Select elements in a naive greedy manner."""
-
-		cost = 0.0
-		if sample_cost is None:
-			sample_cost = numpy.ones(X.shape[0], dtype='float64')
-
-		gains = self.function._calculate_gains(X) / sample_cost[self.function.idxs]
-		idxs = gains.argsort()[::-1]
-
-		for idx in idxs:
-			if cost + sample_cost[idx] > k:
-				continue
-
-			cost += sample_cost[idx]
-			gain = self.function._calculate_gains(X, idxs=numpy.array([idx]))[0]
-
-			self.function._select_next(X[idx], gain, idx)
-
-			if self.verbose == True:
-				self.function.pbar.update(1)
-
-
 class NaiveGreedy(BaseOptimizer):
 	"""The naive greedy algorithm for optimization.
 
-	This optimization approach is the naive greedy algorithm. At each iteration
-	of selection it will simply calculate the gain one would get from adding
-	each example, and then will select the example that has the highest gain.
-	This algorithm is conceptually simple and easy to parallelize and put on a
-	GPU, but can be slower than other alternatives because it involves
-	repeatedly evaluating examples that are not likely to be selected next.
+	The naive greedy algorithm is the simplest greedy approach for optimizing 
+	submodular functions. The approach simply iterates through each example in 
+	the ground set that has not already been selected and calculates the gain 
+	in function value that would result from adding that example to the 
+	selected set. This process is embarassingly parallel and so is extremely 
+	amenable both to parallel processing and distributed computing. Further, 
+	because it is conceptually simple, it is also simple to implement.
+
+	The naive greedy algorithm can be specified for any function by passing in 
+	`optimizer='naive'` to the relevant selector object. Here is an example of 
+	specifying the naive greedy algorithm for optimizing a feature-based function.
+
+	.. code::python
+
+		from apricot import FeatureBasedSelection
+
+		X = numpy.random.randint(10, size=(10000, 100))
+
+		selector = FeatureBasedSelection(100, 'sqrt', optimizer='naive')
+		selector.fit(X)
 
 	Parameters
 	----------
@@ -252,14 +136,41 @@ class NaiveGreedy(BaseOptimizer):
 class LazyGreedy(BaseOptimizer):
 	"""The lazy/accelerated greedy algorithm for optimization.
 
-	This optimization approach is the lazy/accelerated greedy algorithm. It
-	will return the same subset as the naive greedy algorithm, but it uses a
-	priority queue to store the examples to prevent the repeated evaluation
-	of examples that are unlikely to be the next selected one. The benefit
-	of using this approach are that using a priority queue can significantly
-	improve the speed of optimization, but the downsides are that maintaining
-	a priority queue can be costly and that it's difficult to parallelize the
-	approach or put it on a GPU.
+	The lazy (or accelerated) greedy algorithm is a fast alternate to the 
+	naive greedy algorithm that results in the same items being selected. 
+	This algorithm exploits the diminishing returns property of submodular 
+	functions in order to avoid re-evaluating examples that are known to 
+	provide little gain. If an example has a small gain relative to other 
+	examples, it is unlikely to be the next selected example because that 
+	gain can only go down as more items are selected. Thus, the example 
+	should only be re-evaluated once the gains of other examples have gotten 
+	smaller.
+
+	The key idea of the lazy greedy algorithm is to maintain a priority queue 
+	where the examples are the elements in the queue and the priorities are 
+	the gains the last time they were evaluated. The algorithm has two steps. 
+	The first step is to calculate the gain that each example would have if 
+	selected first (the modular upper bound) and populate the priority queue 
+	using these values. The second step is to recalculate the gain of the 
+	first example in the priority queue and then add the example back into 
+	the queue. If the example remains at the front of the queue it is selected 
+	because no other example could have a larger gain once re-evaluated (due 
+	to the diminishing returns property).
+
+	While the worst case time complexity of this algorithm is the same as the 
+	naive greedy algorithm, in practice it can be orders of magnitude faster. 
+	Empirically, it appears to accelerate graph-based functions much more 
+	than it does feature-based ones. Functions also seem to be more 
+	accelerated the more curved they are.
+
+	.. code::python
+
+		from apricot import FeatureBasedSelection
+
+		X = numpy.random.randint(10, size=(10000, 100))
+
+		selector = FeatureBasedSelection(100, 'sqrt', optimizer='lazy')
+		selector.fit(X)
 
 	Parameters
 	----------
@@ -338,14 +249,24 @@ class LazyGreedy(BaseOptimizer):
 class ApproximateLazyGreedy(BaseOptimizer):
 	"""The approximate lazy/accelerated greedy algorithm for optimization.
 
-	This optimization approach is the lazy/accelerated greedy algorithm. It
-	will return the same subset as the naive greedy algorithm, but it uses a
-	priority queue to store the examples to prevent the repeated evaluation
-	of examples that are unlikely to be the next selected one. The benefit
-	of using this approach are that using a priority queue can significantly
-	improve the speed of optimization, but the downsides are that maintaining
-	a priority queue can be costly and that it's difficult to parallelize the
-	approach or put it on a GPU.
+	The approximate lazy greedy algorithm is a simple extension of the lazy 
+	greedy algorithm that, rather than requiring that an element remains at 
+	the top of the priority queue after being re-evaluated, only requires 
+	that the gain is within a certain user-defined percentage of the best 
+	gain to be selected. The key point in this approach is that finding the 
+	very best element while maintaining the priority queue may be expensive, 
+	but finding elements that are good enough is simple. While the best 
+	percentage to use is data set specific, even values near 1 can lead to 
+	large savings in computation.
+
+	.. code::python
+
+		from apricot import FeatureBasedSelection
+
+		X = numpy.random.randint(10, size=(10000, 100))
+
+		selector = FeatureBasedSelection(100, 'sqrt', optimizer='approximate-lazy')
+		selector.fit(X)
 
 	Parameters
 	----------
@@ -421,17 +342,35 @@ class ApproximateLazyGreedy(BaseOptimizer):
 
 
 class TwoStageGreedy(BaseOptimizer):
-	"""An approach that uses both naive and lazy greedy algorithms.
+	"""An approach that switches between two optimizers midway through.
 
-	This optimization approach starts off by using the naive greedy algorithm
-	to select the first few examples and then switches to use the lazy greedy
-	algorithm. This two stage procedure is designed to overcome the limitations
-	of the lazy greedy algorithm---specifically, the inability to parallelize
-	the implementation. Additionally, early iterations frequently require
-	iterating over most of the examples, which is particularly costly to do
-	on a priority queue. Thus, one can frequently see large speed gains simply
-	by doing the first few iterations using the naive greedy algorithm and
-	then switching to the lazy greedy algorithm.
+	The two-stage greedy optimizer is a general purpose framework for combining 
+	two optimizers by making the first :math:`n` selections out of :math:`k` 
+	total selections using one optimizer, and then making the remainder using 
+	the other. When the first optimizer is random selection and the second 
+	approach is naive/lazy greedy, this becomes partial enumeration. By 
+	default, the first algorithm is the naive greedy optimizer and the second 
+	algorithm is the lazy greedy. This combination results in the same 
+	selection as either optimizer individually but replaces the 
+	computationally intensive first few steps for the priority queue, where 
+	the algorithm may require scanning through almost the entire queue, with 
+	the parallelizable naive greedy algorithm. While, in theory, the lazy 
+	greedy algorithm will never perform more function calls than the naive 
+	greedy algorithm, there are costs associated both with maintaining a 
+	priority queue and with evaluating a single example instead of a batch 
+	of examples.
+
+	This optimizer, with the naive greedy optimizer first and the lazy greedy 
+	optimizer second, is the default optimizer for apricot selectors.
+
+	.. code::python
+
+		from apricot import FeatureBasedSelection
+
+		X = numpy.random.randint(10, size=(10000, 100))
+
+		selector = FeatureBasedSelection(100, 'sqrt', optimizer='two-stage')
+		selector.fit(X)
 
 	Parameters
 	----------
@@ -497,12 +436,28 @@ class TwoStageGreedy(BaseOptimizer):
 class StochasticGreedy(BaseOptimizer):
 	"""The stochastic greedy algorithm for optimization.
 
-	This optimization approach is the stochastic greedy algorithm proposed by
-	Mirzasoleiman et al. (https://las.inf.ethz.ch/files/mirzasoleiman15lazier.pdf).
-	This approach is conceptually similar to the naive greedy algorithm except
-	that it only evaluates a subset of examples at each iteration. Thus, it is
-	easy to parallelize and amenable to acceleration using a GPU while 
-	maintaining nice theoretical guarantees.
+	The stochastic greedy algorithm is a simple approach that, for each 
+	iteration, randomly selects a subset of data and then finds the best next 
+	example within that subset. The distinction between this approach and the 
+	sample greedy algorithm is that this subset changes at each iteration, 
+	meaning that the algorithm does cover the entire data set. In contrast, 
+	the sample greedy algorithm is equivalent to manually subsampling the data 
+	before running a selector on it. The size of this subset is proportional 
+	to the number of examples that are chosen and determined in a manner that 
+	results in the same amount of computation being done no matter how many 
+	elements are selected. A key idea from this approach is that, while the 
+	exact ranking of the elements may differ from the naive/lazy greedy 
+	approaches, the set of selected elements is likely to be similar despite 
+	the limited amount of computation.
+
+	.. code::python
+
+		from apricot import FeatureBasedSelection
+
+		X = numpy.random.randint(10, size=(10000, 100))
+
+		selector = FeatureBasedSelection(100, 'sqrt', optimizer='stochastic')
+		selector.fit(X)
 
 	Parameters
 	----------
@@ -576,14 +531,24 @@ class StochasticGreedy(BaseOptimizer):
 
 
 class SampleGreedy(BaseOptimizer):
-	"""The stochastic greedy algorithm for optimization.
+	"""The sample greedy algorithm for optimization.
 
-	This optimization approach is the stochastic greedy algorithm proposed by
-	Mirzasoleiman et al. (https://las.inf.ethz.ch/files/mirzasoleiman15lazier.pdf).
-	This approach is conceptually similar to the naive greedy algorithm except
-	that it only evaluates a subset of examples at each iteration. Thus, it is
-	easy to parallelize and amenable to acceleration using a GPU while 
-	maintaining nice theoretical guarantees.
+	The sample greedy algorithm is a simple approach that subsamples the full 
+	data set with a user-defined sampling probability and then runs an 
+	optimization on that subset. This subsampling can lead to obvious speed 
+	improvements because fewer elements as selected, but will generally find 
+	a lower quality subset because fewer elements are present. This approach 
+	is typically used a baseline for other approaches but can save a lot of 
+	time on massive data sets that are known to be highly redundant.
+
+	.. code::python
+
+		from apricot import FeatureBasedSelection
+
+		X = numpy.random.randint(10, size=(10000, 100))
+
+		selector = FeatureBasedSelection(100, 'sqrt', optimizer='sample')
+		selector.fit(X)
 
 	Parameters
 	----------
@@ -647,17 +612,37 @@ class SampleGreedy(BaseOptimizer):
 
 
 class GreeDi(BaseOptimizer):
-	"""An approach for optimizing submodular functions in parallel.
+	"""An approach for optimizing submodular functions on massive data sets.
 
-	This optimizer implements the GreeDi method for selecting sets in parallel
-	by Mirzasoleiman et al. (https://papers.nips.cc/paper/5039-distributed-
-	submodular-maximization-identifying-representative-elements-in-massive-
-	data.pdf).
+	GreeDi is an optimizer that was designed to work on data sets that are 
+	too large to fit into memory. The approach involves first partitioning 
+	the data into :math:`m` equally sized chunks without any overlap. Then, 
+	:math:`l` elements are selected from each chunk using a standard optimizer 
+	like naive or lazy greedy. Finally, these :math:`ml` examples are merged 
+	and a standard optimizer selects :math:`k` examples from this set. In 
+	this manner, the algorithm sacrifices exactness to ensure that memory 
+	limitations are not an issue. 
 
-	Briefly, this approach splits the data into m partitions uniformly at
-	random, selects l exemplars from each partition, and then runs a second
-	iteration of greedy selection on the union of l*m exemplars from each
-	partition to get the top k.
+	There are a few considerations to keep in mind when using GreeDi. 
+	Naturally, :math:`ml` must both be larger than :math:`k` and also small 
+	enough to fit into memory. The larger :math:`l`, the closer the solution 
+	is to the exact solution but also the more compute time is required. 
+	Conversely, the larger :math:`m` is, the less exact the solution is. 
+	When using a graph-based function, increasing :math:`m` can dramatically 
+	reduce the amount of computation that needs to be performed, as well as 
+	the memory requirements, because the similarity matrix becomes smaller 
+	in size. However, feature-based functions are likely to see less of a 
+	speed improvement because the cost of evaluating an example is independent 
+	of the size of ground set.
+
+	.. code::python
+
+		from apricot import FeatureBasedSelection
+
+		X = numpy.random.randint(10, size=(10000, 100))
+
+		selector = FeatureBasedSelection(100, 'sqrt', optimizer='greedi')
+		selector.fit(X)
 
 	Parameters
 	----------
@@ -773,23 +758,175 @@ class GreeDi(BaseOptimizer):
 			self.function._select_next(X[idx], gain, idx)
 
 
+class RandomGreedy(BaseOptimizer):
+	"""The naive greedy algorithm for optimization.
+
+	This optimization approach is the naive greedy algorithm. At each iteration
+	of selection it will simply calculate the gain one would get from adding
+	each example, and then will select the example that has the highest gain.
+	This algorithm is conceptually simple and easy to parallelize and put on a
+	GPU, but can be slower than other alternatives because it involves
+	repeatedly evaluating examples that are not likely to be selected next.
+
+	Parameters
+	----------
+	self.function : base.SubmodularSelection
+		A submodular function that implements the `_calculate_gains` and
+		`_select_next` methods. This is the function that will be
+		optimized.
+
+	self.verbose : bool
+		Whether to display a progress bar during the optimization process.
+
+
+	Attributes
+	----------
+	self.function : base.SubmodularSelection
+		A submodular function that implements the `_calculate_gains` and
+		`_select_next` methods. This is the function that will be
+		optimized.
+
+	self.verbose : bool
+		Whether to display a progress bar during the optimization process.
+	"""
+
+	def __init__(self, function=None, random_state=None, n_jobs=None, 
+		verbose=False):
+		super(NaiveGreedy, self).__init__(function=function, 
+			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
+
+	def select(self, X, k, sample_cost=None):
+		cost = 0.0
+		if sample_cost is None:
+			sample_cost = numpy.ones(X.shape[0], dtype='float64')
+
+		i = 0
+		while cost < k:
+			idx = self.random_state.choice(self.random.idxs)
+		
+			if cost + sample_cost[idx] > k:
+				continue
+
+			cost += sample_cost[idx]
+			gain = self.function._calculate_gains(X, idxs=numpy.array([idx]))[0]
+
+			self.function._select_next(X[idx], gain, idx)
+
+			if self.verbose == True:
+				self.function.pbar.update(round(sample_cost[idx], 2))
+
+
+class ModularGreedy(BaseOptimizer):
+	"""An approach that approximates a submodular function as modular.
+
+	This approach approximates the submodular function by using its modular 
+	upper-bounds to do the selection. Essentially, a defining characteristic 
+	of submodular functions is the *diminishing returns* property where the 
+	gain of an example decreases with the number of selected examples. In 
+	contrast, modular functions have constant gains for examples regardless 
+	of the number of selected examples. Thus, approximating the submodular 
+	function as a modular function can serve as an upper-bound to the gain 
+	for each example during the selection process. This approximation makes 
+	the function simple to optimize because one would simply calculate the 
+	gain that each example yields before any examples are selected, sort the 
+	examples by this gain, and select the top :math:`k` examples. While this 
+	approach is fast, this approach is likely best paired with a traditional 
+	optimization algorithm after the first few examples are selected.
+
+	.. code::python
+
+		from apricot import FeatureBasedSelection
+
+		X = numpy.random.randint(10, size=(10000, 100))
+
+		selector = FeatureBasedSelection(100, 'sqrt', optimizer='modular')
+		selector.fit(X)
+
+	Parameters
+	----------
+	self.function : base.SubmodularSelection
+		A submodular function that implements the `_calculate_gains` and
+		`_select_next` methods. This is the function that will be
+		optimized.
+
+	epsilon : float, optional
+		The inverse of the sampling probability of any particular point being 
+		included in the subset, such that 1 - epsilon is the probability that
+		a point is included. Default is 0.9.
+
+	random_state : int or RandomState or None, optional
+		The random seed to use for the random selection process.
+
+	self.verbose : bool
+		Whether to display a progress bar during the optimization process.
+
+
+	Attributes
+	----------
+	self.function : base.SubmodularSelection
+		A submodular function that implements the `_calculate_gains` and
+		`_select_next` methods. This is the function that will be
+		optimized.
+
+	self.verbose : bool
+		Whether to display a progress bar during the optimization process.
+
+	self.gains_ : numpy.ndarray or None
+		The gain that each example would give the last time that it was
+		evaluated.
+	"""
+
+	def __init__(self, function=None, random_state=None, n_jobs=None, 
+		verbose=False):
+		super(ModularGreedy, self).__init__(function=function, 
+			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
+
+	def select(self, X, k, sample_cost=None):
+		"""Select elements in a naive greedy manner."""
+
+		cost = 0.0
+		if sample_cost is None:
+			sample_cost = numpy.ones(X.shape[0], dtype='float64')
+
+		gains = self.function._calculate_gains(X) / sample_cost[self.function.idxs]
+		idxs = gains.argsort()[::-1]
+
+		for idx in idxs:
+			if cost + sample_cost[idx] > k:
+				continue
+
+			cost += sample_cost[idx]
+			gain = self.function._calculate_gains(X, idxs=numpy.array([idx]))[0]
+
+			self.function._select_next(X[idx], gain, idx)
+
+			if self.verbose == True:
+				self.function.pbar.update(1)
+
+
 class BidirectionalGreedy(BaseOptimizer):
 	"""The bidirectional greedy algorithm.
 
-	This is a stochastic algorithm for the optimization of submodular
-	functions that are not monotone, i.e., where f(A union {b}) 
-	is not necessarily greater than f(A). When these functions are not
-	monotone, the greedy algorithm does not have the same good 
-	guarantees on convergence, whereas the bidirectional greedy algorithm
-	does.
+	Most submodular optimizers assume that the function is *monotone*, i.e., 
+	that the gain from each successive example is positive. However, there 
+	are some cases where the key diminishing returns property holds, but 
+	the gains are not necessarily positive. The most obvious of these is a
+	difference in submodular functions. In these cases, the naive greedy 
+	algorithm is not guaranteed to return a good result. 
 
-	Generally, it is difficult to control the number of examples that
-	are returned by the bidirectional greedy algorithm. This can be done
-	by tuning a hyperparameter that regularizes the gains until you get
-	the right set size. Here we take another approach and randomly
-	select examples for consideration until we achieve the appropriate
-	set size. This means that not all examples will be considered for
-	addition.
+	The bidirectional greedy algorithm was developed to optimize non-monotone 
+	submodular functions. While it has a guarantee that is lower than the 
+	naive greedy algorithm has for monotone functions, it generally returns 
+	better sets than the greedy algorithm.
+
+	.. code::python
+
+		from apricot import FeatureBasedSelection
+
+		X = numpy.random.randint(10, size=(10000, 100))
+
+		selector = FeatureBasedSelection(100, 'sqrt', optimizer='bidirectional')
+		selector.fit(X)
 
 	Parameters
 	----------
