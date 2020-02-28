@@ -1,11 +1,6 @@
 # facilityLocation.py
 # Author: Jacob Schreiber <jmschreiber91@gmail.com>
 
-"""
-This file contains code that implements facility location submodular selection
-algorithms.
-"""
-
 try:
 	import cupy
 except:
@@ -48,14 +43,35 @@ def select_next_cupy(X, gains, current_values, idxs):
 class FacilityLocationSelection(BaseGraphSelection):
 	"""A selector based off a facility location submodular function.
 
-	NOTE: All ~pairwise~ values in your data must be non-negative for this 
-	selection to work.
+	Facility location functions are general purpose submodular functions that, 
+	when maximized, choose examples that represent the space of the data well.
+	The facility location function is based on maximizing the pairwise 
+	similarities between the points in the data set and their nearest chosen 
+	point. The similarity function can be species by the user but must be 
+	non-negative where a higher value indicates more similar. 
 
-	This selector uses a facility location submodular function to perform
-	selection. The facility location function is based on maximizing the
-	pairwise similarities between the points in the data set and their nearest
-	chosen point. The similarity function can be species by the user but must
-	be non-negative where a higher value indicates more similar.
+	.. note:: 
+		All ~pairwise~ values in your data must be non-negative for this 
+		selection to work.
+
+	In many ways, optimizing a facility location function is simply a greedy 
+	version of k-medoids, where after the first few examples are selected, the 
+	subsequent ones are at the center of clusters. The function, like most 
+	graph-based functions, operates on a pairwise similarity matrix, and 
+	successively chooses examples that are similar to examples whose current 
+	most-similar example is still very dissimilar. Phrased another way, 
+	successively chosen examples are representative of underrepresented 
+	examples.
+
+	The general form of a facility location function is 
+
+	.. math::
+		f(X, Y) = \\sum\\limits_{y in Y} \\max_{x in X} \\phi(x, y)
+
+	where :math:`f` indicates the function, :math:`X` is a subset, :math:`Y` 
+	is the ground set, and :math:`\\phi` is the similarity measure between two 
+	examples. Like most graph-based functons, the facility location function 
+	requires access to the full ground set.
 
 	This implementation allows users to pass in either their own symmetric
 	square matrix of similarity values, or a data matrix as normal and a function

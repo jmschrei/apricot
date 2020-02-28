@@ -1,11 +1,6 @@
 # featureBased.py
 # Author: Jacob Schreiber <jmschreiber91@gmail.com> 
 
-"""
-This file contains code that implements feature based submodular selection
-algorithms.
-"""
-
 try:
 	import cupy
 except:
@@ -116,13 +111,27 @@ def select_min_next_cupy(X, gains, current_values, idxs):
 class FeatureBasedSelection(BaseSelection):
 	"""A selector based off a feature based submodular function.
 
-	NOTE: All values in your data must be positive for this selection to work.
+	Feature-based functions are those that operate on the feature values of 
+	examples directly, rather than on a similarity matrix (or graph) derived 
+	from those features, as graph-based functions do. Because these functions 
+	do not require calculating and storing a :math:`\\mathcal{O}(n^{2})` sized 
+	matrix of similarities, they can easily scale to data sets with millions of 
+	examples. 
+	
+	.. note:: 
+		All values in your data must be positive for this selection to work.
 
-	This selector will optimize a feature based submodular function. Feature
-	based functions are those that use feature values of the examples directly,
-	like most machine learning methods do, rather than only using them 
-	indirectly through the calculation of similarity matrices, as kernel methods 
-	and facility location functions do.
+	The general form of a feature-based function is:
+
+	.. math::
+		f(X) = \\sum\\limits_{d=1}^{D}\\phi\\left(\\sum\\limits_{i=1}^{N} X_{i, d}\\right)
+
+	where :math:`f` indicates the function that uses the concave function 
+	:math:`\\phi` and is operating on a subset :math:`X` that has :math:`N` 
+	examples and :math:`D` dimensions. Importantly, :math:`X` is the subset 
+	and not the ground set, meaning that the time it takes to evaluate this 
+	function is proportional only to the size of the selected subset and not 
+	the size of the full data set, like it is for graph-based functions.  
 
 	See https://ieeexplore.ieee.org/document/6854213 for more details on
 	feature based functions.
