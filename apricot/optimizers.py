@@ -22,7 +22,7 @@ class BaseOptimizer(object):
 
 	Parameters
 	----------
-	function : base.SubmodularSelection
+	function : base.BaseSelection
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
 		optimized.
@@ -80,7 +80,7 @@ class NaiveGreedy(BaseOptimizer):
 
 	Parameters
 	----------
-	self.function : base.SubmodularSelection
+	self.function : base.BaseSelection
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
 		optimized.
@@ -91,7 +91,7 @@ class NaiveGreedy(BaseOptimizer):
 
 	Attributes
 	----------
-	self.function : base.SubmodularSelection
+	self.function : base.BaseSelection
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
 		optimized.
@@ -174,7 +174,7 @@ class LazyGreedy(BaseOptimizer):
 
 	Parameters
 	----------
-	self.function : base.SubmodularSelection
+	self.function : base.BaseSelection
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
 		optimized.
@@ -185,7 +185,7 @@ class LazyGreedy(BaseOptimizer):
 
 	Attributes
 	----------
-	self.function : base.SubmodularSelection
+	self.function : base.BaseSelection
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
 		optimized.
@@ -270,7 +270,7 @@ class ApproximateLazyGreedy(BaseOptimizer):
 
 	Parameters
 	----------
-	self.function : base.SubmodularSelection
+	self.function : base.BaseSelection
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
 		optimized.
@@ -281,7 +281,7 @@ class ApproximateLazyGreedy(BaseOptimizer):
 
 	Attributes
 	----------
-	self.function : base.SubmodularSelection
+	self.function : base.BaseSelection
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
 		optimized.
@@ -374,7 +374,7 @@ class TwoStageGreedy(BaseOptimizer):
 
 	Parameters
 	----------
-	self.function : base.SubmodularSelection
+	self.function : base.BaseSelection
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
 		optimized.
@@ -390,7 +390,7 @@ class TwoStageGreedy(BaseOptimizer):
 
 	Attributes
 	----------
-	self.function : base.SubmodularSelection
+	self.function : base.BaseSelection
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
 		optimized.
@@ -461,7 +461,7 @@ class StochasticGreedy(BaseOptimizer):
 
 	Parameters
 	----------
-	self.function : base.SubmodularSelection
+	self.function : base.BaseSelection
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
 		optimized.
@@ -480,7 +480,7 @@ class StochasticGreedy(BaseOptimizer):
 
 	Attributes
 	----------
-	self.function : base.SubmodularSelection
+	self.function : base.BaseSelection
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
 		optimized.
@@ -552,7 +552,7 @@ class SampleGreedy(BaseOptimizer):
 
 	Parameters
 	----------
-	self.function : base.SubmodularSelection
+	self.function : base.BaseSelection
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
 		optimized.
@@ -570,7 +570,7 @@ class SampleGreedy(BaseOptimizer):
 
 	Attributes
 	----------
-	self.function : base.SubmodularSelection
+	self.function : base.BaseSelection
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
 		optimized.
@@ -646,7 +646,7 @@ class GreeDi(BaseOptimizer):
 
 	Parameters
 	----------
-	function : base.SubmodularSelection
+	function : base.BaseSelection
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
 		optimized.
@@ -770,7 +770,7 @@ class RandomGreedy(BaseOptimizer):
 
 	Parameters
 	----------
-	self.function : base.SubmodularSelection
+	self.function : base.BaseSelection
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
 		optimized.
@@ -781,7 +781,7 @@ class RandomGreedy(BaseOptimizer):
 
 	Attributes
 	----------
-	self.function : base.SubmodularSelection
+	self.function : base.BaseSelection
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
 		optimized.
@@ -844,7 +844,7 @@ class ModularGreedy(BaseOptimizer):
 
 	Parameters
 	----------
-	self.function : base.SubmodularSelection
+	self.function : base.BaseSelection
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
 		optimized.
@@ -863,7 +863,7 @@ class ModularGreedy(BaseOptimizer):
 
 	Attributes
 	----------
-	self.function : base.SubmodularSelection
+	self.function : base.BaseSelection
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
 		optimized.
@@ -930,7 +930,7 @@ class BidirectionalGreedy(BaseOptimizer):
 
 	Parameters
 	----------
-	self.function : base.SubmodularSelection
+	self.function : base.BaseSelection
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
 		optimized.
@@ -941,7 +941,7 @@ class BidirectionalGreedy(BaseOptimizer):
 
 	Attributes
 	----------
-	self.function : base.SubmodularSelection
+	self.function : base.BaseSelection
 		A submodular function that implements the `_calculate_gains` and
 		`_select_next` methods. This is the function that will be
 		optimized.
