@@ -1,10 +1,6 @@
 # sumRedundancy.py
 # Author: Jacob Schreiber <jmschreiber91@gmail.com>
 
-"""
-This code implements the graph cut function.
-"""
-
 try:
 	import cupy
 except:
@@ -18,20 +14,28 @@ from tqdm import tqdm
 
 class SumRedundancySelection(BaseGraphSelection):
 	"""A selector based off a sum redundancy submodular function.
+	
+	The sum redundancy function is a graph-based function that penalizes 
+	redundancy among the selected set. This approach is straightforward, 
+	in that it simply involved a sum. It is also fast in comparison to a 
+	facility location function because it involves only performing calculation 
+	over the selected set as opposed to the entire ground set. Because the sum 
+	of the similarities is not submodular, it is subtracted from the sum of 
+	the entire similarity matrix, such that examples that are highly similar 
+	to each other result in a lower value than examples that are not very 
+	similar.
 
-	NOTE: All ~pairwise~ values in your data must be positive for this 
-	selection to work.
+	.. note:: 
+		All ~pairwise~ values in your data must be positive for this 
+		selection to work.
 
-	This selector uses a sum redundancy function to perform selection. The
-	sum redundancy function is based on maximizing the difference between
-	the 
+	The general form of a sum redundancy function is 
 
-	This selector uses a sum redundancy submodular function to perform
-	selection. The sum redundancy function is based on maximizing the
-	pairwise similarities between the points in the data set and their nearest
-	chosen point. The similarity function can be species by the user but must
-	be non-negative where a higher value indicates more similar.
+	.. math::
+		f(X, V) = \sum_{x, y \in V} \phi(x, y) - \sum_{x, y\in X} \phi(x,y)
 
+	where :math:`f` indicates the function, :math:`X` is the selected subset, :math:`V` is the ground set, and :math:`\phi` is the similarity measure between two examples. While sum redundancy functions involves calculating the sum of the entire similarity matrix in principle, in practice if one is only calculating the gains this step can be ignored.
+	
 	This implementation allows users to pass in either their own symmetric
 	square matrix of similarity values, or a data matrix as normal and a function
 	that calculates these pairwise values.

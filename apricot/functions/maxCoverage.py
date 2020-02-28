@@ -1,10 +1,5 @@
 # maxCoverage.py
 # Author: Jacob Schreiber <jmschreiber91@gmail.com> 
-
-"""
-This file contains code that implements a selector based on the maximum
-coverage submodular function.
-"""
 	
 import numpy
 from .featureBased import FeatureBasedSelection
@@ -12,18 +7,32 @@ from .featureBased import FeatureBasedSelection
 class MaxCoverageSelection(FeatureBasedSelection):
 	"""A selector based off a coverage function.
 
-	NOTE: All values in your data must be binary for this selection to work.
+	Maximum coverage functions aim to maximize the number of features that 
+	have a non-zero element in at least one selected example---there is no 
+	marginal benefit to observing a variable in two examples. If each variable 
+	is thought to be an item in a set, and the data is a binary matrix where a 
+	1 indicates the item is present in the example and 0 indicates it is not, 
+	optimizing a maximum coverage function is a solution to the set coverage 
+	problem. These functions are useful when the space of variables is massive 
+	and each example only sees a small subset of them, which is a common 
+	situation when analyzing text data when the variables are words. The 
+	maximum coverage function is an instance of a feature-based function 
+	when the concave function is minimum.
 
-	This function measures the coverage of the features in a data set. The
-	approach simply counts the number of features that take a value of
-	1 in at least one example in the selected set. Due to this property, it
-	is likely that the function will saturate fairly quickly when selecting
-	many examples unless there are also many features.
+	.. note::
+		All values in your data must be binary for this selection to work.
 
-	This object can be used to solve the set coverage problem, which is to
-	identify as small a set of examples as possible that cover the entire
-	set of features. One would simply run this approach until the gain is 0,
-	at which point all features have been covered.
+	The general form of a coverage function is:
+
+	.. math::
+		f(X) = \\sum\\limits_{d=1}^{D} \\min \\left( \\sum\\limits_{n=1}^{N} X_{i, d}, 1 \\right) 
+
+	where :math:`f` indicates the function that operates on a subset :math:`X` 
+	that has :math:`N` examples and :math:`D` dimensions. Importantly, 
+	:math:`X` is the subset and not the ground set, meaning that the time it 
+	takes to evaluate this function is proportional only to the size of the 
+	selected subset and not the size of the full data set, like it is for
+	 graph-based functions.  
 
 	See https://www2.cs.duke.edu/courses/fall17/compsci632/scribing/scribe2.pdf
 	where the problem is described as maximum coverage.

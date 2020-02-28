@@ -1,6 +1,6 @@
 <img src="https://github.com/jmschrei/apricot/blob/master/docs/logos/apricot-logo.png" width=600>
 
-[![Build Status](https://travis-ci.org/jmschrei/apricot.svg?branch=master)](https://travis-ci.org/jmschrei/apricot)
+[![Build Status](https://travis-ci.org/jmschrei/apricot.svg?branch=master)](https://travis-ci.org/jmschrei/apricot) [![Documentation Status](https://readthedocs.org/projects/apricot-select/badge/?version=latest)](https://apricot-select.readthedocs.io/en/latest/?badge=latest)
 
 Please consider citing the [manuscript](https://arxiv.org/abs/1906.03543) if you use apricot in your academic work!
 
@@ -14,24 +14,24 @@ There are many built-in submodular functions and optimizers in apricot. These in
 
 **Functions**
 
-* Feature-based
-* Max (Set) Coverage
-* Facility Location
-* Graph Cut
-* Sum Redundancy
-* Saturated Coverage
-* Mixtures of Functions
+* [Feature-based](https://apricot-select.readthedocs.io/en/latest/functions/featureBased.html)
+* [Max (Set) Coverage](https://apricot-select.readthedocs.io/en/latest/functions/maxCoverage.html)
+* [Facility Location](https://apricot-select.readthedocs.io/en/latest/functions/facilityLocation.html)
+* [Graph Cut](https://apricot-select.readthedocs.io/en/latest/functions/graphCut.html)
+* [Sum Redundancy](https://apricot-select.readthedocs.io/en/latest/functions/sumRedundancy.html)
+* [Saturated Coverage](https://apricot-select.readthedocs.io/en/latest/functions/saturatedCoverage.html)
+* [Mixtures of Functions](https://apricot-select.readthedocs.io/en/latest/functions/mixture.html)
 
 **Optimizers**
-* Naive Greedy
-* Lazy Greedy
-* Approximate Lazy Greedy
-* Stochastic Greedy
-* Sample Greedy
-* GreeDi
-* Modular Approximation
-* Two-Stage
-* Bidirectional Greedy
+* [Naive Greedy](https://apricot-select.readthedocs.io/en/latest/optimizers/naive.html)
+* [Lazy Greedy](https://apricot-select.readthedocs.io/en/latest/optimizers/lazy.html)
+* [Two-Stage Greedy](https://apricot-select.readthedocs.io/en/latest/optimizers/two-stage.html)
+* [Approximate Lazy Greedy](https://apricot-select.readthedocs.io/en/latest/optimizers/approx-lazy.html)
+* [Stochastic Greedy](https://apricot-select.readthedocs.io/en/latest/optimizers/stochastic.html)
+* [Sample Greedy](https://apricot-select.readthedocs.io/en/latest/optimizers/sample.html)
+* [GreeDi](https://apricot-select.readthedocs.io/en/latest/optimizers/greedi.html)
+* [Modular Approximation](https://apricot-select.readthedocs.io/en/latest/optimizers/modular.html)
+* [Bidirectional Greedy](https://apricot-select.readthedocs.io/en/latest/optimizers/bidirectional.html)
 
 ### Installation
 

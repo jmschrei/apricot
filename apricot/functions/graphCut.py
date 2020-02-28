@@ -1,10 +1,6 @@
 # graphCut.py
 # Author: Jacob Schreiber <jmschreiber91@gmail.com>
 
-"""
-This code implements the graph cut function.
-"""
-
 try:
 	import cupy
 except:
@@ -23,17 +19,24 @@ from scipy.sparse import csr_matrix
 
 
 class GraphCutSelection(BaseGraphSelection):
-	"""A saturated coverage submodular selection algorithm.
+	"""A selector based on using a graph-cut function.
 
-	NOTE: All ~pairwise~ values in your data must be positive for this 
-	selection to work.
+	Graph cuts are canonical class of functions that involves selecting 
+	examples that split the similarity matrix into subgraphs well. 
 
-	This function uses a saturated coverage based submodular selection algorithm
-	to identify a representative subset of the data. This function works on 
-	pairwise measures between each of the samples. These measures can be
-	the correlation, a dot product, or any other such function where a higher
-	value corresponds to a higher similarity and a lower value corresponds to
-	a lower similarity.
+	.. note:: 
+		All ~pairwise~ values in your data must be non-negative for this 
+		selection to work.
+
+	The general form of a graph cut function is 
+
+	.. math::
+		f(X, V) = \\lambda\\sum_{v \\in V} \\sum_{x \\in X} \\phi(x, v) - \\sum_{x, y \\in X} \\phi(x, y)
+
+	where :math:`f` indicates the function, :math:`X` is a subset, :math:`V` 
+	is the ground set, and :math:`\\phi` is the similarity measure between 
+	two examples. Like most graph-based functons, the graph-cut function 
+	requires access to the full similarity matrix.
 
 	This implementation allows users to pass in either their own symmetric
 	square matrix of similarity values, or a data matrix as normal and a function

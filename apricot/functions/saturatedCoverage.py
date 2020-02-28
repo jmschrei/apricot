@@ -1,10 +1,6 @@
 # saturatedCoverage.py
 # Author: Jacob Schreiber <jmschreiber91@gmail.com>
 
-"""
-This code implements saturated coverage functions.
-"""
-
 try:
 	import cupy
 except:
@@ -49,19 +45,28 @@ def select_next_cupy(X, gains, current_values, max_values, mask):
 class SaturatedCoverageSelection(BaseGraphSelection):
 	"""A saturated coverage submodular selection algorithm.
 
-	NOTE: All ~pairwise~ values in your data must be positive for this 
-	selection to work.
+	The saturated coverage function is a graph-based function where the gain 
+	is the sum of the similarities between the candidate example and the 
+	entire ground set up until a certain point. Essentially, each example in 
+	the ground set contributes to the overall function until some prespecified 
+	level of "coverage" is met. Once an example is similar enough to the 
+	selected examples, it stops contributing to the function.
 
-	This function uses a saturated coverage based submodular selection algorithm
-	to identify a representative subset of the data. This function works on 
-	pairwise measures between each of the samples. These measures can be
-	the correlation, a dot product, or any other such function where a higher
-	value corresponds to a higher similarity and a lower value corresponds to
-	a lower similarity.
+	.. note::
+		All ~pairwise~ values in your data must be positive for this 
+		selection to work.
 
-	This implementation allows users to pass in either their own symmetric
-	square matrix of similarity values, or a data matrix as normal and a function
-	that calculates these pairwise values.
+	The general form of a saturated coverage function is 
+
+	.. math::
+		f(X, V) = \\sum_{v \\in V} \\min\\{\\sum_{x \\in X} \\phi(x, v), \\alpha\\}
+
+	where :math:`f` indicates the function, :math:`X` is a subset, :math:`V` 
+	is the ground set, and :math:`\\phi` is the similarity measure between two 
+	examples, and :math:`\\alpha` is a parameter that, for each point in the 
+	ground set, specifies the maximum similarity that each example can have 
+	to the selected set (the saturation). Like most graph-based functons, 
+	the saturated coverage function requires access to the full ground set.
 
 	Parameters
 	----------
