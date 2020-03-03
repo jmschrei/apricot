@@ -114,30 +114,6 @@ model = FacilityLocationSelection(1000).fit(X)
 X_reordered2 = X[model.ranking]
 ```
 
-#### scikit-learn integration
-
-Because apricot implements these functions in the style of a scikit-learn transformer, they can be dropped into current workflows. Clustering models that used to be defined as follows:
-
-```python
-model = GaussianMixture(10)
-model.fit(X)
-```
-
-can now be turned into a pipeline without changing the rest of your code like such:
-
-```python
-model = Pipeline([('selection', FacilityLocationSelection(25)),
-                  ('model', GaussianMixture(10))])
-model.fit(X)
-```
-
-sklearn does not currently allow transformers to modify the label vector y even though they can modify the data matrix X and so apricot cannot be dropped into pipelines for supervised models. However, if you are not constrained to use a pipeline then you can transform both the data matrix and the label vector together:
-
-```python
-X_subset, y_subset = FacilityLocationSelection(100).fit_transform(X, y)
-model.fit(X_subset, y_subset)
-```
-
 #### When should I use submodular selection?
 
 If the amount of data that you have right now is not burdensome to deal with then it may not be helpful to use submodular selection. However, if training even simple models using the amount of data you have is difficult, you might consider summarizing your data set using apricot. If you're currently running many random selections because of the amount of data you have you may find that a single run of apricot will yield a better subset.
