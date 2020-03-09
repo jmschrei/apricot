@@ -1,4 +1,4 @@
-.. _optimizers.bidirectional
+.. _optimizers.bidirectional:
 
 Bidirectional Greedy
 ====================

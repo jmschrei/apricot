@@ -1,4 +1,4 @@
-.. _optimizers.greedi
+.. _optimizers.greedi:
 
 GreeDi
 ======

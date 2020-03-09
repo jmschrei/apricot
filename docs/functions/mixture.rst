@@ -1,4 +1,4 @@
-.. _functions.mixtures
+.. _functions.mixtures:
 
 Mixtures
 ========

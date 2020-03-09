@@ -1,4 +1,4 @@
-.. _optimizers.stochastic
+.. _optimizers.stochastic:
 
 Stochastic Greedy
 =================

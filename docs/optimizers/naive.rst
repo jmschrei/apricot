@@ -1,4 +1,4 @@
-.. _optimizers.naive
+.. _optimizers.naive:
 
 Naive Greedy
 ============

@@ -1,4 +1,4 @@
-.. _optimizers.sample
+.. _optimizers.sample:
 
 Sample Greedy
 =============

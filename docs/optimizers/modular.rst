@@ -1,4 +1,4 @@
-.. _optimizers.modular
+.. _optimizers.modular:
 
 Modular Greedy
 ==============

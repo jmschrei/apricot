@@ -11,27 +11,31 @@
 
 |
 
+apricot is a package for submodular optimization brought to you in a convenient sklearn-like format. The package focuses on (1) being flexible enough for allow users to easily define their own functions and optimizers just as you can in neural network libraries, and (2) being fast by using numba to speed up the computationally intensive aspects.
 
-apricot
-=======
+The primary purpose of apricot is to summarize massive data sets into useful subsets. A simple way to use these subsets is to visualize the modalities of data. When apricot is used to summarize the MNIST and Fashion-MNIST data sets into ten elements, those selected represent the space well and cover almost all the classes without even having access to the labels.
 
-apricot is a Python package that implements submodular optimization for the purpose of summarizing massive data sets into representative subsets. These subsets are widely useful, but perhaps the most relevant usage of these subsets are either to visualize the modalities that exist in massive data sets, or for training accurate machine learning in a fraction of the time and compute power. 
+.. image:: imgs/embeddings.png
+   :width: 1000px
 
+These subsets can also be useful when training machine learning models. It might seem counterintuitive at first to train a model using only a fraction of your data. Unfortunately, the compute required to train models on huge data sets might not be available to everyone. Instead of relying on random subsampling, one could instead select a subset using submodular optimization. Using the same data sets as before, we can see that training a logistic regression model using the subsets selected by apricot results in a model with higher accuracy than randomly selected subsets.
 
-Installation
-------------
+.. image:: imgs/fl-ml.png
+   :width: 1000px
 
-apricot can be installed using `pip install apricot-select`.
+|
 
+At a high level, submodular functions operate on sets of elements and optimizing them involves selecting a subset of elements. The functions implemented in apricot return a value that is inversely related to the redundancy of the selected elements, meaning that maximizing them involves selecting a set of non-redundant elements. A key property of these functions is that they are *submodular*, meaning that the gain in the function value that a particular element would yield either decreases or stays the same each time an element is added to the subset (this is also known as the diminishing returns property). 
 
-
+You can install apricot with :code:`pip install apricot-select`.
 
 .. toctree::
    :maxdepth: 1
    :hidden:
-   :caption: Getting Started
+   :caption: apricot
 
-   self
+   Introduction <self> 
+   submodular.rst
    CODE_OF_CONDUCT.rst
    faq.rst
    whats_new.rst
@@ -42,9 +46,7 @@ apricot can be installed using `pip install apricot-select`.
 	:caption: Features
 
 	features/sparse.rst
-	features/gpu.rst
-	features/numba.rst
-	features/
+	features/knapsack.rst
 
 .. toctree::
    :maxdepth: 1

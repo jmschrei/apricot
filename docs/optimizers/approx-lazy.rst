@@ -1,4 +1,4 @@
-.. _optimizers.approx-lazy
+.. _optimizers.approx-lazy:
 
 Approximate Lazy Greedy
 =======================

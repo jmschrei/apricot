@@ -1,4 +1,4 @@
-.. _optimizers.lazy
+.. _optimizers.lazy:
 
 Lazy Greedy
 ===========

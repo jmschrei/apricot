@@ -1,4 +1,4 @@
-.. _optimizers.two-stage
+.. _optimizers.two-stage:
 
 Two-Stage Greedy
 ================
