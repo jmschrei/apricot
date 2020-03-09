@@ -1,3 +1,5 @@
+.. title:: Introduction
+
 .. image:: logos/apricot-logo.png
 	:width: 500px
 
