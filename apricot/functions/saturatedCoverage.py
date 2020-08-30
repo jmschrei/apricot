@@ -1,11 +1,6 @@
 # saturatedCoverage.py
 # Author: Jacob Schreiber <jmschreiber91@gmail.com>
 
-try:
-	import cupy
-except:
-	import numpy as cupy
-
 import numpy
 
 from .base import BaseGraphSelection
@@ -37,10 +32,6 @@ def select_next_sparse(X_data, X_indices, X_indptr, gains, current_values, max_v
 		for j in range(start, end):
 			k = X_indices[j]
 			gains[i] += min(X_data[j] + current_values[k], max_values[k]) - current_values[k]
-
-def select_next_cupy(X, gains, current_values, max_values, mask):
-	gains[:] = cupy.sum(cupy.minimum(X + current_values, max_values), axis=1)
-	gains[:] = gains * (1 - mask)
 
 class SaturatedCoverageSelection(BaseGraphSelection):
 	"""A saturated coverage submodular selection algorithm.
@@ -221,32 +212,23 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 
 	def _calculate_gains(self, X_pairwise, idxs=None):
 		idxs = idxs if idxs is not None else self.idxs
+		gains = numpy.zeros(idxs.shape[0], dtype='float64')
 
-		if self.cupy:
-			gains = cupy.zeros(idxs.shape[0], dtype='float64')
-			select_next_cupy(X_pairwise, gains, self.current_values,
+		if self.sparse:
+			select_next_sparse(X_pairwise.data,
+				X_pairwise.indices, X_pairwise.indptr, gains,
+				self.current_values, self.max_values, idxs)
+		else:
+			select_next(X_pairwise, gains, self.current_values,
 				self.max_values, idxs)
 			gains -= self.current_values.sum()
-		else:
-			gains = numpy.zeros(idxs.shape[0], dtype='float64')
-			if self.sparse:
-				select_next_sparse(X_pairwise.data,
-					X_pairwise.indices, X_pairwise.indptr, gains,
-					self.current_values, self.max_values, idxs)
-			else:
-				select_next(X_pairwise, gains, self.current_values,
-					self.max_values, idxs)
-				gains -= self.current_values.sum()
 
 		return gains
 
 	def _select_next(self, X_pairwise, gain, idx):
 		"""This function will add the given item to the selected set."""
 
-		if self.cupy:
-			self.current_values = cupy.minimum(self.max_values,
-				self.current_values + X_pairwise)
-		elif self.sparse:
+		if self.sparse:
 			self.current_values = numpy.minimum(self.max_values,
 				X_pairwise.toarray()[0] + self.current_values)
 		else:

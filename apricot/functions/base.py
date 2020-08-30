@@ -6,11 +6,6 @@ This file contains code that implements the core of the submodular selection
 algorithms.
 """
 
-try:
-	import cupy
-except:
-	import numpy as cupy
-
 import numpy
 from tqdm import tqdm
 
@@ -22,68 +17,14 @@ from ..optimizers import TwoStageGreedy
 from ..optimizers import StochasticGreedy
 from ..optimizers import BidirectionalGreedy
 from ..optimizers import GreeDi
+from ..optimizers import SieveGreedy
 from ..optimizers import OPTIMIZERS
 
 from ..utils import PriorityQueue
+from ..utils import check_random_state
+from ..utils import _calculate_pairwise_distances
 
 from scipy.sparse import csr_matrix
-
-from sklearn.metrics import pairwise_distances
-from sklearn.neighbors import KNeighborsTransformer
-
-def _calculate_pairwise_distances(X, metric, n_neighbors=None):
-	if metric in ('precomputed', 'ignore'):
-		return X
-
-	if n_neighbors is None:
-		if metric == 'euclidean':
-			X_pairwise = pairwise_distances(X, metric=metric, squared=True)
-		elif metric == 'correlation' or metric == 'cosine':
-			# An in-place version of:
-			# X_pairwise = 1 - (1 - pairwise_distances(X, metric=metric)) ** 2
-			
-			X_pairwise = pairwise_distances(X, metric=metric)
-			X_pairwise = numpy.subtract(1, X_pairwise, out=X_pairwise)
-			X_pairwise = numpy.square(X_pairwise, out=X_pairwise)
-			X_pairwise = numpy.subtract(1, X_pairwise, out=X_pairwise)
-		else:
-			X_pairwise = pairwise_distances(X, metric=metric)
-	else:
-		if metric == 'correlation' or metric == 'cosine':
-			# An in-place version of:
-			# X = 1 - (1 - pairwise_distances(X, metric=metric)) ** 2
-
-			X = pairwise_distances(X, metric=metric)
-			X = numpy.subtract(1, X, out=X)
-			X = numpy.square(X, out=X)
-			X = numpy.subtract(1, X, out=X)
-			metric = 'precomputed'
-
-		if isinstance(n_neighbors, int):
-			params = {'squared': True} if metric == 'euclidean' else None
-			X_pairwise = KNeighborsTransformer(
-				n_neighbors=n_neighbors, metric=metric, 
-				metric_params=params).fit_transform(X)
-
-		elif isinstance(n_neighbors, KNeighborsTransformer):
-			X_pairwise = n_neighbors.fit_transform(X)
-
-	if metric == 'correlation' or metric == 'cosine':
-		if isinstance(X_pairwise, csr_matrix):
-			X_pairwise.data = numpy.subtract(1, X_pairwise.data, 
-				out=X_pairwise.data)
-		else:
-			X_pairwise = numpy.subtract(1, X_pairwise,
-				out=X_pairwise)
-	else:
-		if isinstance(X_pairwise, csr_matrix):
-			X_pairwise.data = numpy.subtract(X_pairwise.max(),
-				X_pairwise.data, out=X_pairwise.data)
-		else:
-			X_pairwise = numpy.subtract(X_pairwise.max(), X_pairwise,
-				out=X_pairwise)
-
-	return numpy.array(X_pairwise, copy=False, dtype='float64')
 
 
 class BaseSelection(object):
@@ -146,8 +87,9 @@ class BaseSelection(object):
 		sample, and so forth.
 	"""
 
-	def __init__(self, n_samples, initial_subset=None, optimizer='two-stage', 
-		optimizer_kwds={}, n_jobs=1, random_state=None, verbose=False):
+	def __init__(self, n_samples, initial_subset=None, optimizer='lazy', 
+		optimizer_kwds={}, reservoir=None, max_reservoir_size=1000, 
+		n_jobs=1, random_state=None, verbose=False):
 		if n_samples <= 0:
 			raise ValueError("n_samples must be a positive value.")
 
@@ -168,17 +110,25 @@ class BaseSelection(object):
 			raise ValueError("verbosity must be True or False")
 
 		self.n_samples = n_samples
-		self.random_state = random_state
+		self.metric = 'ignore'
+		self.random_state = check_random_state(random_state)
 		self.optimizer = optimizer
 		self.optimizer_kwds = optimizer_kwds
 		self.n_jobs = n_jobs
 		self.verbose = verbose
+		self.initial_subset = initial_subset
+
 		self.ranking = None
 		self.idxs = None
 		self.gains = None
+		self.subset = None
 		self.sparse = None
-		self.cupy = None
-		self.initial_subset = initial_subset
+		
+		self.sieve_current_values_ = None
+		self.n_seen_ = 0
+		self.reservoir_size = 0
+		self.reservoir = reservoir
+		self.max_reservoir_size = max_reservoir_size
 
 	def fit(self, X, y=None, sample_weight=None, sample_cost=None):
 		"""Run submodular optimization to select a subset of examples.
@@ -218,7 +168,7 @@ class BaseSelection(object):
 			The fit step returns this selector object.
 		"""
 
-		allowed_dtypes = list, numpy.ndarray, csr_matrix, cupy.ndarray
+		allowed_dtypes = list, numpy.ndarray, csr_matrix
 
 		if not isinstance(X, allowed_dtypes):
 			raise ValueError("X must be either a list of lists, a 2D numpy " \
@@ -232,9 +182,7 @@ class BaseSelection(object):
 			raise ValueError("Cannot select more examples than the number in" \
 				" the data set.")
 
-		self._initialize(X)
-
-		if not self.sparse and not self.cupy:
+		if not self.sparse:
 			if X.dtype != 'float64':
 				X = X.astype('float64')
 
@@ -245,10 +193,45 @@ class BaseSelection(object):
 		else:
 			optimizer = self.optimizer
 
+		self._initialize(X)
+
 		if self.verbose:
 			self.pbar = tqdm(total=self.n_samples, unit_scale=True)
 
 		optimizer.select(X, self.n_samples, sample_cost=sample_cost)
+
+		if self.verbose == True:
+			self.pbar.close()
+
+		self.ranking = numpy.array(self.ranking)
+		self.gains = numpy.array(self.gains)
+		return self
+
+	def partial_fit(self, X, y=None, sample_weight=None, sample_cost=None):
+		allowed_dtypes = list, numpy.ndarray, csr_matrix
+
+		if not isinstance(X, allowed_dtypes):
+			raise ValueError("X must be either a list of lists, a 2D numpy " \
+				"array, or a scipy.sparse.csr_matrix.")
+		if isinstance(X, numpy.ndarray) and len(X.shape) != 2:
+			raise ValueError("X must have exactly two dimensions.")
+
+		if not self.sparse:
+			if X.dtype != 'float64':
+				X = X.astype('float64')
+
+		if not isinstance(self.optimizer, SieveGreedy):
+			self.optimizer = OPTIMIZERS['sieve'](function=self, 
+				verbose=self.verbose, random_state=self.random_state,
+				**self.optimizer_kwds)
+
+		self._X = X
+		self._initialize(X)
+
+		if self.verbose:
+			self.pbar = tqdm(total=self.n_samples, unit_scale=True)
+
+		self.optimizer.select(X, self.n_samples, sample_cost=sample_cost)
 
 		if self.verbose == True:
 			self.pbar.close()
@@ -354,19 +337,16 @@ class BaseSelection(object):
 			sample_weight=sample_weight)
 
 	def _initialize(self, X, idxs=None):
+		n, d = X.shape
+
 		self.sparse = isinstance(X, csr_matrix)
-		self.cupy = isinstance(X, cupy.ndarray) and not isinstance(X, numpy.ndarray)
 		self.ranking = []
 		self.gains = []
+		self.subset = numpy.zeros((0, d), dtype='float64')
 
-		if self.cupy:
-			self.current_values = cupy.zeros(X.shape[1], dtype='float64')
-			self.current_concave_values = cupy.zeros(X.shape[1], dtype='float64')
-			self.mask = cupy.zeros(X.shape[0], dtype='int8')
-		else:
-			self.current_values = numpy.zeros(X.shape[1], dtype='float64')
-			self.current_concave_values = numpy.zeros(X.shape[1], dtype='float64')
-			self.mask = numpy.zeros(X.shape[0], dtype='int8')
+		self.current_values = numpy.zeros(d, dtype='float64')
+		self.current_concave_values = numpy.zeros(d, dtype='float64')
+		self.mask = numpy.zeros(n, dtype='int8')
 
 		if self.initial_subset is not None:
 			if self.initial_subset.ndim == 1:
@@ -392,6 +372,43 @@ class BaseSelection(object):
 
 	def _calculate_gains(self, X, idxs=None):
 		raise NotImplementedError
+
+	def _calculate_sieve_gains(self, X, thresholds, idxs):
+		n = X.shape[0]
+		d = X.shape[1] if self.reservoir is None else self.max_reservoir_size
+		l = len(thresholds)
+
+		if self.sieve_current_values_ is None:
+			self.sieve_current_values_ = numpy.zeros((l, d), 
+				dtype='float64')
+			self.sieve_selections_ = numpy.zeros((l, self.n_samples), 
+				dtype='int64') - 1
+			self.sieve_gains_ = numpy.zeros((l, self.n_samples), 
+				dtype='float64') - 1
+			self.sieve_n_selected_ = numpy.zeros(l, 
+				dtype='int64')
+			self.sieve_total_gains_ = numpy.zeros(l, 
+				dtype='float64')
+			self.sieve_subsets_ = numpy.zeros((l, self.n_samples, 
+				X.shape[1]), dtype='float64')
+		else:
+			j = l - self.sieve_current_values_.shape[0]
+			if j > 0:
+				self.sieve_current_values_ = numpy.vstack([
+					self.sieve_current_values_, numpy.zeros((j, d), 
+						dtype='float64')])
+				self.sieve_selections_ = numpy.vstack([
+					self.sieve_selections_, numpy.zeros((j, self.n_samples), 
+						dtype='int64') - 1])
+				self.sieve_gains_ = numpy.vstack([self.sieve_gains_, 
+					numpy.zeros((j, self.n_samples), dtype='float64')])
+				self.sieve_n_selected_ = numpy.concatenate([
+					self.sieve_n_selected_, numpy.zeros(j, dtype='int64')])
+				self.sieve_total_gains_ = numpy.concatenate([
+					self.sieve_total_gains_, numpy.zeros(j, dtype='float64')])
+				self.sieve_subsets_ = numpy.concatenate([self.sieve_subsets_, 
+					numpy.zeros((j, self.n_samples, X.shape[1]), 
+						dtype='float64')])
 
 	def _select_next(self, X, gain, idx):
 		self.ranking.append(idx)
@@ -480,17 +497,20 @@ class BaseGraphSelection(BaseSelection):
 		sample, and so forth.
 	"""
 
-	def __init__(self, n_samples=10, metric='euclidean', 
+	def __init__(self, n_samples, metric='euclidean', 
 		initial_subset=None, optimizer='two-stage', optimizer_kwds={},
-		n_neighbors=None, n_jobs=1, random_state=None, verbose=False):
-		
-		self.metric = metric.replace("corr", "correlation")
-		self.n_neighbors = n_neighbors
+		n_neighbors=None, reservoir=None, max_reservoir_size=1000, 
+		n_jobs=1, random_state=None, verbose=False):
 
 		super(BaseGraphSelection, self).__init__(n_samples=n_samples, 
 			initial_subset=initial_subset, optimizer=optimizer, 
-			optimizer_kwds=optimizer_kwds, n_jobs=n_jobs, 
+			optimizer_kwds=optimizer_kwds, reservoir=reservoir, 
+			max_reservoir_size=max_reservoir_size, n_jobs=n_jobs, 
 			random_state=random_state, verbose=verbose)
+
+		self.metric = metric.replace("corr", "correlation")
+		self.n_neighbors = n_neighbors
+
 
 	def fit(self, X, y=None, sample_weight=None, sample_cost=None):
 		"""Run submodular optimization to select a subset of examples.
@@ -543,11 +563,40 @@ class BaseGraphSelection(BaseSelection):
 		return super(BaseGraphSelection, self).fit(X_pairwise, y=y,
 			sample_weight=sample_weight, sample_cost=sample_cost)
 
+	def partial_fit(self, X, y=None, sample_weight=None, sample_cost=None):
+		if self.reservoir is None:
+			self.reservoir = numpy.empty((self.max_reservoir_size, X.shape[1]))
+
+		for i in range(X.shape[0]):
+			if self.reservoir_size < self.max_reservoir_size:
+				self.reservoir[self.reservoir_size] = X[i]
+				self.reservoir_size += 1
+			else:
+				r = self.random_state.choice(self.n_seen_ + i)
+				if r < self.max_reservoir_size:
+					self.reservoir[r] = X[i]
+					#self.current_values_[:, r] = 0.
+
+		X_pairwise = _calculate_pairwise_distances(X, 
+			Y=self.reservoir[:self.reservoir_size], metric=self.metric)
+
+		super(BaseGraphSelection, self).partial_fit(X_pairwise, y=y, 
+			sample_weight=sample_weight, sample_cost=sample_cost)
+
+		self._X = X
+		self.current_values = numpy.zeros(self.reservoir_size, 
+			dtype='float64')
+		self.n_seen_ += X.shape[0]
+
 	def _initialize(self, X_pairwise, idxs=None):
 		super(BaseGraphSelection, self)._initialize(X_pairwise, idxs=idxs)
 
 	def _calculate_gains(self, X_pairwise):
 		super(BaseGraphSelection, self)._calculate_gains(X_pairwise)
+
+	def _calculate_sieve_gains(self, X, thresholds, idxs):
+		super(BaseGraphSelection, self)._calculate_sieve_gains(X, thresholds,
+			idxs)
 
 	def _select_next(self, X_pairwise, gain, idx):
 		super(BaseGraphSelection, self)._select_next(X_pairwise, gain, idx)

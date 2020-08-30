@@ -1,14 +1,12 @@
 # facilityLocation.py
 # Author: Jacob Schreiber <jmschreiber91@gmail.com>
 
-try:
-	import cupy
-except:
-	import numpy as cupy
-
 import numpy
 
 from .base import BaseGraphSelection
+from ..optimizers import LazyGreedy
+from ..optimizers import ApproximateLazyGreedy
+from ..optimizers import SieveGreedy
 
 from tqdm import tqdm
 
@@ -17,28 +15,60 @@ from numba import prange
 
 dtypes = 'void(float64[:,:], float64[:], float64[:], int64[:])'
 sdtypes = 'void(float64[:], int32[:], int32[:], float64[:], float64[:], int64[:])'
+sieve_dtypes = 'void(float64[:,:], int64, float64[:,:], int64[:,:],' \
+	'float64[:,:], float64[:], float64[:], int64[:], int64[:])' 
 
-@njit(dtypes, parallel=True, fastmath=True)
-def select_next(X, gains, current_values, idxs):
-	for i in prange(idxs.shape[0]):
-		idx = idxs[i]
-		gains[i] = numpy.maximum(X[idx], current_values).sum()
+def calculate_gains(dtypes, parallel, fastmath, cache):
+	@njit(dtypes, parallel=parallel, fastmath=fastmath, cache=cache)
+	def calculate_gains_(X, gains, current_values, idxs):
+		for i in prange(idxs.shape[0]):
+			idx = idxs[i]
+			gains[i] = numpy.maximum(X[idx], current_values).sum()
+	return calculate_gains_
 
-@njit(sdtypes, parallel=True, fastmath=True)
-def select_next_sparse(X_data, X_indices, X_indptr, gains, current_values, idxs):
-	for i in prange(idxs.shape[0]):
-		idx = idxs[i]
 
-		start = X_indptr[idx]
-		end = X_indptr[idx+1]
+def calculate_gains_sparse(dtypes, parallel, fastmath, cache):
+	@njit(dtypes, parallel=parallel, fastmath=fastmath, cache=cache)
+	def calculate_gains_sparse_(X_data, X_indices, X_indptr, gains, current_values, idxs):
+		for i in prange(idxs.shape[0]):
+			idx = idxs[i]
 
-		for j in range(start, end):
-			k = X_indices[j]
-			gains[i] += max(X_data[j], current_values[k]) - current_values[k]
+			start = X_indptr[idx]
+			end = X_indptr[idx+1]
 
-def select_next_cupy(X, gains, current_values, idxs):
-	gains[:] = cupy.sum(cupy.maximum(X, current_values), axis=1)
-	return int(cupy.argmax(gains[idxs]))
+			for j in range(start, end):
+				k = X_indices[j]
+				gains[i] += max(X_data[j], current_values[k]) - current_values[k]
+	return calculate_gains_sparse_
+
+
+def calculate_gains_sieve(dtypes, parallel, fastmath, cache):
+	@njit(dtypes, parallel=parallel, fastmath=fastmath, cache=cache)
+	def calculate_gains_sieve_(X, k, current_values, selections, gains, 
+		total_gains, max_values, n_selected, idxs):
+		n, d = X.shape
+		t = max_values.shape[0]
+
+		for j in prange(t):
+			for i in range(n):
+				if n_selected[j] == k:
+					break
+
+				idx = idxs[i]
+				threshold = (max_values[j] / 2. - total_gains[j]) / (k - n_selected[j])
+				maximum = numpy.maximum(X[i][:d], current_values[j][:d])
+				gain = maximum.mean() - total_gains[j]
+
+				if gain > threshold:
+					current_values[j][:d] = maximum
+					total_gains[j] = maximum.mean()
+
+					selections[j, n_selected[j]] = idx
+					gains[j, n_selected[j]] = gain
+					n_selected[j] += 1
+
+	return calculate_gains_sieve_
+
 
 class FacilityLocationSelection(BaseGraphSelection):
 	"""A selector based off a facility location submodular function.
@@ -159,8 +189,8 @@ class FacilityLocationSelection(BaseGraphSelection):
 		sample, and so forth.
 	"""
 
-	def __init__(self, n_samples=10, metric='euclidean', 
-		initial_subset=None, optimizer='two-stage', optimizer_kwds={}, 
+	def __init__(self, n_samples, metric='euclidean', 
+		initial_subset=None, optimizer='lazy', optimizer_kwds={}, 
 		n_neighbors=None, n_jobs=1, random_state=None, verbose=False):
 
 		super(FacilityLocationSelection, self).__init__(n_samples=n_samples, 
@@ -231,25 +261,57 @@ class FacilityLocationSelection(BaseGraphSelection):
 				" matrix of examples or a one dimensional mask.")
 
 		self.current_values_sum = self.current_values.sum()
+		self.calculate_gains_ = calculate_gains_sparse if self.sparse else calculate_gains
+		dtypes_ = sdtypes if self.sparse else dtypes
+
+		if self.optimizer in (LazyGreedy, ApproximateLazyGreedy):
+			self.calculate_gains_ = self.calculate_gains_(dtypes_, False, True, False)
+		elif self.optimizer in ('lazy', 'approimate-lazy'):
+			self.calculate_gains_ = self.calculate_gains_(dtypes_, False, True, False)
+		else: 
+			self.calculate_gains_ = self.calculate_gains_(dtypes_, True, True, False)
+
+		calculate_sieve_gains_ = calculate_gains_sieve_sparse if self.sparse else calculate_gains_sieve
+		dtypes_ = sieve_sparse_dtypes if self.sparse else sieve_dtypes 
+		self.calculate_sieve_gains_ = calculate_sieve_gains_(dtypes_, 
+			True, True, False)
 
 	def _calculate_gains(self, X_pairwise, idxs=None):
 		idxs = idxs if idxs is not None else self.idxs
+		gains = numpy.zeros(idxs.shape[0], dtype='float64')
 
-		if self.cupy:
-			gains = cupy.zeros(idxs.shape[0], dtype='float64')
-			select_next_cupy(X_pairwise, gains, self.current_values, idxs)
-			gains -= self.current_values_sum
+		if self.sparse:
+			self.calculate_gains_(X_pairwise.data, X_pairwise.indices, 
+				X_pairwise.indptr, gains, self.current_values, idxs)
 		else:
-			gains = numpy.zeros(idxs.shape[0], dtype='float64')
-
-			if self.sparse:
-				select_next_sparse(X_pairwise.data, X_pairwise.indices, 
-					X_pairwise.indptr, gains, self.current_values, idxs)
-			else:
-				select_next(X_pairwise, gains, self.current_values, idxs)
-				gains -= self.current_values_sum
+			self.calculate_gains_(X_pairwise, gains, self.current_values, idxs)
+			gains -= self.current_values_sum
 
 		return gains
+
+	def _calculate_sieve_gains(self, X_pairwise, thresholds, idxs):
+		"""This function will update the internal statistics from a stream.
+
+		This function will update the various internal statistics that are a
+		part of the sieve algorithm for streaming submodular optimization. This
+		function does not directly return gains but it updates the values
+		used by a streaming optimizer.
+		"""
+
+		super(FacilityLocationSelection, self)._calculate_sieve_gains(
+			X_pairwise,thresholds, idxs)
+
+		if self.sparse:
+			self.calculate_sieve_gains_(X_pairwise.data, X_pairwise.indices, 
+				X_pairwise.indptr, self.n_samples, self.sieve_current_values_,
+				self.sieve_selections_, self.sieve_gains_, 
+				self.sieve_total_gains_, thresholds, 
+				self.sieve_n_selected_, idxs)
+		else:
+			self.calculate_sieve_gains_(X_pairwise, self.n_samples, 
+				self.sieve_current_values_, self.sieve_selections_, 
+				self.sieve_gains_, self.sieve_total_gains_, thresholds, 
+				self.sieve_n_selected_, idxs)
 
 	def _select_next(self, X_pairwise, gain, idx):
 		"""This function will add the given item to the selected set."""

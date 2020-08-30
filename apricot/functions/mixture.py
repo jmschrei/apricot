@@ -1,10 +1,5 @@
 # mixture.py
 # Author: Jacob Schreiber <jmschreiber91@gmail.com>
-
-try:
-	import cupy
-except:
-	import numpy as cupy
 	
 import numpy
 
@@ -211,16 +206,55 @@ class MixtureSelection(BaseGraphSelection):
 		a single element is passed in, it will return a singe value."""
 
 		idxs = idxs if idxs is not None else self.idxs
-
-		if self.cupy:
-			gains = cupy.zeros(idxs.shape[0], dtype='float64')
-		else:
-			gains = numpy.zeros(idxs.shape[0], dtype='float64')
+		gains = numpy.zeros(idxs.shape[0], dtype='float64')
 
 		for i, function in enumerate(self.functions):
 			gains += function._calculate_gains(X, idxs) * self.weights[i]
 
 		return gains
+
+	def _calculate_sieve_gains(self, X, thresholds, idxs):
+		t = numpy.zeros(thresholds.shape[0], dtype='float64') - 1
+
+		for j in range(X.shape[0]):
+			x = X[j:j+1]
+
+			current_values = []
+			selections = []
+			gains = []
+			n_selected = []
+			total_gains = []
+			subsets = []
+
+			gain = numpy.zeros(len(thresholds), dtype='float64')
+			for i, function in enumerate(self.functions):
+				function._calculate_sieve_gains(x, t, idxs)
+				gain += function.sieve_gains_[:, 0] * self.weights[i]
+
+				current_values.append(function.sieve_current_values_.copy())
+				selections.append(function.sieve_selections_.copy())
+				gains.append(function.sieve_gains_.copy())
+				n_selected.append(function.sieve_n_selected_.copy())
+				total_gains.append(function.sieve_total_gains_.copy())
+				subsets.append(function.sieve_subsets_.copy())
+
+			for l in range(len(thresholds)):
+				threshold = ((thresholds[l] / 2. - self.sieve_total_gains_[l]) 
+					/ (k - self.sieve_n_selected_[l]))
+
+				if gain[l] > threshold:
+					self.sieve_total_gains_[l] += gain
+					self.sieve_selections_[l, n_selected[l]] = idxs[j]
+					self.sieve_gains_[l, n_selected[l]] = gain
+					self.sieve_n_selected_[l] += 1
+				else:
+					for i, function in enumerate(self.functions):
+						function.sieve_current_values_ = current_values[i]
+						function.sieve_selections_ = selections[i]
+						function.sieve_gains_ = gains[i]
+						function.n_selected_ = n_selected[i] 
+						function.sieve_total_gains_ = total_gains[i]
+						function.sieve_subsets_ = subsets[i]
 
 	def _select_next(self, X, gain, idx):
 		"""This function will add the given item to the selected set."""

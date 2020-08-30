@@ -1,11 +1,6 @@
 # sumRedundancy.py
 # Author: Jacob Schreiber <jmschreiber91@gmail.com>
 
-try:
-	import cupy
-except:
-	import numpy as cupy
-
 import numpy
 
 from .base import BaseGraphSelection
@@ -34,7 +29,11 @@ class SumRedundancySelection(BaseGraphSelection):
 	.. math::
 		f(X, V) = \sum_{x, y \in V} \phi(x, y) - \sum_{x, y\in X} \phi(x,y)
 
-	where :math:`f` indicates the function, :math:`X` is the selected subset, :math:`V` is the ground set, and :math:`\phi` is the similarity measure between two examples. While sum redundancy functions involves calculating the sum of the entire similarity matrix in principle, in practice if one is only calculating the gains this step can be ignored.
+	where :math:`f` indicates the function, :math:`X` is the selected subset, 
+	:math:`V` is the ground set, and :math:`\phi` is the similarity measure 
+	between two examples. While sum redundancy functions involves calculating 
+	the sum of the entire similarity matrix in principle, in practice if one 
+	is only calculating the gains this step can be ignored.
 	
 	This implementation allows users to pass in either their own symmetric
 	square matrix of similarity values, or a data matrix as normal and a function
@@ -173,7 +172,7 @@ class SumRedundancySelection(BaseGraphSelection):
 		idxs = idxs if idxs is not None else numpy.arange(X_pairwise.shape[0])
 
 		for i, idx in enumerate(idxs):
-			self.current_values[i] = X_pairwise[i, idx]
+			self.current_values[i] = X_pairwise[idx, idx]
 
 		if self.initial_subset is None:
 			return

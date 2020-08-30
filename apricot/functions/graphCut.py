@@ -1,14 +1,11 @@
 # graphCut.py
 # Author: Jacob Schreiber <jmschreiber91@gmail.com>
 
-try:
-	import cupy
-except:
-	import numpy as cupy
-
 import numpy
 
 from .base import BaseGraphSelection
+
+from ..utils import _calculate_pairwise_distances
 
 from tqdm import tqdm
 
@@ -16,6 +13,34 @@ from numba import njit
 from numba import prange
 
 from scipy.sparse import csr_matrix
+
+sieve_dtypes = 'void(float64[:,:], int64, float64[:,:], int64[:,:],' \
+	'float64[:,:], float64[:], float64[:], int64[:], float64[:], int64[:])' 
+
+def calculate_gains_sieve(dtypes, parallel, fastmath, cache):
+	#@njit(dtypes, parallel=parallel, fastmath=fastmath, cache=cache)
+	def calculate_gains_sieve_(X, k, current_values, selections, gains, 
+		total_gains, max_values, n_selected, row_sums, idxs):
+		n, d = X.shape
+		t = max_values.shape[0]
+
+		for j in prange(t):
+			for i in range(n):
+				if n_selected[j] == k:
+					break
+
+				idx = idxs[i]
+				threshold = (max_values[j] / 2. - total_gains[j]) / (k - n_selected[j])
+				gain = row_sums[i] - current_values[j, i]
+
+				if gain > threshold:
+					total_gains[j] += gain
+
+					selections[j, n_selected[j]] = idx
+					gains[j, n_selected[j]] = gain
+					n_selected[j] += 1
+
+	return calculate_gains_sieve_
 
 
 class GraphCutSelection(BaseGraphSelection):
@@ -121,7 +146,7 @@ class GraphCutSelection(BaseGraphSelection):
 	"""
 
 	def __init__(self, n_samples=10, metric='euclidean', alpha=1,
-		initial_subset=None, optimizer='two-stage', n_neighbors=None, n_jobs=1, 
+		initial_subset=None, optimizer='naive', n_neighbors=None, n_jobs=1, 
 		random_state=None, optimizer_kwds={}, verbose=False):
 		self.alpha = alpha
 
@@ -173,16 +198,20 @@ class GraphCutSelection(BaseGraphSelection):
 
 	def _initialize(self, X_pairwise):
 		super(GraphCutSelection, self)._initialize(X_pairwise)
-		
+
+		if self.reservoir is not None:
+			X_pairwise = _calculate_pairwise_distances(self._X, 
+				metric=self.metric)
+
 		if self.sparse:
+			self.row_sums = self.alpha * numpy.array(X_pairwise.sum(axis=1))[0]
 			self.current_values = X_pairwise.diagonal().astype('float64')
-			self.column_sum = self.alpha * numpy.array(X_pairwise.sum(axis=0))[0]
 		else:
+			self.row_sums = self.alpha * X_pairwise.sum(axis=1)
 			self.current_values = numpy.diag(X_pairwise).astype('float64')
-			self.column_sum = self.alpha * X_pairwise.sum(axis=0)
 
 		if self.initial_subset is None:
-			return
+			pass
 		elif self.initial_subset.ndim == 2:
 			raise ValueError("When using saturated coverage, the initial subset"\
 				" must be a one dimensional array of indices.")
@@ -197,18 +226,60 @@ class GraphCutSelection(BaseGraphSelection):
 			raise ValueError("The initial subset must be either a two dimensional" \
 				" matrix of examples or a one dimensional mask.")
 
+		self.calculate_sieve_gains_ = calculate_gains_sieve(sieve_dtypes, 
+			True, True, False)
+
 	def _calculate_gains(self, X_pairwise, idxs=None):
 		idxs = idxs if idxs is not None else self.idxs
-		gains = self.column_sum[idxs] - self.current_values[idxs]
+		gains = self.row_sums[idxs] - self.current_values[idxs]
 		return gains
+
+	def _calculate_sieve_gains(self, X_pairwise, thresholds, idxs):
+		"""This function will update the internal statistics from a stream.
+
+		This function will update the various internal statistics that are a
+		part of the sieve algorithm for streaming submodular optimization. This
+		function does not directly return gains but it updates the values
+		used by a streaming optimizer.
+		"""
+
+		super(GraphCutSelection, self)._calculate_sieve_gains(X_pairwise,
+			thresholds, idxs)
+
+		n, m = X_pairwise.shape[0], len(thresholds)
+		row_sums = self.alpha * X_pairwise.mean(axis=1)
+		sieve_current_values_ = numpy.tile(numpy.diag(
+			_calculate_pairwise_distances(self._X, metric=self.metric)), (m, 1))
+
+		for i in range(m):
+			l = self.sieve_n_selected_[i]
+			if l == self.n_samples or l == 0:
+				continue
+
+			sieve_current_values_[i] = _calculate_pairwise_distances(
+				self._X, Y=self.sieve_subsets_[i, :l], 
+				metric=self.metric).mean(axis=1)
+
+		if self.sparse:
+			self.calculate_sieve_gains_(X_pairwise.data, 
+				X_pairwise.indices, X_pairwise.indptr, 
+				self.n_samples, sieve_current_values_, 
+				self.sieve_selections_, self.sieve_gains_, 
+				self.sieve_total_gains_, thresholds, 
+				self.sieve_n_selected_, idxs)
+		else:
+			self.calculate_sieve_gains_(X_pairwise, self.n_samples, 
+				sieve_current_values_, self.sieve_selections_, 
+				self.sieve_gains_, self.sieve_total_gains_, thresholds, 
+				self.sieve_n_selected_, row_sums, idxs)
 
 	def _select_next(self, X_pairwise, gain, idx):
 		"""This function will add the given item to the selected set."""
 
 		if self.sparse:
-			self.current_values += X_pairwise.toarray()[0]
+			self.current_values += X_pairwise.toarray()[0] * 2
 		else:
-			self.current_values += X_pairwise
+			self.current_values += X_pairwise * 2
 
 		super(GraphCutSelection, self)._select_next(
 			X_pairwise, gain, idx)
