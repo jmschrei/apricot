@@ -2,7 +2,9 @@
 
 [![Build Status](https://travis-ci.org/jmschrei/apricot.svg?branch=master)](https://travis-ci.org/jmschrei/apricot) [![Documentation Status](https://readthedocs.org/projects/apricot-select/badge/?version=latest)](https://apricot-select.readthedocs.io/en/latest/?badge=latest)
 
-Please consider citing the [manuscript](https://arxiv.org/abs/1906.03543) if you use apricot in your academic work!
+Please consider citing the [manuscript](https://jmlr.org/papers/volume21/19-467/19-467.pdf) if you use apricot in your academic work!
+
+You can find more thorough documentation [here](https://apricot-select.readthedocs.io/en/latest/index.html).
 
 apricot implements submodular optimization for the purpose of summarizing massive data sets into minimally redundant subsets that are still representative of the original data. These subsets are useful for both visualizing the modalities in the data (such as in the two data sets below) and for training accurate machine learning models with just a fraction of the examples and compute.
 
