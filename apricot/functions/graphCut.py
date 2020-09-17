@@ -18,7 +18,7 @@ sieve_dtypes = 'void(float64[:,:], int64, float64[:,:], int64[:,:],' \
 	'float64[:,:], float64[:], float64[:], int64[:], float64[:], int64[:])' 
 
 def calculate_gains_sieve(dtypes, parallel, fastmath, cache):
-	#@njit(dtypes, parallel=parallel, fastmath=fastmath, cache=cache)
+	@njit(dtypes, parallel=parallel, fastmath=fastmath, cache=cache)
 	def calculate_gains_sieve_(X, k, current_values, selections, gains, 
 		total_gains, max_values, n_selected, row_sums, idxs):
 		n, d = X.shape

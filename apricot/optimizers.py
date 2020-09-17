@@ -434,7 +434,7 @@ class TwoStageGreedy(BaseOptimizer):
 		else:
 			optimizer2 = self.optimizer2
 
-		optimizer1.select(X, self.n_first_selections, sample_cost=sample_cost)
+		optimizer1.select(X, min(self.n_first_selections, k), sample_cost=sample_cost)
 		if k > self.n_first_selections:
 			m = k - self.n_first_selections
 			optimizer2.select(X, m, sample_cost=sample_cost)
@@ -1108,7 +1108,7 @@ class SieveGreedy(BaseOptimizer):
 		ranking = ranking[:self.function.sieve_n_selected_[best_idx]]
 		gain = self.function.sieve_gains_[best_idx]
 		gain = gain[:self.function.sieve_n_selected_[best_idx]]
-		
+
 		for i in range(len(self.thresholds)):
 			for j in range(k):
 				m = self.function.sieve_selections_[i, j]

@@ -11,6 +11,8 @@ from .graphCut import GraphCutSelection
 
 from .mixture import MixtureSelection
 
+from .custom import CustomSelection
+from .custom import CustomGraphSelection
+
 from .base import BaseSelection
 from .base import BaseGraphSelection
-from .base import _calculate_pairwise_distances

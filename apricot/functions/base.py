@@ -415,6 +415,7 @@ class BaseSelection(object):
 		self.gains.append(gain)
 		self.mask[idx] = True
 		self.idxs = numpy.where(self.mask == 0)[0]
+		self.subset = numpy.concatenate([self.subset, [X]])
 
 
 class BaseGraphSelection(BaseSelection):

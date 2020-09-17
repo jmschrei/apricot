@@ -11,4 +11,11 @@ from .functions import GraphCutSelection
 
 from .functions import MixtureSelection
 
+from .functions import BaseSelection
+from .functions import BaseGraphSelection
+
+from .functions import CustomSelection
+from .functions import CustomGraphSelection
+
+
 __version__ = '0.5.0'

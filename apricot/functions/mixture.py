@@ -3,11 +3,12 @@
 	
 import numpy
 
+from .base import BaseSelection
 from .base import BaseGraphSelection
 
 from tqdm import tqdm
 
-class MixtureSelection(BaseGraphSelection):
+class MixtureSelection(BaseSelection):
 	"""A selection approach based on a mixture of submodular functions.
 
 	A convenient property of submodular functions is that any linear 
@@ -121,9 +122,9 @@ class MixtureSelection(BaseGraphSelection):
 		sample, and so forth.
 	"""
 
-	def __init__(self, n_samples, functions, weights=None, metric='ignore',
-		initial_subset=None, optimizer='two-stage', optimizer_kwds={}, n_jobs=1, 
-		random_state=None, verbose=False):
+	def __init__(self, n_samples, functions, weights=None, initial_subset=None, 
+		optimizer='two-stage', optimizer_kwds={}, n_jobs=1, random_state=None, 
+		verbose=False):
 
 		if len(functions) < 2:
 			raise ValueError("Must mix at least two functions.")
@@ -134,21 +135,15 @@ class MixtureSelection(BaseGraphSelection):
 		if weights is None:
 			self.weights = numpy.ones(self.m, dtype='float64')
 		else:
-			self.weights = weights
+			self.weights = numpy.array(weights, dtype='float64', copy=False)
 
 		super(MixtureSelection, self).__init__(n_samples=n_samples, 
-			metric=metric, initial_subset=initial_subset, 
-			optimizer=optimizer, optimizer_kwds=optimizer_kwds, 
-			n_jobs=n_jobs, random_state=random_state, verbose=verbose)
+			initial_subset=initial_subset, optimizer=optimizer, 
+			optimizer_kwds=optimizer_kwds, n_jobs=n_jobs, random_state=random_state, 
+			verbose=verbose)
 
 		for function in self.functions:
 			function.initial_subset = self.initial_subset
-			function.random_state = self.random_state
-			function.n_jobs = self.n_jobs
-			function.verbose = self.verbose
-
-			if isinstance(function, BaseGraphSelection):
-				function.metric = self.metric
 
 	def fit(self, X, y=None, sample_weight=None, sample_cost=None):
 		"""Run submodular optimization to select the examples.
@@ -214,47 +209,54 @@ class MixtureSelection(BaseGraphSelection):
 		return gains
 
 	def _calculate_sieve_gains(self, X, thresholds, idxs):
+		super(MixtureSelection, self)._calculate_sieve_gains(X, 
+			thresholds, idxs)
+
+		for function in self.functions:
+			super(function.__class__, function)._calculate_sieve_gains(X,
+				thresholds, idxs)
+
 		t = numpy.zeros(thresholds.shape[0], dtype='float64') - 1
 
 		for j in range(X.shape[0]):
 			x = X[j:j+1]
 
 			current_values = []
-			selections = []
-			gains = []
-			n_selected = []
 			total_gains = []
-			subsets = []
 
-			gain = numpy.zeros(len(thresholds), dtype='float64')
+			gain = numpy.zeros((len(thresholds), self.n_samples), dtype='float64')
 			for i, function in enumerate(self.functions):
-				function._calculate_sieve_gains(x, t, idxs)
-				gain += function.sieve_gains_[:, 0] * self.weights[i]
-
 				current_values.append(function.sieve_current_values_.copy())
-				selections.append(function.sieve_selections_.copy())
-				gains.append(function.sieve_gains_.copy())
-				n_selected.append(function.sieve_n_selected_.copy())
 				total_gains.append(function.sieve_total_gains_.copy())
-				subsets.append(function.sieve_subsets_.copy())
+
+				function._calculate_sieve_gains(x, t, idxs)
+				gain += function.sieve_gains_ * self.weights[i]
 
 			for l in range(len(thresholds)):
-				threshold = ((thresholds[l] / 2. - self.sieve_total_gains_[l]) 
-					/ (k - self.sieve_n_selected_[l]))
+				if self.sieve_n_selected_[l] == self.n_samples:
+					continue
 
-				if gain[l] > threshold:
-					self.sieve_total_gains_[l] += gain
-					self.sieve_selections_[l, n_selected[l]] = idxs[j]
-					self.sieve_gains_[l, n_selected[l]] = gain
+				threshold = ((thresholds[l] / 2. - self.sieve_total_gains_[l]) 
+					/ (self.n_samples - self.sieve_n_selected_[l]))
+
+				if gain[l, self.sieve_n_selected_[l]] > threshold:
+					self.sieve_total_gains_[l] += gain[l, self.sieve_n_selected_[l]]
+					self.sieve_selections_[l, self.sieve_n_selected_[l]] = idxs[j]
+					self.sieve_gains_[l, self.sieve_n_selected_[l]] = gain[l, self.sieve_n_selected_[l]]
 					self.sieve_n_selected_[l] += 1
 				else:
+					v = self.sieve_n_selected_[l]
+
 					for i, function in enumerate(self.functions):
-						function.sieve_current_values_ = current_values[i]
-						function.sieve_selections_ = selections[i]
-						function.sieve_gains_ = gains[i]
-						function.n_selected_ = n_selected[i] 
-						function.sieve_total_gains_ = total_gains[i]
-						function.sieve_subsets_ = subsets[i]
+						vi = function.sieve_n_selected_[l]
+						if vi != self.sieve_n_selected_[l]:
+							function.sieve_current_values_[l] = current_values[i][l]
+							function.sieve_total_gains_[l] = total_gains[i][l]
+							function.sieve_n_selected_[l] = vi - 1
+							if vi < self.n_samples:
+								function.sieve_selections_[l, vi] = 0
+								function.sieve_gains_[l, vi] = 0
+								function.sieve_subsets_[l, vi] = 0
 
 	def _select_next(self, X, gain, idx):
 		"""This function will add the given item to the selected set."""
