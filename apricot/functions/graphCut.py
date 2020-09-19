@@ -83,13 +83,12 @@ class GraphCutSelection(BaseGraphSelection):
 		is performed on the resulting distances. For backcompatibility,
 		'corr' will be read as 'correlation'. Default is 'euclidean'.
 
-	n_naive_samples : int, optional
-		The number of samples to perform the naive greedy algorithm on
-		before switching to the lazy greedy algorithm. The lazy greedy
-		algorithm is faster once features begin to saturate, but is slower
-		in the initial few selections. This is, in part, because the naive
-		greedy algorithm is parallelized whereas the lazy greedy
-		algorithm currently is not. Default is 1.
+	alpha : float
+		The weight of the first term in the graph-cut objective, which
+		measures the how representative the selected examples are of the
+		ground set. The larger this is, the more likely examples are chosen
+		that are near points in the ground set, even if there are other
+		already-selected examples that are similar. Default is 1.
 
 	initial_subset : list, numpy.ndarray or None, optional
 		If provided, this should be a list of indices into the data matrix
@@ -104,20 +103,46 @@ class GraphCutSelection(BaseGraphSelection):
 		initially and then switches to the lazy greedy algorithm. Must be
 		one of
 
+			'random' : randomly select elements (dummy optimizer)
+			'modular' : approximate the function using its modular upper bound
 			'naive' : the naive greedy algorithm
 			'lazy' : the lazy (or accelerated) greedy algorithm
 			'approximate-lazy' : the approximate lazy greedy algorithm
 			'two-stage' : starts with naive and switches to lazy
 			'stochastic' : the stochastic greedy algorithm
+			'sample' : randomly take a subset and perform selection on that
 			'greedi' : the GreeDi distributed algorithm
 			'bidirectional' : the bidirectional greedy algorithm
 
-		Default is 'naive'.
+		Default is 'two-stage'.
 
-	epsilon : float, optional
-		The inverse of the sampling probability of any particular point being 
-		included in the subset, such that 1 - epsilon is the probability that
-		a point is included. Only used for stochastic greedy. Default is 0.9.
+	optimizer_kwds : dict or None
+		A dictionary of arguments to pass into the optimizer object. The keys
+		of this dictionary should be the names of the parameters in the optimizer
+		and the values in the dictionary should be the values that these
+		parameters take. Default is None.
+
+	n_neighbors : int or None
+		When constructing a similarity matrix, the number of nearest neighbors
+		whose similarity values will be kept. The result is a sparse similarity
+		matrix which can significantly speed up computation at the cost of
+		accuracy. Default is None.
+
+	reservoir : numpy.ndarray or None
+		The reservoir to use when calculating gains in the sieve greedy
+		streaming optimization algorithm in the `partial_fit` method.
+		Currently only used for graph-based functions. If a numpy array
+		is passed in, it will be used as the reservoir. If None is passed in,
+		will use reservoir sampling to collect a reservoir. Default is None.
+
+	max_reservoir_size : int 
+		The maximum size that the reservoir can take. If a reservoir is passed
+		in, this value is set to the size of that array. Default is 1000.
+
+	n_jobs : int
+		The number of threads to use when performing computation in parallel.
+		Currently, this parameter is exposed but does not actually do anything.
+		This will be fixed soon.
 
 	random_state : int or RandomState or None, optional
 		The random seed to use for the random selection process. Only used
@@ -146,14 +171,16 @@ class GraphCutSelection(BaseGraphSelection):
 	"""
 
 	def __init__(self, n_samples=10, metric='euclidean', alpha=1,
-		initial_subset=None, optimizer='naive', n_neighbors=None, n_jobs=1, 
+		initial_subset=None, optimizer='naive', n_neighbors=None, 
+		reservoir=None, max_reservoir_size=1000, n_jobs=1, 
 		random_state=None, optimizer_kwds={}, verbose=False):
 		self.alpha = alpha
 
 		super(GraphCutSelection, self).__init__(n_samples=n_samples, 
 			metric=metric, initial_subset=initial_subset, optimizer=optimizer,  
-			n_neighbors=n_neighbors, n_jobs=n_jobs, random_state=random_state, 
-			optimizer_kwds={}, verbose=verbose)
+			n_neighbors=n_neighbors, reservoir=reservoir, 
+			max_reservoir_size=max_reservoir_size, n_jobs=n_jobs, 
+			random_state=random_state, optimizer_kwds={}, verbose=verbose)
 
 	def fit(self, X, y=None, sample_weight=None, sample_cost=None):
 		"""Run submodular optimization to select the examples.

@@ -62,6 +62,27 @@ class BaseSelection(object):
 
 		Default is 'naive'.
 
+	optimizer_kwds : dict or None
+		A dictionary of arguments to pass into the optimizer object. The keys
+		of this dictionary should be the names of the parameters in the optimizer
+		and the values in the dictionary should be the values that these
+		parameters take. Default is None.
+
+	reservoir : numpy.ndarray or None
+		The reservoir to use when calculating gains in the sieve greedy
+		streaming optimization algorithm in the `partial_fit` method.
+		Currently only used for graph-based functions. If a numpy array
+		is passed in, it will be used as the reservoir. If None is passed in,
+		will use reservoir sampling to collect a reservoir. Default is None.
+
+	max_reservoir_size : int 
+		The maximum size that the reservoir can take. If a reservoir is passed
+		in, this value is set to the size of that array. Default is 1000.
+
+	n_jobs : int
+		The number of threads to use when performing computation in parallel.
+		Currently, this parameter is exposed but does not actually do anything.
+		This will be fixed soon.
 
 	random_state : int or RandomState or None, optional
 		The random seed to use for the random selection process. Only used
@@ -126,9 +147,10 @@ class BaseSelection(object):
 		
 		self.sieve_current_values_ = None
 		self.n_seen_ = 0
-		self.reservoir_size = 0
+		self.reservoir_size = 0 if reservoir is None else reservoir.shape[0]
 		self.reservoir = reservoir
-		self.max_reservoir_size = max_reservoir_size
+		self.max_reservoir_size = max_reservoir_size if reservoir is None else reservoir.shape[0]
+		self.update_reservoir_ = reservoir is None
 
 	def fit(self, X, y=None, sample_weight=None, sample_cost=None):
 		"""Run submodular optimization to select a subset of examples.
@@ -472,6 +494,34 @@ class BaseGraphSelection(BaseSelection):
 
 		Default is 'naive'.
 
+	optimizer_kwds : dict or None
+		A dictionary of arguments to pass into the optimizer object. The keys
+		of this dictionary should be the names of the parameters in the optimizer
+		and the values in the dictionary should be the values that these
+		parameters take. Default is None.
+
+	n_neighbors : int or None
+		When constructing a similarity matrix, the number of nearest neighbors
+		whose similarity values will be kept. The result is a sparse similarity
+		matrix which can significantly speed up computation at the cost of
+		accuracy. Default is None.
+
+	reservoir : numpy.ndarray or None
+		The reservoir to use when calculating gains in the sieve greedy
+		streaming optimization algorithm in the `partial_fit` method.
+		Currently only used for graph-based functions. If a numpy array
+		is passed in, it will be used as the reservoir. If None is passed in,
+		will use reservoir sampling to collect a reservoir. Default is None.
+
+	max_reservoir_size : int 
+		The maximum size that the reservoir can take. If a reservoir is passed
+		in, this value is set to the size of that array. Default is 1000.
+
+	n_jobs : int
+		The number of threads to use when performing computation in parallel.
+		Currently, this parameter is exposed but does not actually do anything.
+		This will be fixed soon.
+
 	random_state : int or RandomState or None, optional
 		The random seed to use for the random selection process. Only used
 		for stochastic greedy.
@@ -568,15 +618,16 @@ class BaseGraphSelection(BaseSelection):
 		if self.reservoir is None:
 			self.reservoir = numpy.empty((self.max_reservoir_size, X.shape[1]))
 
-		for i in range(X.shape[0]):
-			if self.reservoir_size < self.max_reservoir_size:
-				self.reservoir[self.reservoir_size] = X[i]
-				self.reservoir_size += 1
-			else:
-				r = self.random_state.choice(self.n_seen_ + i)
-				if r < self.max_reservoir_size:
-					self.reservoir[r] = X[i]
-					#self.current_values_[:, r] = 0.
+		if self.update_reservoir_:
+			for i in range(X.shape[0]):
+				if self.reservoir_size < self.max_reservoir_size:
+					self.reservoir[self.reservoir_size] = X[i]
+					self.reservoir_size += 1
+				else:
+					r = self.random_state.choice(self.n_seen_ + i)
+					if r < self.max_reservoir_size:
+						self.reservoir[r] = X[i]
+						#self.current_values_[:, r] = 0.
 
 		X_pairwise = _calculate_pairwise_distances(X, 
 			Y=self.reservoir[:self.reservoir_size], metric=self.metric)

@@ -184,14 +184,27 @@ class FeatureBasedSelection(BaseSelection):
 
 		Default is 'two-stage'.
 
-	optimizer_kwds : dict, optional
-		Arguments to pass into the optimizer object upon initialization.
-		Default is {}.
+	optimizer_kwds : dict or None
+		A dictionary of arguments to pass into the optimizer object. The keys
+		of this dictionary should be the names of the parameters in the optimizer
+		and the values in the dictionary should be the values that these
+		parameters take. Default is None.
 
-	n_jobs : int, optional
-		The number of cores to use for processing. This value is multiplied
-		by 2 when used to set the number of threads. If set to -1, use all
-		cores and threads. Default is -1.
+	reservoir : numpy.ndarray or None
+		The reservoir to use when calculating gains in the sieve greedy
+		streaming optimization algorithm in the `partial_fit` method.
+		Currently only used for graph-based functions. If a numpy array
+		is passed in, it will be used as the reservoir. If None is passed in,
+		will use reservoir sampling to collect a reservoir. Default is None.
+
+	max_reservoir_size : int 
+		The maximum size that the reservoir can take. If a reservoir is passed
+		in, this value is set to the size of that array. Default is 1000.
+
+	n_jobs : int
+		The number of threads to use when performing computation in parallel.
+		Currently, this parameter is exposed but does not actually do anything.
+		This will be fixed soon.
 
 	random_state : int or RandomState or None, optional
 		The random seed to use for the random selection process. Only used
@@ -218,7 +231,8 @@ class FeatureBasedSelection(BaseSelection):
 	"""
 
 	def __init__(self, n_samples, concave_func='sqrt', initial_subset=None, 
-		optimizer='two-stage', optimizer_kwds={}, n_jobs=1, random_state=None, 
+		optimizer='two-stage', optimizer_kwds={}, reservoir=None,
+		max_reservoir_size=1000, n_jobs=1, random_state=None, 
 		verbose=False):
 		self.concave_func_name = concave_func
 
@@ -235,7 +249,8 @@ class FeatureBasedSelection(BaseSelection):
 
 		super(FeatureBasedSelection, self).__init__(n_samples=n_samples, 
 			initial_subset=initial_subset, optimizer=optimizer, 
-			optimizer_kwds=optimizer_kwds, n_jobs=n_jobs, 
+			optimizer_kwds=optimizer_kwds, reservoir=reservoir,
+			max_reservoir_size=max_reservoir_size, n_jobs=n_jobs, 
 			random_state=random_state, verbose=verbose) 
 
 	def fit(self, X, y=None, sample_weight=None, sample_cost=None):
