@@ -327,13 +327,8 @@ def test_digits_modular():
 def test_digits_sqrt_sieve_batch():
 	model1 = FeatureBasedSelection(100, 'sqrt')
 	model2 = FeatureBasedSelection(100, 'log')
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		optimizer='modular', random_state=0)
+	model = MixtureSelection(100, [model1, model2], [1.0, 0.3], random_state=0)
 	model.partial_fit(X_digits)
-
-	print("[" + ", ".join(map(str, model.ranking)) + "]")
-	print("[" + ", ".join([str(round(gain, 4)) for gain in model.gains]) + "]")
-
 	assert_array_equal(model.ranking, digits_sieve_ranking)
 	assert_array_almost_equal(model.gains, digits_sieve_gains, 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -341,34 +336,10 @@ def test_digits_sqrt_sieve_batch():
 def test_digits_sqrt_sieve_minibatch():
 	model1 = FeatureBasedSelection(100, 'sqrt')
 	model2 = FeatureBasedSelection(100, 'log')
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		optimizer='modular', random_state=0)
+	model = MixtureSelection(100, [model1, model2], [1.0, 0.3], random_state=0)
 	model.partial_fit(X_digits[:300])
 	model.partial_fit(X_digits[300:500])
 	model.partial_fit(X_digits[500:])
-	assert_array_equal(model.ranking, digits_sieve_ranking)
-	assert_array_almost_equal(model.gains, digits_sieve_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
-
-
-def test_digits_sqrt_sieve_batch_sparse():
-	model1 = FeatureBasedSelection(100, 'sqrt')
-	model2 = FeatureBasedSelection(100, 'log')
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		optimizer='modular', random_state=0)
-	model.partial_fit(X_digits_sparse)
-	assert_array_equal(model.ranking, digits_sieve_ranking)
-	assert_array_almost_equal(model.gains, digits_sieve_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
-
-def test_digits_sqrt_sieve_minibatch_sparse():
-	model1 = FeatureBasedSelection(100, 'sqrt')
-	model2 = FeatureBasedSelection(100, 'log')
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		optimizer='modular', random_state=0)
-	model.partial_fit(X_digits_sparse[:300])
-	model.partial_fit(X_digits_sparse[300:500])
-	model.partial_fit(X_digits_sparse[500:])
 	assert_array_equal(model.ranking, digits_sieve_ranking)
 	assert_array_almost_equal(model.gains, digits_sieve_gains, 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
