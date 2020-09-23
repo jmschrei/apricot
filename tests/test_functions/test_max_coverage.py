@@ -122,6 +122,23 @@ digits_modular_gains = [20.0, 19.0, 18.0, 15.0, 17.0, 16.0, 14.0, 16.0, 14.0,
 	3.0, 2.0, 6.0, 1.0, 5.0, 6.0, 6.0, 4.0, 6.0, 2.0, 3.0, 2.0, 4.0, 3.0, 
 	1.0, 5.0, 1.0, 5.0, 4.0, 3.0, 5.0, 4.0, 2.0]
 
+digits_sieve_ranking = [0, 1, 2, 3, 6, 7, 9, 10, 11, 15, 16, 17, 18, 19, 21, 
+	23, 26, 27, 29, 31, 36, 37, 38, 39, 40, 41, 43, 46, 48, 52, 53, 56, 59, 
+	60, 62, 64, 66, 67, 68, 69, 70, 71, 72, 75, 77, 78, 80, 82, 84, 86, 89, 
+	96, 97, 103, 106, 115, 116, 117, 121, 125, 133, 134, 135, 138, 139, 140, 
+	143, 146, 150, 156, 158, 167, 177, 178, 186, 193, 194, 198, 201, 203, 
+	207, 209, 218, 219, 224, 225, 227, 236, 240, 251, 270, 271, 274, 275, 
+	280, 287, 289, 291, 292, 293]
+
+digits_sieve_gains = [9.0, 11.0, 9.0, 9.0, 17.0, 10.0, 11.0, 11.0, 12.0, 12.0, 
+	11.0, 10.0, 11.0, 8.0, 9.0, 14.0, 9.0, 8.0, 10.0, 11.0, 10.0, 8.0, 13.0, 
+	8.0, 7.0, 11.0, 7.0, 11.0, 7.0, 8.0, 9.0, 9.0, 7.0, 7.0, 8.0, 11.0, 10.0, 
+	9.0, 8.0, 8.0, 7.0, 8.0, 7.0, 9.0, 8.0, 7.0, 8.0, 7.0, 8.0, 8.0, 10.0, 8.0, 
+	9.0, 7.0, 7.0, 7.0, 8.0, 8.0, 8.0, 7.0, 7.0, 6.0, 13.0, 10.0, 8.0, 7.0, 
+	6.0, 7.0, 6.0, 6.0, 7.0, 8.0, 6.0, 6.0, 6.0, 7.0, 6.0, 5.0, 7.0, 5.0, 5.0, 
+	6.0, 5.0, 6.0, 5.0, 5.0, 6.0, 8.0, 5.0, 7.0, 4.0, 4.0, 7.0, 5.0, 4.0, 5.0, 
+	3.0, 3.0, 3.0, 2.0]
+
 # Test some basic functionality
 
 def test_digits_naive():
@@ -241,6 +258,39 @@ def test_digits_modular():
 	assert_array_almost_equal(model.gains, digits_modular_gains, 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
+# Using the partial_fit method
+
+def test_digits_sieve_batch():
+	model = MaxCoverageSelection(100, random_state=0)
+	model.partial_fit(X_digits)
+	assert_array_equal(model.ranking, digits_sieve_ranking)
+	assert_array_almost_equal(model.gains, digits_sieve_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
+def test_digits_sieve_minibatch():
+	model = MaxCoverageSelection(100, random_state=0)
+	model.partial_fit(X_digits[:50])
+	model.partial_fit(X_digits[50:150])
+	model.partial_fit(X_digits[150:])
+	assert_array_equal(model.ranking, digits_sieve_ranking)
+	assert_array_almost_equal(model.gains, digits_sieve_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
+def test_digits_sieve_batch_sparse():
+	model = MaxCoverageSelection(100, random_state=0)
+	model.partial_fit(X_digits_sparse)
+	assert_array_equal(model.ranking, digits_sieve_ranking)
+	assert_array_almost_equal(model.gains, digits_sieve_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
+def test_digits_sieve_minibatch_sparse():
+	model = MaxCoverageSelection(100, random_state=0)
+	model.partial_fit(X_digits_sparse[:50])
+	model.partial_fit(X_digits_sparse[50:150])
+	model.partial_fit(X_digits_sparse[150:])
+	assert_array_equal(model.ranking, digits_sieve_ranking)
+	assert_array_almost_equal(model.gains, digits_sieve_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 # Using Optimizer Objects
 

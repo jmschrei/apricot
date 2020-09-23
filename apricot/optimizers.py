@@ -1087,7 +1087,6 @@ class SieveGreedy(BaseOptimizer):
 		r = X.shape[1] if self.function.reservoir is not None else 1
 		marginal_gains = self.function._calculate_gains(X) / sample_cost / r
 		max_marginal_gain = marginal_gains.max()
-
 		if max_marginal_gain > self.max_gain:
 			self.max_gain = max_marginal_gain
 			j = len(self.thresholds)

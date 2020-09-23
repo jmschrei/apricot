@@ -249,7 +249,7 @@ class BaseSelection(object):
 				verbose=self.verbose, random_state=self.random_state,
 				**self.optimizer_kwds)
 
-		self._X = X
+		self._X = X if self._X is None else self._X
 		self._initialize(X)
 
 		if self.verbose:
@@ -262,6 +262,7 @@ class BaseSelection(object):
 
 		self.ranking = numpy.array(self.ranking)
 		self.gains = numpy.array(self.gains)
+		self._X = None
 		return self
 
 	def transform(self, X, y=None, sample_weight=None):
@@ -415,7 +416,7 @@ class BaseSelection(object):
 			self.sieve_total_gains_ = numpy.zeros(l, 
 				dtype='float64')
 			self.sieve_subsets_ = numpy.zeros((l, self.n_samples, 
-				X.shape[1]), dtype='float64')
+				self._X.shape[1]), dtype='float64')
 		else:
 			j = l - self.sieve_current_values_.shape[0]
 			if j > 0:
@@ -432,7 +433,7 @@ class BaseSelection(object):
 				self.sieve_total_gains_ = numpy.concatenate([
 					self.sieve_total_gains_, numpy.zeros(j, dtype='float64')])
 				self.sieve_subsets_ = numpy.concatenate([self.sieve_subsets_, 
-					numpy.zeros((j, self.n_samples, X.shape[1]), 
+					numpy.zeros((j, self.n_samples, self._X.shape[1]), 
 						dtype='float64')])
 
 	def _select_next(self, X, gain, idx):
@@ -445,6 +446,8 @@ class BaseSelection(object):
 			X = self._X[idx:idx+1].toarray()
 		else:
 			X = self._X[idx:idx+1]
+
+		print(self._X.shape)
 
 		if self.metric != 'precomputed':
 			self.subset = numpy.concatenate([self.subset, X])
@@ -643,10 +646,10 @@ class BaseGraphSelection(BaseSelection):
 		X_pairwise = _calculate_pairwise_distances(X, 
 			Y=self.reservoir[:self.reservoir_size], metric=self.metric)
 
+		self._X = X
 		super(BaseGraphSelection, self).partial_fit(X_pairwise, y=y, 
 			sample_weight=sample_weight, sample_cost=sample_cost)
 
-		self._X = X
 		self.current_values = numpy.zeros(self.reservoir_size, 
 			dtype='float64')
 		self.n_seen_ += X.shape[0]

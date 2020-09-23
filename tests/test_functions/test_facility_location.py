@@ -201,6 +201,27 @@ digits_cosine_modular_gains = [1126.631, 44.738, 40.5236, 21.8344, 14.9058,
 	0.29, 0.7726, 0.1614, 1.1461, 0.649, 0.8119, 0.3708, 3.3097, 0.8278, 
 	0.5271, 15.1531, 2.0343, 0.0976, 0.6053]
 
+digits_cosine_sieve_ranking = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 
+	14, 15, 16, 17, 18, 20, 22, 25, 26, 27, 29, 32, 34, 39, 40, 41, 44, 52, 
+	56, 58, 62, 65, 69, 74, 76, 79, 84, 94, 99, 117, 126, 128, 131, 136, 
+	138, 144, 146, 148, 149, 152, 154, 157, 164, 165, 174, 180, 220, 251, 
+	257, 259, 260, 262, 264, 275, 281, 287, 297, 301, 324, 331, 345, 349, 
+	358, 366, 375, 387, 393, 424, 425, 436, 442, 450, 460, 470, 517, 518, 
+	519, 520, 522, 528, 531, 533, 534, 540, 543, 545, 546]
+
+digits_cosine_sieve_gains = [0.4861, 0.1082, 0.0127, 0.0322, 0.0112, 0.011, 
+	0.0236, 0.0145, 0.0084, 0.0029, 0.0059, 0.0078, 0.0082, 0.0094, 0.0139, 
+	0.0017, 0.0091, 0.0026, 0.0015, 0.0069, 0.0015, 0.0014, 0.0014, 0.0018, 
+	0.0052, 0.0015, 0.0051, 0.0026, 0.0026, 0.0031, 0.002, 0.0014, 0.0024, 
+	0.0012, 0.0028, 0.001, 0.0011, 0.0022, 0.0021, 0.0031, 0.0019, 0.0019, 
+	0.0013, 0.001, 0.0017, 0.0012, 0.0017, 0.0009, 0.0009, 0.0011, 0.0016, 
+	0.001, 0.0011, 0.0009, 0.0016, 0.0008, 0.0009, 0.0009, 0.0012, 0.001, 
+	0.001, 0.0009, 0.0008, 0.001, 0.0008, 0.0009, 0.0009, 0.0009, 0.0008, 
+	0.0009, 0.0011, 0.0008, 0.001, 0.0009, 0.0008, 0.0008, 0.0009, 0.0014, 
+	0.0007, 0.0011, 0.0007, 0.0008, 0.001, 0.0018, 0.0006, 0.0006, 0.0007, 
+	0.0008, 0.0008, 0.0006, 0.001, 0.0006, 0.0004, 0.0005, 0.0005, 0.0005, 
+	0.0004, 0.0005, 0.0004, 0.0004]
+
 # Test some similarity functions
 
 def test_digits_euclidean_naive():
@@ -441,12 +462,32 @@ def test_digits_cosine_sample():
 	assert_array_almost_equal(model.gains, digits_cosine_sample_gains, 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
-def test_digits_sqrt_modular():
+def test_digits_cosine_modular():
 	model = FacilityLocationSelection(100, 'cosine', optimizer='modular',
 		random_state=0)
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_cosine_modular_ranking)
 	assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
+# Using the partial_fit method
+
+def test_digits_cosine_sieve_batch():
+	model = FacilityLocationSelection(100, 'cosine', random_state=0, 
+		reservoir=X_digits)
+	model.partial_fit(X_digits)
+	assert_array_equal(model.ranking, digits_cosine_sieve_ranking)
+	assert_array_almost_equal(model.gains, digits_cosine_sieve_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
+def test_digits_cosine_sieve_minibatch():
+	model = FacilityLocationSelection(100, 'cosine', random_state=0,
+		reservoir=X_digits)
+	model.partial_fit(X_digits[:300])
+	model.partial_fit(X_digits[300:500])
+	model.partial_fit(X_digits[500:])
+	assert_array_equal(model.ranking, digits_cosine_sieve_ranking)
+	assert_array_almost_equal(model.gains, digits_cosine_sieve_gains, 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 # Using Optimizer Objects

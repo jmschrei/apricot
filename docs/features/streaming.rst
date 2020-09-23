@@ -9,6 +9,9 @@ Although this problem is difficult, principled approaches for solving it have be
 
 In apricot, streaming optimization can be used with any of the built-in functions by using the `partial_fit` method instead of the `fit` method. Although the algorithm is designed to be applied to one example at a time in a streaming setting, in practice applying the algorithm to batches of data can be much faster while still providing the same answer.
 
+.. note::
+	Streaming optimization is implemented for mixtures of functions, but not for sum redundancy or saturated coverage functions.
+
 You can read more about streaming optimization `in this tutorial <https://github.com/jmschrei/apricot/blob/master/tutorials/6.%20Streaming%20Submodular%20Optimization.ipynb>`_. 
 
 .. code-block:: python

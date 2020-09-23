@@ -192,6 +192,28 @@ digits_sqrt_modular_gains = [124.8187, 51.9061, 47.4915, 35.6125, 29.7708,
 	6.62, 6.5171, 6.3782, 8.1463, 6.7833, 6.2106, 6.7071, 6.3, 7.7459, 6.6087, 
 	6.5699, 5.9068, 6.3729, 6.3294, 6.4772, 6.3678, 5.9507, 6.354]
 
+digits_sqrt_sieve_ranking = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 
+	15, 16, 17, 18, 19, 20, 21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35, 
+	36, 37, 38, 39, 40, 41, 44, 48, 49, 52, 55, 58, 61, 64, 66, 72, 73, 76, 77, 
+	79, 84, 87, 98, 126, 135, 138, 160, 163, 168, 172, 178, 185, 208, 221, 235, 
+	263, 283, 313, 317, 423, 430, 436, 491, 494, 502, 538, 586, 591, 629, 673, 
+	732, 757, 818, 873, 988, 1043, 1070, 1086, 1176, 1205, 1271, 1296, 1313, 
+	1375, 1493, 1572]
+
+digits_sqrt_sieve_gains = [97.4318, 56.261, 41.2277, 28.303, 22.4519, 
+	26.0864, 20.4726, 25.2477, 21.9949, 19.2037, 19.0145, 16.1839, 16.4639, 
+	18.937, 17.1049, 18.4655, 14.7195, 14.2448, 10.6285, 11.6475, 13.6245, 
+	12.8581, 10.1707, 11.3949, 9.3721, 13.8714, 12.2688, 10.2994, 11.2193, 
+	13.2881, 9.4804, 13.0039, 12.9107, 9.8257, 10.7652, 9.9669, 9.839, 9.8269, 
+	9.6268, 9.8585, 10.6952, 9.1965, 9.0226, 10.4219, 10.352, 9.0895, 9.4044, 
+	9.1408, 9.5094, 9.6559, 8.7728, 8.9756, 10.122, 8.9807, 9.5481, 8.7555, 
+	8.6382, 8.6878, 8.6501, 8.736, 9.5372, 9.3277, 8.7554, 8.7882, 9.1946, 
+	8.9874, 8.7261, 8.6805, 8.9986, 11.8718, 10.1197, 8.595, 9.8908, 8.3371, 
+	8.4011, 8.5834, 8.2552, 8.3212, 9.5605, 8.3984, 8.3562, 8.395, 8.3125, 
+	8.7659, 8.9045, 8.4036, 8.0924, 9.0439, 9.965, 7.7882, 7.9432, 8.8214, 
+	8.1663, 7.5898, 7.6332, 7.6048, 7.6056, 7.7276, 7.2711, 7.6604]
+
+
 # Test some concave functions
 
 def test_digits_log_naive():
@@ -399,6 +421,41 @@ def test_digits_sqrt_modular():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sqrt_modular_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_modular_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
+# Using the partial_fit method
+
+def test_digits_sqrt_sieve_batch():
+	model = FeatureBasedSelection(100, 'sqrt', random_state=0)
+	model.partial_fit(X_digits)
+	assert_array_equal(model.ranking, digits_sqrt_sieve_ranking)
+	assert_array_almost_equal(model.gains, digits_sqrt_sieve_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
+def test_digits_sqrt_sieve_minibatch():
+	model = FeatureBasedSelection(100, 'sqrt', random_state=0)
+	model.partial_fit(X_digits[:300])
+	model.partial_fit(X_digits[300:500])
+	model.partial_fit(X_digits[500:])
+	assert_array_equal(model.ranking, digits_sqrt_sieve_ranking)
+	assert_array_almost_equal(model.gains, digits_sqrt_sieve_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
+
+def test_digits_sqrt_sieve_batch_sparse():
+	model = FeatureBasedSelection(100, 'sqrt', random_state=0)
+	model.partial_fit(X_digits_sparse)
+	assert_array_equal(model.ranking, digits_sqrt_sieve_ranking)
+	assert_array_almost_equal(model.gains, digits_sqrt_sieve_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
+def test_digits_sqrt_sieve_minibatch_sparse():
+	model = FeatureBasedSelection(100, 'sqrt', random_state=0)
+	model.partial_fit(X_digits_sparse[:300])
+	model.partial_fit(X_digits_sparse[300:500])
+	model.partial_fit(X_digits_sparse[500:])
+	assert_array_equal(model.ranking, digits_sqrt_sieve_ranking)
+	assert_array_almost_equal(model.gains, digits_sqrt_sieve_gains, 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 # Using Optimizer Objects

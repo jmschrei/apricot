@@ -1,11 +1,6 @@
 import scipy
 import numpy
 
-try:
-	import cupy
-except:
-	import numpy as cupy
-
 from apricot import MixtureSelection
 from apricot import FeatureBasedSelection
 from apricot.optimizers import *
@@ -21,7 +16,6 @@ digits_data = load_digits()
 X_digits = digits_data.data
 
 X_digits_sparse = scipy.sparse.csr_matrix(X_digits)
-X_digits_cupy = cupy.array(X_digits)
 
 digits_ranking = [818, 1296, 732, 988, 629, 951, 1747, 235, 1375, 1205, 1572, 
 	1657, 1271, 898, 178, 1766, 591, 160, 513, 1070, 1113, 185, 1017, 1793, 736, 
@@ -156,6 +150,27 @@ digits_modular_gains = [152.2932, 59.4281, 54.5905, 39.7922, 32.8763, 29.5361,
 	6.5033, 8.4939, 6.5589, 6.5227, 8.1911, 6.2681, 6.8672, 6.606, 6.6948, 
 	6.7548, 6.0001, 6.5057, 6.5458, 6.1066, 6.5208, 6.5072]
 
+digits_sieve_ranking = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 
+	16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35, 
+	36, 37, 38, 39, 40, 41, 44, 48, 49, 52, 55, 58, 61, 64, 66, 72, 73, 76, 77, 
+	79, 84, 87, 98, 126, 135, 138, 160, 163, 168, 172, 178, 185, 208, 221, 235, 
+	263, 283, 313, 317, 372, 423, 430, 436, 447, 502, 513, 517, 538, 591, 629, 
+	655, 673, 732, 756, 757, 873, 919, 988, 1017, 1022, 1043, 1070, 1086, 1088, 
+	1089]
+
+digits_sieve_gains = [119.5639, 66.8586, 47.1468, 32.0789, 24.8685, 28.5323, 
+	22.1474, 28.2448, 23.693, 20.6455, 20.4895, 17.2094, 18.1592, 20.6875, 
+	18.2102, 20.1615, 15.6893, 15.0406, 11.1734, 12.3849, 14.3306, 13.4825, 
+	10.6864, 12.021, 9.6743, 9.6694, 14.2993, 12.6284, 10.5763, 11.6182, 
+	13.8525, 9.8746, 13.5983, 13.5463, 10.1593, 11.0643, 10.2808, 10.2343, 
+	10.1542, 9.8971, 10.0531, 11.0007, 9.4593, 9.2882, 10.7294, 10.605, 
+	9.3207, 9.6402, 9.3458, 9.9867, 9.904, 9.0392, 9.2327, 10.4458, 9.2457, 
+	9.8823, 9.1438, 8.8986, 8.8808, 8.9745, 8.9369, 9.783, 9.7131, 8.9642, 
+	8.999, 9.4278, 9.1839, 8.9119, 8.8667, 9.1958, 13.0354, 10.742, 8.8789, 
+	10.5808, 8.5366, 8.4446, 8.6376, 8.83, 8.4561, 10.3718, 8.341, 8.3179, 
+	8.3489, 8.6012, 8.4816, 8.3437, 8.6528, 8.9662, 8.1957, 8.6666, 9.5643, 
+	8.0391, 10.143, 7.653, 7.7564, 7.7174, 7.8775, 9.2211, 6.8625, 6.6068]
+
 # Test some concave functions
 
 def test_digits_naive():
@@ -163,7 +178,7 @@ def test_digits_naive():
 	model2 = FeatureBasedSelection(100, 'log')
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		optimizer='naive')
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:30], digits_ranking[:30])
 	assert_array_equal(model.ranking[-30:], digits_ranking[-30:])
 	assert_array_almost_equal(model.gains, digits_gains, 4)
@@ -174,7 +189,7 @@ def test_digits_lazy():
 	model2 = FeatureBasedSelection(100, 'log')
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		optimizer='lazy')
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_ranking)
 	assert_array_almost_equal(model.gains, digits_gains, 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -184,7 +199,7 @@ def test_digits_two_stage():
 	model2 = FeatureBasedSelection(100, 'log')
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		optimizer='two-stage')
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_ranking)
 	assert_array_almost_equal(model.gains, digits_gains, 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -196,7 +211,7 @@ def test_digits_naive_init():
 	model2 = FeatureBasedSelection(100, 'log')
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		optimizer='naive', initial_subset=digits_ranking[:5])
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:20], digits_ranking[5:25])
 	assert_array_almost_equal(model.gains[:20], digits_gains[5:25], 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -206,7 +221,7 @@ def test_digits_lazy_init():
 	model2 = FeatureBasedSelection(100, 'log')
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		optimizer='lazy', initial_subset=digits_ranking[:5])
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:-5], digits_ranking[5:])
 	assert_array_almost_equal(model.gains[:-5], digits_gains[5:], 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -216,7 +231,7 @@ def test_digits_two_stage_init():
 	model2 = FeatureBasedSelection(100, 'log')
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		optimizer='two-stage', initial_subset=digits_ranking[:5])
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:-5], digits_ranking[5:])
 	assert_array_almost_equal(model.gains[:-5], digits_gains[5:], 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -229,7 +244,7 @@ def test_digits_greedi_nn():
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		optimizer='two-stage', optimizer_kwds={'optimizer1': 'naive', 
 		'optimizer2': 'naive'}, random_state=0)
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:85], digits_greedi_ranking[:85])
 	assert_array_almost_equal(model.gains[:85], digits_greedi_gains[:85], 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -240,7 +255,7 @@ def test_digits_greedi_ll():
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		optimizer='two-stage', optimizer_kwds={'optimizer1': 'lazy', 
 		'optimizer2': 'lazy'}, random_state=0)
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:85], digits_greedi_ranking[:85])
 	assert_array_almost_equal(model.gains[:85], digits_greedi_gains[:85], 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -251,7 +266,7 @@ def test_digits_greedi_ln():
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		optimizer='two-stage', optimizer_kwds={'optimizer1': 'lazy', 
 		'optimizer2': 'naive'}, random_state=0)
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_greedi_ranking)
 	assert_array_almost_equal(model.gains, digits_greedi_gains, 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -262,7 +277,7 @@ def test_digits_greedi_nl():
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		optimizer='two-stage', optimizer_kwds={'optimizer1': 'naive', 
 		'optimizer2': 'lazy'}, random_state=0)
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:85], digits_greedi_ranking[:85])
 	assert_array_almost_equal(model.gains[:85], digits_greedi_gains[:85], 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -272,7 +287,7 @@ def test_digits_approximate():
 	model2 = FeatureBasedSelection(100, 'log')
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		optimizer='approximate-lazy', random_state=0)
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_approx_ranking)
 	assert_array_almost_equal(model.gains, digits_approx_gains, 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -282,7 +297,7 @@ def test_digits_stochastic():
 	model2 = FeatureBasedSelection(100, 'log')
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		optimizer='stochastic', random_state=0)
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_stochastic_ranking)
 	assert_array_almost_equal(model.gains, digits_stochastic_gains, 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -292,7 +307,7 @@ def test_digits_sample():
 	model2 = FeatureBasedSelection(100, 'log')
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		optimizer='sample', random_state=0)
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sample_ranking)
 	assert_array_almost_equal(model.gains, digits_sample_gains, 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -302,11 +317,61 @@ def test_digits_modular():
 	model2 = FeatureBasedSelection(100, 'log')
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		optimizer='modular', random_state=0)
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_modular_ranking)
 	assert_array_almost_equal(model.gains, digits_modular_gains, 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
+# Using the partial_fit method
+
+def test_digits_sqrt_sieve_batch():
+	model1 = FeatureBasedSelection(100, 'sqrt')
+	model2 = FeatureBasedSelection(100, 'log')
+	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
+		optimizer='modular', random_state=0)
+	model.partial_fit(X_digits)
+
+	print("[" + ", ".join(map(str, model.ranking)) + "]")
+	print("[" + ", ".join([str(round(gain, 4)) for gain in model.gains]) + "]")
+
+	assert_array_equal(model.ranking, digits_sieve_ranking)
+	assert_array_almost_equal(model.gains, digits_sieve_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
+def test_digits_sqrt_sieve_minibatch():
+	model1 = FeatureBasedSelection(100, 'sqrt')
+	model2 = FeatureBasedSelection(100, 'log')
+	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
+		optimizer='modular', random_state=0)
+	model.partial_fit(X_digits[:300])
+	model.partial_fit(X_digits[300:500])
+	model.partial_fit(X_digits[500:])
+	assert_array_equal(model.ranking, digits_sieve_ranking)
+	assert_array_almost_equal(model.gains, digits_sieve_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
+
+def test_digits_sqrt_sieve_batch_sparse():
+	model1 = FeatureBasedSelection(100, 'sqrt')
+	model2 = FeatureBasedSelection(100, 'log')
+	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
+		optimizer='modular', random_state=0)
+	model.partial_fit(X_digits_sparse)
+	assert_array_equal(model.ranking, digits_sieve_ranking)
+	assert_array_almost_equal(model.gains, digits_sieve_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
+def test_digits_sqrt_sieve_minibatch_sparse():
+	model1 = FeatureBasedSelection(100, 'sqrt')
+	model2 = FeatureBasedSelection(100, 'log')
+	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
+		optimizer='modular', random_state=0)
+	model.partial_fit(X_digits_sparse[:300])
+	model.partial_fit(X_digits_sparse[300:500])
+	model.partial_fit(X_digits_sparse[500:])
+	assert_array_equal(model.ranking, digits_sieve_ranking)
+	assert_array_almost_equal(model.gains, digits_sieve_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 # Using Optimizer Objects
 
@@ -315,7 +380,7 @@ def test_digits_naive_object():
 	model2 = FeatureBasedSelection(100, 'log')
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		optimizer=NaiveGreedy(random_state=0))
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_ranking)
 	assert_array_almost_equal(model.gains, digits_gains, 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -325,7 +390,7 @@ def test_digits_lazy_object():
 	model2 = FeatureBasedSelection(100, 'log')
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		optimizer=LazyGreedy(random_state=0))
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_ranking)
 	assert_array_almost_equal(model.gains, digits_gains, 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -335,7 +400,7 @@ def test_digits_two_stage_object():
 	model2 = FeatureBasedSelection(100, 'log')
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		optimizer=TwoStageGreedy(random_state=0))
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_ranking)
 	assert_array_almost_equal(model.gains, digits_gains, 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -346,7 +411,7 @@ def test_digits_greedi_nn_object():
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		 optimizer=GreeDi(optimizer1='naive', optimizer2='naive', 
 		 	random_state=0))
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:85], digits_greedi_ranking[:85])
 	assert_array_almost_equal(model.gains[:85], digits_greedi_gains[:85], 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -357,7 +422,7 @@ def test_digits_greedi_ll_object():
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		 optimizer=GreeDi(optimizer1='lazy', optimizer2='lazy', 
 		 	random_state=0))
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:85], digits_greedi_ranking[:85])
 	assert_array_almost_equal(model.gains[:85], digits_greedi_gains[:85], 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -368,7 +433,7 @@ def test_digits_greedi_ln_object():
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		 optimizer=GreeDi(optimizer1='lazy', optimizer2='naive', 
 		 	random_state=0))
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:85], digits_greedi_ranking[:85])
 	assert_array_almost_equal(model.gains[:85], digits_greedi_gains[:85], 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -379,7 +444,7 @@ def test_digits_greedi_nl_object():
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		 optimizer=GreeDi(optimizer1='naive', optimizer2='lazy', 
 		 	random_state=0))
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:85], digits_greedi_ranking[:85])
 	assert_array_almost_equal(model.gains[:85], digits_greedi_gains[:85], 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -389,7 +454,7 @@ def test_digits_approximate_object():
 	model2 = FeatureBasedSelection(100, 'log')
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		 optimizer=ApproximateLazyGreedy())
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_approx_ranking)
 	assert_array_almost_equal(model.gains, digits_approx_gains, 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -399,7 +464,7 @@ def test_digits_stochastic_object():
 	model2 = FeatureBasedSelection(100, 'log')
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		 optimizer=StochasticGreedy(random_state=0))
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_stochastic_ranking)
 	assert_array_almost_equal(model.gains, digits_stochastic_gains, 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -409,7 +474,7 @@ def test_digits_sample_object():
 	model2 = FeatureBasedSelection(100, 'log')
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		 optimizer=SampleGreedy(random_state=0))
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sample_ranking)
 	assert_array_almost_equal(model.gains, digits_sample_gains, 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
@@ -419,7 +484,7 @@ def test_digits_modular_object():
 	model2 = FeatureBasedSelection(100, 'log')
 	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
 		 optimizer=ModularGreedy(random_state=0))
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_modular_ranking)
 	assert_array_almost_equal(model.gains, digits_modular_gains, 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])

@@ -479,6 +479,30 @@ def test_digits_sqrt_modular():
 	assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)
 	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
+# Using the partial_fit method
+
+def test_digits_cosine_sieve_batch():
+	return
+	model = SaturatedCoverageSelection(100, 'cosine', random_state=0, 
+		reservoir=X_digits)
+	model.partial_fit(X_digits)
+	print("[" + ", ".join(map(str, model.ranking)) + "]")
+	print("[" + ", ".join([str(round(gain, 4)) for gain in model.gains]) + "]")
+	assert_array_equal(model.ranking, digits_cosine_sieve_ranking)
+	assert_array_almost_equal(model.gains, digits_cosine_sieve_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
+def test_digits_cosine_sieve_minibatch():
+	return
+	model = SaturatedCoverageSelection(100, 'cosine', random_state=0, 
+		reservoir=X_digits)
+	model.partial_fit(X_digits[:300])
+	model.partial_fit(X_digits[300:500])
+	model.partial_fit(X_digits[500:])
+	assert_array_equal(model.ranking, digits_cosine_sieve_ranking)
+	assert_array_almost_equal(model.gains, digits_cosine_sieve_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 # Using Optimizer Objects
 
 def test_digits_cosine_naive_object():
