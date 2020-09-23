@@ -287,9 +287,12 @@ class FacilityLocationSelection(BaseGraphSelection):
 		else: 
 			self.calculate_gains_ = self.calculate_gains_(dtypes_, True, True, False)
 
-		calculate_sieve_gains_ = calculate_gains_sieve_sparse if self.sparse else calculate_gains_sieve
-		dtypes_ = sieve_sparse_dtypes if self.sparse else sieve_dtypes 
-		self.calculate_sieve_gains_ = calculate_sieve_gains_(dtypes_, 
+		#calculate_sieve_gains_ = calculate_gains_sieve_sparse if self.sparse else calculate_gains_sieve
+		#dtypes_ = sieve_sparse_dtypes if self.sparse else sieve_dtypes 
+		#self.calculate_sieve_gains_ = calculate_sieve_gains_(dtypes_, 
+		#	True, True, False)
+
+		self.calculate_sieve_gains_ = calculate_gains_sieve(sieve_dtypes,
 			True, True, False)
 
 	def _calculate_gains(self, X_pairwise, idxs=None):

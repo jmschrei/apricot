@@ -209,54 +209,63 @@ def test_digits_euclidean_naive():
 	assert_array_equal(model.ranking[:30], digits_euclidean_ranking[:30])
 	assert_array_equal(model.ranking[-30:], digits_euclidean_ranking[-30:])
 	assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_euclidean_lazy():
 	model = FacilityLocationSelection(100, 'euclidean', optimizer='lazy')
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_euclidean_ranking)
 	assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_euclidean_two_stage():
 	model = FacilityLocationSelection(100, 'euclidean', optimizer='two-stage')
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_euclidean_ranking)
 	assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_corr_naive():
 	model = FacilityLocationSelection(100, 'corr', optimizer='naive')
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_corr_ranking)
 	assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_corr_lazy():
 	model = FacilityLocationSelection(100, 'corr', optimizer='lazy')
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_corr_ranking)
 	assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_corr_two_stage():
 	model = FacilityLocationSelection(100, 'corr', optimizer='two-stage')
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_corr_ranking)
 	assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_naive():
 	model = FacilityLocationSelection(100, 'cosine', optimizer='naive')
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_cosine_ranking)
 	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_lazy():
 	model = FacilityLocationSelection(100, 'cosine', optimizer='lazy')
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_cosine_ranking)
 	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_two_stage():
 	model = FacilityLocationSelection(100, 'cosine', optimizer='two-stage')
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_cosine_ranking)
 	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_precomputed_naive():
 	model = FacilityLocationSelection(100, 'precomputed', optimizer='naive')
@@ -284,6 +293,7 @@ def test_digits_euclidean_naive_init():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:20], digits_euclidean_ranking[5:25])
 	assert_array_almost_equal(model.gains[:20], digits_euclidean_gains[5:25], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_euclidean_lazy_init():
 	model = FacilityLocationSelection(100, 'euclidean', optimizer='lazy', 
@@ -291,6 +301,7 @@ def test_digits_euclidean_lazy_init():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:-5], digits_euclidean_ranking[5:])
 	assert_array_almost_equal(model.gains[:-5], digits_euclidean_gains[5:], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_euclidean_two_stage_init():
 	model = FacilityLocationSelection(100, 'euclidean', optimizer='two-stage', 
@@ -298,6 +309,7 @@ def test_digits_euclidean_two_stage_init():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:-5], digits_euclidean_ranking[5:])
 	assert_array_almost_equal(model.gains[:-5], digits_euclidean_gains[5:], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_corr_naive_init():
 	model = FacilityLocationSelection(100, 'corr', optimizer='naive', 
@@ -305,6 +317,7 @@ def test_digits_corr_naive_init():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:-5], digits_corr_ranking[5:])
 	assert_array_almost_equal(model.gains[:-5], digits_corr_gains[5:], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_corr_lazy_init():
 	model = FacilityLocationSelection(100, 'corr', optimizer='lazy', 
@@ -312,6 +325,7 @@ def test_digits_corr_lazy_init():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:-5], digits_corr_ranking[5:])
 	assert_array_almost_equal(model.gains[:-5], digits_corr_gains[5:], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_corr_two_stage_init():
 	model = FacilityLocationSelection(100, 'corr', optimizer='two-stage', 
@@ -319,6 +333,7 @@ def test_digits_corr_two_stage_init():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:-5], digits_corr_ranking[5:])
 	assert_array_almost_equal(model.gains[:-5], digits_corr_gains[5:], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_naive_init():
 	model = FacilityLocationSelection(100, 'cosine', optimizer='naive', 
@@ -326,6 +341,7 @@ def test_digits_cosine_naive_init():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
 	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_lazy_init():
 	model = FacilityLocationSelection(100, 'cosine', optimizer='lazy', 
@@ -333,6 +349,7 @@ def test_digits_cosine_lazy_init():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
 	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_two_stage_init():
 	model = FacilityLocationSelection(100, 'cosine', optimizer='two-stage', 
@@ -340,6 +357,7 @@ def test_digits_cosine_two_stage_init():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
 	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_precomputed_naive_init():
 	model = FacilityLocationSelection(100, 'precomputed', optimizer='naive', 
@@ -371,6 +389,7 @@ def test_digits_cosine_greedi_nn():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:50], digits_cosine_greedi_ranking[:50])
 	assert_array_almost_equal(model.gains[:50], digits_cosine_greedi_gains[:50], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_greedi_ll():
 	model = FacilityLocationSelection(100, 'cosine', optimizer='greedi',
@@ -379,6 +398,7 @@ def test_digits_cosine_greedi_ll():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
 	assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_greedi_ln():
 	model = FacilityLocationSelection(100, 'cosine', optimizer='greedi',
@@ -387,6 +407,7 @@ def test_digits_cosine_greedi_ln():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
 	assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_greedi_nl():
 	model = FacilityLocationSelection(100, 'cosine', optimizer='greedi',
@@ -395,12 +416,14 @@ def test_digits_cosine_greedi_nl():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
 	assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_approximate():
 	model = FacilityLocationSelection(100, 'cosine', optimizer='approximate-lazy')
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_cosine_approx_ranking)
 	assert_array_almost_equal(model.gains, digits_cosine_approx_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_stochastic():
 	model = FacilityLocationSelection(100, 'cosine', optimizer='stochastic',
@@ -408,6 +431,7 @@ def test_digits_cosine_stochastic():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_cosine_stochastic_ranking)
 	assert_array_almost_equal(model.gains, digits_cosine_stochastic_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_sample():
 	model = FacilityLocationSelection(100, 'cosine', optimizer='sample',
@@ -415,6 +439,7 @@ def test_digits_cosine_sample():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_cosine_sample_ranking)
 	assert_array_almost_equal(model.gains, digits_cosine_sample_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_modular():
 	model = FacilityLocationSelection(100, 'cosine', optimizer='modular',
@@ -422,6 +447,7 @@ def test_digits_sqrt_modular():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_cosine_modular_ranking)
 	assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 # Using Optimizer Objects
 
@@ -430,18 +456,21 @@ def test_digits_cosine_naive_object():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_cosine_ranking)
 	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_lazy_object():
 	model = FacilityLocationSelection(100, 'cosine', optimizer=LazyGreedy())
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_cosine_ranking)
 	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_two_stage_object():
 	model = FacilityLocationSelection(100, 'cosine', optimizer=TwoStageGreedy())
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_cosine_ranking)
 	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_greedi_nn_object():
 	model = FacilityLocationSelection(100, 'cosine', optimizer=GreeDi(
@@ -449,6 +478,7 @@ def test_digits_cosine_greedi_nn_object():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
 	assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_greedi_ll_object():
 	model = FacilityLocationSelection(100, 'cosine', optimizer=GreeDi(
@@ -456,6 +486,7 @@ def test_digits_cosine_greedi_ll_object():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
 	assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_greedi_ln_object():
 	model = FacilityLocationSelection(100, 'cosine', optimizer=GreeDi(
@@ -463,6 +494,7 @@ def test_digits_cosine_greedi_ln_object():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
 	assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_greedi_nl_object():
 	model = FacilityLocationSelection(100, 'cosine', optimizer=GreeDi(
@@ -470,6 +502,7 @@ def test_digits_cosine_greedi_nl_object():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
 	assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_approximate_object():
 	model = FacilityLocationSelection(100, 'cosine', 
@@ -477,6 +510,7 @@ def test_digits_cosine_approximate_object():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_cosine_approx_ranking)
 	assert_array_almost_equal(model.gains, digits_cosine_approx_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_stochastic_object():
 	model = FacilityLocationSelection(100, 'cosine', 
@@ -484,6 +518,7 @@ def test_digits_cosine_stochastic_object():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_cosine_stochastic_ranking)
 	assert_array_almost_equal(model.gains, digits_cosine_stochastic_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_sample_object():
 	model = FacilityLocationSelection(100, 'cosine', 
@@ -491,6 +526,7 @@ def test_digits_cosine_sample_object():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_cosine_sample_ranking)
 	assert_array_almost_equal(model.gains, digits_cosine_sample_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_modular_object():
 	model = FacilityLocationSelection(100, 'cosine', 
@@ -498,6 +534,7 @@ def test_digits_sqrt_modular_object():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_cosine_modular_ranking)
 	assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 # Test all optimizers on sparse data
 

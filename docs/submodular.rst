@@ -3,19 +3,20 @@
 Submodular Optimization
 =======================
 
-The field of submodular optimization involves functions of the form :math:`f : 2^{V} \rightarrow \mathcal{R}`. These functions take in a set of elements and output a real value that measures the quality of the subset. These functions are *submodular* when the returned value has the diminishing returns property such that for each :math:`X \subseteq Y`
+The field of submodular optimization involves functions of the form :math:`f : 2^{V} \rightarrow \mathcal{R}`. These functions take in a set of elements and output a real value that measures the quality of that set. Set functions are *submodular* when the returned value has the diminishing returns property such that for each :math:`X \subseteq Y`
 
 .. math::
 	f(X + {v}) - f(X) \geq f(Y + {v}) - f(Y)
 
-This property means that the gain of adding in a particular element :math:`v` decreases or stays the same each time another element is added to the subset.  
+The diminishing returns property means that the gain of adding in a particular element :math:`v` decreases or stays the same each time another element is added to the subset.  
 
 .. note::
 
-	Functions are called *modular* when the returned value ignores the size of the subset and *supermodular* when the returned value increases with subset size.
+	Set functions are called *modular* when the returned value ignores the size of the subset and *supermodular* when the returned value increases with subset size.
 
+An intuitive example of the diminishing returns property arises in the context of text data. In this situation, each example would be a blob of text, e.g. a sentence, and the set function being employed calculates the number of unique words across all selected sentences. Consider a particular example :math:`v`, an already selected set of examples :math:`X`, and a calculated gain :math:`g_{v}` of adding :math:`v` to :math:`X`. If some other example, :math:`u` is added to :math:`X` instead of :math:`v`, the gain of adding :math:`v` (or any other example) to :math:`X \cup u` must be smaller or equal to the gain of adding :math:`v` to :math:`X`: either :math:`u` has new words that would also be new from :math:`v`, in which case the benefit of adding in :math:`v` would decrease, or it doesn't, in which case the gain would stay the same. 
 
-An intuitive example of the diminishing returns property arises from text data. In this situation, the gain in the function value could be defined to be the number of new words that each example (e.g. a sentence, paragraph, etc.) provides to the subset. Consider a particular example :math:`v`. When an element is added to the subset, the words that are not yet in the subset are either also in :math:`v`, decreasing the gain in adding :math:`v` later, or no new words are also in :math:`v`, keeping the gain the same. The gain from an :math:`v` cannot increase as new elements are added because either it has the same number or fewer new words to contribute to the subset. Here is an example of optimizing a maximum coverage function on text data, as described.
+Here is an example of optimizing a maximum coverage function on text data, as described.
 
 .. code-block:: python
 

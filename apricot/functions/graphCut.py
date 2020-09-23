@@ -171,9 +171,9 @@ class GraphCutSelection(BaseGraphSelection):
 	"""
 
 	def __init__(self, n_samples=10, metric='euclidean', alpha=1,
-		initial_subset=None, optimizer='naive', n_neighbors=None, 
-		reservoir=None, max_reservoir_size=1000, n_jobs=1, 
-		random_state=None, optimizer_kwds={}, verbose=False):
+		initial_subset=None, optimizer='naive', optimizer_kwds={},
+		n_neighbors=None, reservoir=None, max_reservoir_size=1000, 
+		n_jobs=1, random_state=None, verbose=False):
 		self.alpha = alpha
 
 		super(GraphCutSelection, self).__init__(n_samples=n_samples, 
@@ -231,7 +231,7 @@ class GraphCutSelection(BaseGraphSelection):
 				metric=self.metric)
 
 		if self.sparse:
-			self.row_sums = self.alpha * numpy.array(X_pairwise.sum(axis=1))[0]
+			self.row_sums = self.alpha * numpy.array(X_pairwise.sum(axis=1))[:,0]
 			self.current_values = X_pairwise.diagonal().astype('float64')
 		else:
 			self.row_sums = self.alpha * X_pairwise.sum(axis=1)
@@ -240,15 +240,15 @@ class GraphCutSelection(BaseGraphSelection):
 		if self.initial_subset is None:
 			pass
 		elif self.initial_subset.ndim == 2:
-			raise ValueError("When using saturated coverage, the initial subset"\
+			raise ValueError("When using graph-cut, the initial subset"\
 				" must be a one dimensional array of indices.")
 		elif self.initial_subset.ndim == 1:
 			if self.sparse:
 				for i in self.initial_subset:
-					self.current_values += X_pairwise[i].toarray()[0]
+					self.current_values += X_pairwise[i].toarray()[0] * 2
 			else:
 				for i in self.initial_subset:
-					self.current_values += X_pairwise[i]
+					self.current_values += X_pairwise[i] * 2
 		else:
 			raise ValueError("The initial subset must be either a two dimensional" \
 				" matrix of examples or a one dimensional mask.")

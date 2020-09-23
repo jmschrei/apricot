@@ -5,6 +5,7 @@ import numpy
 
 from .base import BaseSelection
 from .base import BaseGraphSelection
+from ..utils import _calculate_pairwise_distances
 
 from tqdm import tqdm
 
@@ -135,9 +136,9 @@ class MixtureSelection(BaseSelection):
 		sample, and so forth.
 	"""
 
-	def __init__(self, n_samples, functions, weights=None, initial_subset=None, 
-		optimizer='two-stage', optimizer_kwds={}, reservoir=None, 
-		max_reservoir_size=1000, n_jobs=1, random_state=None, 
+	def __init__(self, n_samples, functions, weights=None, metric='ignore',
+		initial_subset=None, optimizer='two-stage', optimizer_kwds={}, n_neighbors=None, 
+		reservoir=None, max_reservoir_size=1000, n_jobs=1, random_state=None, 
 		verbose=False):
 
 		if len(functions) < 2:
@@ -157,10 +158,14 @@ class MixtureSelection(BaseSelection):
 			max_reservoir_size=max_reservoir_size, n_jobs=n_jobs, 
 			random_state=random_state, verbose=verbose)
 
+		self.metric = metric.replace("corr", "correlation")
+		self.n_neighbors = n_neighbors
+
 		for function in self.functions:
 			function.initial_subset = self.initial_subset
 			function.reservoir = reservoir
 			function.max_reservoir_size = max_reservoir_size
+			function.metric = 'precomputed'
 
 	def fit(self, X, y=None, sample_weight=None, sample_cost=None):
 		"""Run submodular optimization to select the examples.
@@ -199,6 +204,11 @@ class MixtureSelection(BaseSelection):
 		self : MixtureSelection
 			The fit step returns this selector object.
 		"""
+
+		# If self.metric is ignore, this will return the same matrix.
+		# Otherwise, it will convert it to a pairwise similarity matrix.
+		X = _calculate_pairwise_distances(X, metric=self.metric, 
+			n_neighbors=self.n_neighbors)
 
 		return super(MixtureSelection, self).fit(X, y=y, 
 			sample_weight=sample_weight, sample_cost=sample_cost)

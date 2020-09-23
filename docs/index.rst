@@ -38,9 +38,6 @@ You can install apricot with :code:`pip install apricot-select`.
 
    Introduction <self> 
    submodular.rst
-   CODE_OF_CONDUCT.rst
-   faq.rst
-   whats_new.rst
 
 .. toctree::
 	:maxdepth: 1
@@ -49,6 +46,7 @@ You can install apricot with :code:`pip install apricot-select`.
 
 	features/sparse.rst
 	features/knapsack.rst
+   features/streaming.rst
 
 .. toctree::
    :maxdepth: 1

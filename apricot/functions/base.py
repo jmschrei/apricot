@@ -144,6 +144,7 @@ class BaseSelection(object):
 		self.gains = None
 		self.subset = None
 		self.sparse = None
+		self._X = None
 		
 		self.sieve_current_values_ = None
 		self.n_seen_ = 0
@@ -215,6 +216,7 @@ class BaseSelection(object):
 		else:
 			optimizer = self.optimizer
 
+		self._X = X if self._X is None else self._X
 		self._initialize(X)
 
 		if self.verbose:
@@ -360,11 +362,12 @@ class BaseSelection(object):
 
 	def _initialize(self, X, idxs=None):
 		n, d = X.shape
+		self._X = X if self._X is None else self._X
 
 		self.sparse = isinstance(X, csr_matrix)
 		self.ranking = []
 		self.gains = []
-		self.subset = numpy.zeros((0, d), dtype='float64')
+		self.subset = numpy.zeros((0, self._X.shape[1]), dtype='float64')
 
 		self.current_values = numpy.zeros(d, dtype='float64')
 		self.current_concave_values = numpy.zeros(d, dtype='float64')
@@ -437,7 +440,14 @@ class BaseSelection(object):
 		self.gains.append(gain)
 		self.mask[idx] = True
 		self.idxs = numpy.where(self.mask == 0)[0]
-		self.subset = numpy.concatenate([self.subset, [X]])
+
+		if self.sparse:
+			X = self._X[idx:idx+1].toarray()
+		else:
+			X = self._X[idx:idx+1]
+
+		if self.metric != 'precomputed':
+			self.subset = numpy.concatenate([self.subset, X])
 
 
 class BaseGraphSelection(BaseSelection):
@@ -611,6 +621,7 @@ class BaseGraphSelection(BaseSelection):
 		X_pairwise = _calculate_pairwise_distances(X, metric=self.metric, 
 			n_neighbors=self.n_neighbors)
 	
+		self._X = X
 		return super(BaseGraphSelection, self).fit(X_pairwise, y=y,
 			sample_weight=sample_weight, sample_cost=sample_cost)
 

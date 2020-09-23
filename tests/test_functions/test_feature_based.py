@@ -1,11 +1,6 @@
 import scipy
 import numpy
 
-try:
-	import cupy
-except:
-	import numpy as cupy
-
 from apricot import FeatureBasedSelection
 from apricot.optimizers import *
 
@@ -21,9 +16,7 @@ from numpy.testing import assert_array_almost_equal
 
 digits_data = load_digits()
 X_digits = digits_data.data
-
 X_digits_sparse = scipy.sparse.csr_matrix(X_digits)
-X_digits_cupy = cupy.array(X_digits)
 
 digits_sqrt_ranking = [818, 1296, 732, 988, 629, 1747, 951, 235, 1375, 1205, 
 	1572, 1766, 178, 1657, 898, 1271, 513, 591, 160, 736, 1070, 185, 1113, 491, 
@@ -203,123 +196,141 @@ digits_sqrt_modular_gains = [124.8187, 51.9061, 47.4915, 35.6125, 29.7708,
 
 def test_digits_log_naive():
 	model = FeatureBasedSelection(100, 'log', optimizer='naive')
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:30], digits_log_ranking[:30])
 	assert_array_equal(model.ranking[-30:], digits_log_ranking[-30:])
 	assert_array_almost_equal(model.gains, digits_log_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_log_lazy():
 	model = FeatureBasedSelection(100, 'log', optimizer='lazy')
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_log_ranking)
 	assert_array_almost_equal(model.gains, digits_log_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_log_two_stage():
 	model = FeatureBasedSelection(100, 'log', optimizer='two-stage')
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_log_ranking)
 	assert_array_almost_equal(model.gains, digits_log_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sigmoid_naive():
 	model = FeatureBasedSelection(100, 'sigmoid', optimizer='naive')
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sigmoid_ranking)
 	assert_array_almost_equal(model.gains, digits_sigmoid_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sigmoid_lazy():
 	model = FeatureBasedSelection(100, 'sigmoid', optimizer='lazy')
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sigmoid_ranking)
 	assert_array_almost_equal(model.gains, digits_sigmoid_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sigmoid_two_stage():
 	model = FeatureBasedSelection(100, 'sigmoid', optimizer='two-stage')
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sigmoid_ranking)
 	assert_array_almost_equal(model.gains, digits_sigmoid_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_naive():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='naive')
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sqrt_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_lazy():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='lazy')
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sqrt_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_two_stage():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='two-stage')
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sqrt_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 # Test with initialization
 
 def test_digits_log_naive_init():
 	model = FeatureBasedSelection(100, 'log', optimizer='naive', 
 		initial_subset=digits_log_ranking[:5])
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:20], digits_log_ranking[5:25])
 	assert_array_almost_equal(model.gains[:20], digits_log_gains[5:25], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_log_lazy_init():
 	model = FeatureBasedSelection(100, 'log', optimizer='lazy', 
 		initial_subset=digits_log_ranking[:5])
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:-5], digits_log_ranking[5:])
 	assert_array_almost_equal(model.gains[:-5], digits_log_gains[5:], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_log_two_stage_init():
 	model = FeatureBasedSelection(100, 'log', optimizer='two-stage', 
 		initial_subset=digits_log_ranking[:5])
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:-5], digits_log_ranking[5:])
 	assert_array_almost_equal(model.gains[:-5], digits_log_gains[5:], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sigmoid_naive_init():
 	model = FeatureBasedSelection(100, 'sigmoid', optimizer='naive', 
 		initial_subset=digits_sigmoid_ranking[:5])
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:-5], digits_sigmoid_ranking[5:])
 	assert_array_almost_equal(model.gains[:-5], digits_sigmoid_gains[5:], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sigmoid_lazy_init():
 	model = FeatureBasedSelection(100, 'sigmoid', optimizer='lazy', 
 		initial_subset=digits_sigmoid_ranking[:5])
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:-5], digits_sigmoid_ranking[5:])
 	assert_array_almost_equal(model.gains[:-5], digits_sigmoid_gains[5:], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sigmoid_two_stage_init():
 	model = FeatureBasedSelection(100, 'sigmoid', optimizer='two-stage', 
 		initial_subset=digits_sigmoid_ranking[:5])
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:-5], digits_sigmoid_ranking[5:])
 	assert_array_almost_equal(model.gains[:-5], digits_sigmoid_gains[5:], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_naive_init():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='naive', 
 		initial_subset=digits_sqrt_ranking[:5])
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:-5], digits_sqrt_ranking[5:])
 	assert_array_almost_equal(model.gains[:-5], digits_sqrt_gains[5:], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_lazy_init():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='lazy', 
 		initial_subset=digits_sqrt_ranking[:5])
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:-5], digits_sqrt_ranking[5:])
 	assert_array_almost_equal(model.gains[:-5], digits_sqrt_gains[5:], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_two_stage_init():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='two-stage', 
 		initial_subset=digits_sqrt_ranking[:5])
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:-5], digits_sqrt_ranking[5:])
 	assert_array_almost_equal(model.gains[:-5], digits_sqrt_gains[5:], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 # Test all optimizers
 
@@ -327,137 +338,155 @@ def test_digits_sqrt_greedi_nn():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='greedi',
 		optimizer_kwds={'optimizer1': 'naive', 'optimizer2': 'naive'}, 
 		random_state=0)
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:50], digits_sqrt_greedi_ranking[:50])
 	assert_array_almost_equal(model.gains[:50], digits_sqrt_greedi_gains[:50], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_greedi_ll():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='greedi',
 		optimizer_kwds={'optimizer1': 'lazy', 'optimizer2': 'lazy'}, 
 		random_state=0)
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:30], digits_sqrt_greedi_ranking[:30])
 	assert_array_almost_equal(model.gains[:30], digits_sqrt_greedi_gains[:30], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_greedi_ln():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='greedi',
 		optimizer_kwds={'optimizer1': 'lazy', 'optimizer2': 'naive'}, 
 		random_state=0)
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sqrt_greedi_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_greedi_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_greedi_nl():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='greedi',
 		optimizer_kwds={'optimizer1': 'naive', 'optimizer2': 'lazy'}, 
 		random_state=0)
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:30], digits_sqrt_greedi_ranking[:30])
 	assert_array_almost_equal(model.gains[:30], digits_sqrt_greedi_gains[:30], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_approximate():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='approximate-lazy')
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sqrt_approx_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_approx_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_stochastic():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='stochastic',
 		random_state=0)
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sqrt_stochastic_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_stochastic_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_sample():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='sample',
 		random_state=0)
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sqrt_sample_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_sample_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_modular():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='modular',
 		random_state=0)
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sqrt_modular_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_modular_gains, 4)
-
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 # Using Optimizer Objects
 
 def test_digits_sqrt_naive_object():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer=NaiveGreedy())
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sqrt_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_lazy_object():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer=LazyGreedy())
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sqrt_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_two_stage_object():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer=TwoStageGreedy())
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sqrt_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_greedi_nn_object():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer=GreeDi(
 		optimizer1='naive', optimizer2='naive', random_state=0))
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sqrt_greedi_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_greedi_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_greedi_ll_object():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer=GreeDi(
 		optimizer1='lazy', optimizer2='lazy', random_state=0))
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:30], digits_sqrt_greedi_ranking[:30])
 	assert_array_almost_equal(model.gains[:30], digits_sqrt_greedi_gains[:30], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_greedi_ln_object():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer=GreeDi(
 		optimizer1='lazy', optimizer2='naive', random_state=0))
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sqrt_greedi_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_greedi_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_greedi_nl_object():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer=GreeDi(
 		optimizer1='naive', optimizer2='lazy', random_state=0))
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking[:30], digits_sqrt_greedi_ranking[:30])
 	assert_array_almost_equal(model.gains[:30], digits_sqrt_greedi_gains[:30], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_approximate_object():
 	model = FeatureBasedSelection(100, 'sqrt', 
 		optimizer=ApproximateLazyGreedy())
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sqrt_approx_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_approx_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_stochastic_object():
 	model = FeatureBasedSelection(100, 'sqrt', 
 		optimizer=StochasticGreedy(random_state=0))
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sqrt_stochastic_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_stochastic_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_sample_object():
 	model = FeatureBasedSelection(100, 'sqrt', 
 		optimizer=SampleGreedy(random_state=0))
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sqrt_sample_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_sample_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sqrt_modular_object():
 	model = FeatureBasedSelection(100, 'sqrt', 
 		optimizer=ModularGreedy(random_state=0))
-	model.fit(X_digits_cupy)
+	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sqrt_modular_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_modular_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 # Test all optimizers on sparse data
 
@@ -466,18 +495,21 @@ def test_digits_sqrt_naive_sparse():
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking, digits_sqrt_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())
 
 def test_digits_sqrt_lazy_sparse():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='lazy')
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking, digits_sqrt_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())
 
 def test_digits_sqrt_two_stage_sparse():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='two-stage')
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking, digits_sqrt_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())
 
 def test_digits_sqrt_greedi_nn_sparse():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='greedi',
@@ -486,6 +518,7 @@ def test_digits_sqrt_greedi_nn_sparse():
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking, digits_sqrt_greedi_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_greedi_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())
 
 def test_digits_sqrt_greedi_ll_sparse():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='greedi',
@@ -494,6 +527,7 @@ def test_digits_sqrt_greedi_ll_sparse():
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking[:30], digits_sqrt_greedi_ranking[:30])
 	assert_array_almost_equal(model.gains[:30], digits_sqrt_greedi_gains[:30], 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())
 
 def test_digits_sqrt_greedi_ln_sparse():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='greedi',
@@ -502,6 +536,7 @@ def test_digits_sqrt_greedi_ln_sparse():
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking, digits_sqrt_greedi_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_greedi_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())
 
 def test_digits_sqrt_greedi_nl_sparse():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='greedi',
@@ -510,12 +545,14 @@ def test_digits_sqrt_greedi_nl_sparse():
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking[:30], digits_sqrt_greedi_ranking[:30])
 	assert_array_almost_equal(model.gains[:30], digits_sqrt_greedi_gains[:30], 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())
 
 def test_digits_sqrt_approximate_sparse():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='approximate-lazy')
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking, digits_sqrt_approx_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_approx_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())
 
 def test_digits_sqrt_stochastic_sparse():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='stochastic',
@@ -523,6 +560,7 @@ def test_digits_sqrt_stochastic_sparse():
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking, digits_sqrt_stochastic_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_stochastic_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())
 
 def test_digits_sqrt_sample_sparse():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='sample',
@@ -530,6 +568,7 @@ def test_digits_sqrt_sample_sparse():
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking, digits_sqrt_sample_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_sample_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())
 
 def test_digits_sqrt_modular_sparse():
 	model = FeatureBasedSelection(100, 'sqrt', optimizer='modular',
@@ -537,3 +576,4 @@ def test_digits_sqrt_modular_sparse():
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking, digits_sqrt_modular_ranking)
 	assert_array_almost_equal(model.gains, digits_sqrt_modular_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())

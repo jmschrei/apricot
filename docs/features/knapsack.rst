@@ -20,4 +20,4 @@ for a cost function :math:`c`, a submodular function :math:`f`, a subset :math:`
 	sample_cost = numpy.abs(numpy.random.randn(10000))
 	
 	selector = FeatureBasedSelection(100, 'sqrt')
-	selector.fit(X_sparse, sample_cost=sample_cost)
+	selector.fit(X, sample_cost=sample_cost)

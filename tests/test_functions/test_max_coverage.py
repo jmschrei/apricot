@@ -130,18 +130,21 @@ def test_digits_naive():
 	assert_array_equal(model.ranking[:15], digits_ranking[:15])
 	assert_array_equal(model.ranking[:15], digits_ranking[:15])
 	assert_array_almost_equal(model.gains[:15], digits_gains[:15], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_lazy():
 	model = MaxCoverageSelection(100, optimizer='lazy')
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:3], digits_ranking[:3])
 	assert_array_almost_equal(model.gains[:3], digits_gains[:3], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_two_stage():
 	model = MaxCoverageSelection(100, optimizer='two-stage')
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:3], digits_ranking[:3])
 	assert_array_almost_equal(model.gains[:3], digits_gains[:3], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 # Test with initialization
 
@@ -151,6 +154,7 @@ def test_digits_naive_init():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:10], digits_ranking[5:15])
 	assert_array_almost_equal(model.gains[:10], digits_gains[5:15], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_lazy_init():
 	model = MaxCoverageSelection(100, optimizer='lazy', 
@@ -158,6 +162,7 @@ def test_digits_lazy_init():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:5], digits_ranking[5:10])
 	assert_array_almost_equal(model.gains[:5], digits_gains[5:10], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_two_stage_init():
 	model = MaxCoverageSelection(100, optimizer='two-stage', 
@@ -165,6 +170,7 @@ def test_digits_two_stage_init():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:10], digits_ranking[5:15])
 	assert_array_almost_equal(model.gains[:10], digits_gains[5:15], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 # Test all optimizers
 
@@ -175,6 +181,7 @@ def test_digits_greedi_nn():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:2], digits_greedi_ranking[:2])
 	assert_array_almost_equal(model.gains[:2], digits_greedi_gains[:2], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_greedi_ll():
 	model = MaxCoverageSelection(100, optimizer='greedi',
@@ -183,6 +190,7 @@ def test_digits_greedi_ll():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:30], digits_greedi_ranking[:30])
 	assert_array_almost_equal(model.gains[:30], digits_greedi_gains[:30], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_greedi_ln():
 	model = MaxCoverageSelection(100, optimizer='greedi',
@@ -191,6 +199,7 @@ def test_digits_greedi_ln():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:2], digits_greedi_ranking[:2])
 	assert_array_almost_equal(model.gains[:2], digits_greedi_gains[:2], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_greedi_nl():
 	model = MaxCoverageSelection(100, optimizer='greedi',
@@ -199,12 +208,14 @@ def test_digits_greedi_nl():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:2], digits_greedi_ranking[:2])
 	assert_array_almost_equal(model.gains[:2], digits_greedi_gains[:2], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_approximate():
 	model = MaxCoverageSelection(100, optimizer='approximate-lazy')
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_approx_ranking)
 	assert_array_almost_equal(model.gains, digits_approx_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_stochastic():
 	model = MaxCoverageSelection(100, optimizer='stochastic',
@@ -212,6 +223,7 @@ def test_digits_stochastic():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_stochastic_ranking)
 	assert_array_almost_equal(model.gains, digits_stochastic_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sample():
 	model = MaxCoverageSelection(100, optimizer='sample',
@@ -219,6 +231,7 @@ def test_digits_sample():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sample_ranking)
 	assert_array_almost_equal(model.gains, digits_sample_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_modular():
 	model = MaxCoverageSelection(100, optimizer='modular',
@@ -226,6 +239,7 @@ def test_digits_modular():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_modular_ranking)
 	assert_array_almost_equal(model.gains, digits_modular_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 
 # Using Optimizer Objects
@@ -235,18 +249,21 @@ def test_digits_naive_object():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:4], digits_ranking[:4])
 	assert_array_almost_equal(model.gains[:4], digits_gains[:4], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_lazy_object():
 	model = MaxCoverageSelection(100, optimizer=LazyGreedy())
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:3], digits_ranking[:3])
 	assert_array_almost_equal(model.gains[:3], digits_gains[:3], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_two_stage_object():
 	model = MaxCoverageSelection(100, optimizer=TwoStageGreedy())
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:4], digits_ranking[:4])
 	assert_array_almost_equal(model.gains[:4], digits_gains[:4], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_greedi_nn_object():
 	model = MaxCoverageSelection(100, optimizer=GreeDi(
@@ -254,6 +271,7 @@ def test_digits_greedi_nn_object():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:2], digits_ranking[:2])
 	assert_array_almost_equal(model.gains[:2], digits_gains[:2], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_greedi_ll_object():
 	model = MaxCoverageSelection(100, optimizer=GreeDi(
@@ -261,6 +279,7 @@ def test_digits_greedi_ll_object():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:2], digits_ranking[:2])
 	assert_array_almost_equal(model.gains[:2], digits_gains[:2], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_greedi_ln_object():
 	model = MaxCoverageSelection(100, optimizer=GreeDi(
@@ -268,6 +287,7 @@ def test_digits_greedi_ln_object():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:2], digits_ranking[:2])
 	assert_array_almost_equal(model.gains[:2], digits_gains[:2], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_greedi_nl_object():
 	model = MaxCoverageSelection(100, optimizer=GreeDi(
@@ -275,6 +295,7 @@ def test_digits_greedi_nl_object():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking[:2], digits_ranking[:2])
 	assert_array_almost_equal(model.gains[:2], digits_gains[:2], 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_approximate_object():
 	model = MaxCoverageSelection(100, 
@@ -282,6 +303,7 @@ def test_digits_approximate_object():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_approx_ranking)
 	assert_array_almost_equal(model.gains, digits_approx_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_stochastic_object():
 	model = MaxCoverageSelection(100, 
@@ -289,6 +311,7 @@ def test_digits_stochastic_object():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_stochastic_ranking)
 	assert_array_almost_equal(model.gains, digits_stochastic_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_sample_object():
 	model = MaxCoverageSelection(100, 
@@ -296,6 +319,7 @@ def test_digits_sample_object():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_sample_ranking)
 	assert_array_almost_equal(model.gains, digits_sample_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_modular_object():
 	model = MaxCoverageSelection(100, 
@@ -303,6 +327,7 @@ def test_digits_modular_object():
 	model.fit(X_digits)
 	assert_array_equal(model.ranking, digits_modular_ranking)
 	assert_array_almost_equal(model.gains, digits_modular_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 # Test all optimizers on sparse data
 
@@ -311,18 +336,21 @@ def test_digits_naive_sparse():
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking[:4], digits_ranking[:4])
 	assert_array_almost_equal(model.gains[:4], digits_gains[:4], 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())
 
 def test_digits_lazy_sparse():
 	model = MaxCoverageSelection(100, optimizer='lazy')
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking[:3], digits_ranking[:3])
 	assert_array_almost_equal(model.gains[:3], digits_gains[:3], 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())
 
 def test_digits_two_stage_sparse():
 	model = MaxCoverageSelection(100, optimizer='two-stage')
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking[:4], digits_ranking[:4])
 	assert_array_almost_equal(model.gains[:4], digits_gains[:4], 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())
 
 def test_digits_greedi_nn_sparse():
 	model = MaxCoverageSelection(100, optimizer='greedi',
@@ -331,6 +359,7 @@ def test_digits_greedi_nn_sparse():
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking[:2], digits_ranking[:2])
 	assert_array_almost_equal(model.gains[:2], digits_gains[:2], 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())
 
 def test_digits_greedi_ll_sparse():
 	model = MaxCoverageSelection(100, optimizer='greedi',
@@ -339,6 +368,7 @@ def test_digits_greedi_ll_sparse():
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking[:2], digits_ranking[:2])
 	assert_array_almost_equal(model.gains[:2], digits_gains[:2], 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())
 
 def test_digits_greedi_ln_sparse():
 	model = MaxCoverageSelection(100, optimizer='greedi',
@@ -347,6 +377,7 @@ def test_digits_greedi_ln_sparse():
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking[:2], digits_ranking[:2])
 	assert_array_almost_equal(model.gains[:2], digits_gains[:2], 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())
 
 def test_digits_greedi_nl_sparse():
 	model = MaxCoverageSelection(100, optimizer='greedi',
@@ -355,12 +386,14 @@ def test_digits_greedi_nl_sparse():
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking[:2], digits_ranking[:2])
 	assert_array_almost_equal(model.gains[:2], digits_gains[:2], 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())
 
 def test_digits_approximate_sparse():
 	model = MaxCoverageSelection(100, optimizer='approximate-lazy')
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking, digits_approx_ranking)
 	assert_array_almost_equal(model.gains, digits_approx_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())
 
 def test_digits_stochastic_sparse():
 	model = MaxCoverageSelection(100, optimizer='stochastic',
@@ -368,17 +401,20 @@ def test_digits_stochastic_sparse():
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking, digits_stochastic_ranking)
 	assert_array_almost_equal(model.gains, digits_stochastic_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())
 
-def test_digits_sample():
+def test_digits_sample_sparse():
 	model = MaxCoverageSelection(100, optimizer='sample',
 		random_state=0)
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking, digits_sample_ranking)
 	assert_array_almost_equal(model.gains, digits_sample_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())
 
-def test_digits_modular():
+def test_digits_modular_sparse():
 	model = MaxCoverageSelection(100, optimizer='modular',
 		random_state=0)
 	model.fit(X_digits_sparse)
 	assert_array_equal(model.ranking, digits_modular_ranking)
 	assert_array_almost_equal(model.gains, digits_modular_gains, 4)
+	assert_array_almost_equal(model.subset, X_digits_sparse[model.ranking].toarray())
