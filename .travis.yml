@@ -38,4 +38,4 @@ before_install:
 install:
 - python setup.py install
 script:
-- python setup.py test
+- nosetests -s -v --logging-filter=-numba
