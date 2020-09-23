@@ -447,8 +447,6 @@ class BaseSelection(object):
 		else:
 			X = self._X[idx:idx+1]
 
-		print(self._X.shape)
-
 		if self.metric != 'precomputed':
 			self.subset = numpy.concatenate([self.subset, X])
 
