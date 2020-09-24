@@ -454,7 +454,6 @@ def test_digits_precomputed_naive_init():
 	model.fit(X_digits_cosine_cupy)
 	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
 	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits_cosine_cupy[model.ranking])
 
 def test_digits_precomputed_lazy_init():
 	model1 = FacilityLocationSelection(100)
@@ -465,7 +464,6 @@ def test_digits_precomputed_lazy_init():
 	model.fit(X_digits_cosine_cupy)
 	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
 	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits_cosine_cupy[model.ranking])
 
 def test_digits_precomputed_two_stage_init():
 	model1 = FacilityLocationSelection(100)
@@ -476,7 +474,6 @@ def test_digits_precomputed_two_stage_init():
 	model.fit(X_digits_cosine_cupy)
 	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
 	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits_cosine_cupy[model.ranking])
 
 # Test all optimizers
 

@@ -207,6 +207,7 @@ class MixtureSelection(BaseSelection):
 
 		# If self.metric is ignore, this will return the same matrix.
 		# Otherwise, it will convert it to a pairwise similarity matrix.
+		self._X = X
 		X = _calculate_pairwise_distances(X, metric=self.metric, 
 			n_neighbors=self.n_neighbors)
 
