@@ -2,12 +2,15 @@
 # Author: Jacob Schreiber <jmschreiber91@gmail.com>
 
 import os
+import copy
 import numpy
+import scipy
 
 from tqdm import tqdm
 
 from .utils import PriorityQueue
 from .utils import check_random_state
+from .utils import _calculate_pairwise_distances
 
 class BaseOptimizer(object):
 	"""An approach for optimizing submodular functions.
@@ -238,6 +241,10 @@ class LazyGreedy(BaseOptimizer):
 				if gain > best_gain:
 					best_gain = gain
 					best_idx = idx
+				elif gain == best_gain and best_gain == 0.0:
+					best_gain = gain
+					best_idx = idx
+					break
 
 			cost += sample_cost[best_idx]
 			best_gain *= sample_cost[best_idx]
@@ -427,7 +434,7 @@ class TwoStageGreedy(BaseOptimizer):
 		else:
 			optimizer2 = self.optimizer2
 
-		optimizer1.select(X, self.n_first_selections, sample_cost=sample_cost)
+		optimizer1.select(X, min(self.n_first_selections, k), sample_cost=sample_cost)
 		if k > self.n_first_selections:
 			m = k - self.n_first_selections
 			optimizer2.select(X, m, sample_cost=sample_cost)
@@ -1005,6 +1012,117 @@ class BidirectionalGreedy(BaseOptimizer):
 				else:
 					B[i] = False
 
+
+class SieveGreedy(BaseOptimizer):
+	"""The sieve stream greedy algorithm.
+
+	Most submodular optimizers assume that the function is *monotone*, i.e., 
+	that the gain from each successive example is positive. However, there 
+	are some cases where the key diminishing returns property holds, but 
+	the gains are not necessarily positive. The most obvious of these is a
+	difference in submodular functions. In these cases, the naive greedy 
+	algorithm is not guaranteed to return a good result. 
+
+	The bidirectional greedy algorithm was developed to optimize non-monotone 
+	submodular functions. While it has a guarantee that is lower than the 
+	naive greedy algorithm has for monotone functions, it generally returns 
+	better sets than the greedy algorithm.
+
+	.. code::python
+
+		from apricot import FeatureBasedSelection
+
+		X = numpy.random.randint(10, size=(10000, 100))
+
+		selector = FeatureBasedSelection(100, 'sqrt', optimizer='bidirectional')
+		selector.fit(X)
+
+	Parameters
+	----------
+	self.function : base.BaseSelection
+		A submodular function that implements the `_calculate_gains` and
+		`_select_next` methods. This is the function that will be
+		optimized.
+
+	self.verbose : bool
+		Whether to display a progress bar during the optimization process.
+
+
+	Attributes
+	----------
+	self.function : base.BaseSelection
+		A submodular function that implements the `_calculate_gains` and
+		`_select_next` methods. This is the function that will be
+		optimized.
+
+	self.verbose : bool
+		Whether to display a progress bar during the optimization process.
+
+	self.gains_ : numpy.ndarray or None
+		The gain that each example would give the last time that it was
+		evaluated.
+	"""
+
+	def __init__(self, function=None, epsilon=0.01, random_state=None, 
+		n_jobs=None, verbose=False):
+		self.epsilon = epsilon
+		self.n_seen_ = 0
+		self.thresholds = [1]
+		self.max_gain = -1
+
+		super(SieveGreedy, self).__init__(function=function, 
+			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
+
+	def select(self, X, k, sample_cost=None):
+		"""Select elements in a naive greedy manner."""
+
+		# This is not a great use of the apricot API. An optimizer shouldn't
+		# be using its own special gain calculating function. However, it is
+		# much faster to do things this way so I'll keep it in for now.
+
+		n, d = X.shape
+		if sample_cost is None:
+			sample_cost = numpy.ones(n, dtype='float64')
+
+		r = X.shape[1] if self.function.reservoir is not None else 1
+		marginal_gains = self.function._calculate_gains(X) / sample_cost / r
+		max_marginal_gain = marginal_gains.max()
+		if max_marginal_gain > self.max_gain:
+			self.max_gain = max_marginal_gain
+			j = len(self.thresholds)
+			threshold = (1 + self.epsilon) ** j - 1
+			while threshold <= self.max_gain * k:
+				self.thresholds.append(threshold)
+
+				j += 1
+				threshold = (1 + self.epsilon) ** j - 1
+
+		thresholds = numpy.array(self.thresholds, dtype='float64')
+		idxs = numpy.arange(n, dtype='int64') + self.n_seen_
+
+		self.function._calculate_sieve_gains(X, thresholds, idxs)
+
+		best_idx = numpy.argmax(self.function.sieve_total_gains_)
+		ranking = self.function.sieve_selections_[best_idx]
+		ranking = ranking[:self.function.sieve_n_selected_[best_idx]]
+		gain = self.function.sieve_gains_[best_idx]
+		gain = gain[:self.function.sieve_n_selected_[best_idx]]
+
+		for i in range(len(self.thresholds)):
+			for j in range(k):
+				m = self.function.sieve_selections_[i, j]
+				if m >= self.n_seen_:
+					if isinstance(self.function._X, scipy.sparse.csr_matrix):
+						self.function.sieve_subsets_[i, j] = self.function._X[m - self.n_seen_].toarray()[0]
+					else:
+						self.function.sieve_subsets_[i, j] = self.function._X[m - self.n_seen_]
+
+		self.function.ranking = ranking
+		self.function.gains = gain
+		self.function.subset = self.function.sieve_subsets_[best_idx]
+		self.n_seen_ += X.shape[0]
+
+
 OPTIMIZERS = {
 	'random' : RandomGreedy,
 	'modular' : ModularGreedy,
@@ -1015,5 +1133,6 @@ OPTIMIZERS = {
 	'stochastic' : StochasticGreedy,
 	'sample' : SampleGreedy,
 	'greedi' : GreeDi,
-	'bidirectional' : BidirectionalGreedy
+	'bidirectional' : BidirectionalGreedy,
+	'sieve' : SieveGreedy,
 }

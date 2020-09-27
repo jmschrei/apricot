@@ -1,18 +1,15 @@
 # mixture.py
 # Author: Jacob Schreiber <jmschreiber91@gmail.com>
-
-try:
-	import cupy
-except:
-	import numpy as cupy
 	
 import numpy
 
+from .base import BaseSelection
 from .base import BaseGraphSelection
+from ..utils import _calculate_pairwise_distances
 
 from tqdm import tqdm
 
-class MixtureSelection(BaseGraphSelection):
+class MixtureSelection(BaseSelection):
 	"""A selection approach based on a mixture of submodular functions.
 
 	A convenient property of submodular functions is that any linear 
@@ -48,7 +45,7 @@ class MixtureSelection(BaseGraphSelection):
 	n_samples : int
 		The number of samples to return.
 
-	submodular_functions : list
+	functions : list
 		The list of submodular functions to mix together. The submodular
 		functions should be instantiated.
 
@@ -83,14 +80,27 @@ class MixtureSelection(BaseGraphSelection):
 
 		Default is 'two-stage'.
 
-	optimizer_kwds : dict, optional
-		Arguments to pass into the optimizer object upon initialization.
-		Default is {}.
+	optimizer_kwds : dict or None
+		A dictionary of arguments to pass into the optimizer object. The keys
+		of this dictionary should be the names of the parameters in the optimizer
+		and the values in the dictionary should be the values that these
+		parameters take. Default is None.
 
-	n_jobs : int, optional
-		The number of cores to use for processing. This value is multiplied
-		by 2 when used to set the number of threads. If set to -1, use all
-		cores and threads. Default is -1.
+	reservoir : numpy.ndarray or None
+		The reservoir to use when calculating gains in the sieve greedy
+		streaming optimization algorithm in the `partial_fit` method.
+		Currently only used for graph-based functions. If a numpy array
+		is passed in, it will be used as the reservoir. If None is passed in,
+		will use reservoir sampling to collect a reservoir. Default is None.
+
+	max_reservoir_size : int 
+		The maximum size that the reservoir can take. If a reservoir is passed
+		in, this value is set to the size of that array. Default is 1000.
+
+	n_jobs : int
+		The number of threads to use when performing computation in parallel.
+		Currently, this parameter is exposed but does not actually do anything.
+		This will be fixed soon.
 
 	random_state : int or RandomState or None, optional
 		The random seed to use for the random selection process. Only used
@@ -127,8 +137,9 @@ class MixtureSelection(BaseGraphSelection):
 	"""
 
 	def __init__(self, n_samples, functions, weights=None, metric='ignore',
-		initial_subset=None, optimizer='two-stage', optimizer_kwds={}, n_jobs=1, 
-		random_state=None, verbose=False):
+		initial_subset=None, optimizer='two-stage', optimizer_kwds={}, n_neighbors=None, 
+		reservoir=None, max_reservoir_size=1000, n_jobs=1, random_state=None, 
+		verbose=False):
 
 		if len(functions) < 2:
 			raise ValueError("Must mix at least two functions.")
@@ -139,21 +150,22 @@ class MixtureSelection(BaseGraphSelection):
 		if weights is None:
 			self.weights = numpy.ones(self.m, dtype='float64')
 		else:
-			self.weights = weights
+			self.weights = numpy.array(weights, dtype='float64', copy=False)
 
 		super(MixtureSelection, self).__init__(n_samples=n_samples, 
-			metric=metric, initial_subset=initial_subset, 
-			optimizer=optimizer, optimizer_kwds=optimizer_kwds, 
-			n_jobs=n_jobs, random_state=random_state, verbose=verbose)
+			initial_subset=initial_subset, optimizer=optimizer, 
+			optimizer_kwds=optimizer_kwds, reservoir=reservoir,
+			max_reservoir_size=max_reservoir_size, n_jobs=n_jobs, 
+			random_state=random_state, verbose=verbose)
+
+		self.metric = metric.replace("corr", "correlation")
+		self.n_neighbors = n_neighbors
 
 		for function in self.functions:
 			function.initial_subset = self.initial_subset
-			function.random_state = self.random_state
-			function.n_jobs = self.n_jobs
-			function.verbose = self.verbose
-
-			if isinstance(function, BaseGraphSelection):
-				function.metric = self.metric
+			function.reservoir = reservoir
+			function.max_reservoir_size = max_reservoir_size
+			function.metric = 'precomputed'
 
 	def fit(self, X, y=None, sample_weight=None, sample_cost=None):
 		"""Run submodular optimization to select the examples.
@@ -193,6 +205,12 @@ class MixtureSelection(BaseGraphSelection):
 			The fit step returns this selector object.
 		"""
 
+		# If self.metric is ignore, this will return the same matrix.
+		# Otherwise, it will convert it to a pairwise similarity matrix.
+		self._X = X
+		X = _calculate_pairwise_distances(X, metric=self.metric, 
+			n_neighbors=self.n_neighbors)
+
 		return super(MixtureSelection, self).fit(X, y=y, 
 			sample_weight=sample_weight, sample_cost=sample_cost)
 
@@ -211,16 +229,62 @@ class MixtureSelection(BaseGraphSelection):
 		a single element is passed in, it will return a singe value."""
 
 		idxs = idxs if idxs is not None else self.idxs
-
-		if self.cupy:
-			gains = cupy.zeros(idxs.shape[0], dtype='float64')
-		else:
-			gains = numpy.zeros(idxs.shape[0], dtype='float64')
+		gains = numpy.zeros(idxs.shape[0], dtype='float64')
 
 		for i, function in enumerate(self.functions):
 			gains += function._calculate_gains(X, idxs) * self.weights[i]
 
 		return gains
+
+	def _calculate_sieve_gains(self, X, thresholds, idxs):
+		super(MixtureSelection, self)._calculate_sieve_gains(X, 
+			thresholds, idxs)
+
+		for function in self.functions:
+			super(function.__class__, function)._calculate_sieve_gains(X,
+				thresholds, idxs)
+
+		t = numpy.zeros(thresholds.shape[0], dtype='float64') - 1
+
+		for j in range(X.shape[0]):
+			x = X[j:j+1]
+
+			current_values = []
+			total_gains = []
+
+			gain = numpy.zeros((len(thresholds), self.n_samples), dtype='float64')
+			for i, function in enumerate(self.functions):
+				current_values.append(function.sieve_current_values_.copy())
+				total_gains.append(function.sieve_total_gains_.copy())
+
+				function._calculate_sieve_gains(x, t, idxs)
+				gain += function.sieve_gains_ * self.weights[i]
+
+			for l in range(len(thresholds)):
+				if self.sieve_n_selected_[l] == self.n_samples:
+					continue
+
+				threshold = ((thresholds[l] / 2. - self.sieve_total_gains_[l]) 
+					/ (self.n_samples - self.sieve_n_selected_[l]))
+
+				if gain[l, self.sieve_n_selected_[l]] > threshold:
+					self.sieve_total_gains_[l] += gain[l, self.sieve_n_selected_[l]]
+					self.sieve_selections_[l, self.sieve_n_selected_[l]] = idxs[j]
+					self.sieve_gains_[l, self.sieve_n_selected_[l]] = gain[l, self.sieve_n_selected_[l]]
+					self.sieve_n_selected_[l] += 1
+				else:
+					v = self.sieve_n_selected_[l]
+
+					for i, function in enumerate(self.functions):
+						vi = function.sieve_n_selected_[l]
+						if vi != self.sieve_n_selected_[l]:
+							function.sieve_current_values_[l] = current_values[i][l]
+							function.sieve_total_gains_[l] = total_gains[i][l]
+							function.sieve_n_selected_[l] = vi - 1
+							if vi < self.n_samples:
+								function.sieve_selections_[l, vi] = 0
+								function.sieve_gains_[l, vi] = 0
+								function.sieve_subsets_[l, vi] = 0
 
 	def _select_next(self, X, gain, idx):
 		"""This function will add the given item to the selected set."""

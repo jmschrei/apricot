@@ -10,3 +10,9 @@ from .sumRedundancy import SumRedundancySelection
 from .graphCut import GraphCutSelection
 
 from .mixture import MixtureSelection
+
+from .custom import CustomSelection
+from .custom import CustomGraphSelection
+
+from .base import BaseSelection
+from .base import BaseGraphSelection

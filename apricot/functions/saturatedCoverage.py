@@ -1,11 +1,6 @@
 # saturatedCoverage.py
 # Author: Jacob Schreiber <jmschreiber91@gmail.com>
 
-try:
-	import cupy
-except:
-	import numpy as cupy
-
 import numpy
 
 from .base import BaseGraphSelection
@@ -37,10 +32,6 @@ def select_next_sparse(X_data, X_indices, X_indptr, gains, current_values, max_v
 		for j in range(start, end):
 			k = X_indices[j]
 			gains[i] += min(X_data[j] + current_values[k], max_values[k]) - current_values[k]
-
-def select_next_cupy(X, gains, current_values, max_values, mask):
-	gains[:] = cupy.sum(cupy.minimum(X + current_values, max_values), axis=1)
-	gains[:] = gains * (1 - mask)
 
 class SaturatedCoverageSelection(BaseGraphSelection):
 	"""A saturated coverage submodular selection algorithm.
@@ -84,13 +75,10 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 		is performed on the resulting distances. For backcompatibility,
 		'corr' will be read as 'correlation'. Default is 'euclidean'.
 
-	n_naive_samples : int, optional
-		The number of samples to perform the naive greedy algorithm on
-		before switching to the lazy greedy algorithm. The lazy greedy
-		algorithm is faster once features begin to saturate, but is slower
-		in the initial few selections. This is, in part, because the naive
-		greedy algorithm is parallelized whereas the lazy greedy
-		algorithm currently is not. Default is 1.
+	alpha : float
+		The threshold at which to saturate. Larger values of alpha are closer
+		to a modular function and smaller values of alpha are closer to all
+		examples providing the same, small, gain. Default is 0.1.
 
 	initial_subset : list, numpy.ndarray or None, optional
 		If provided, this should be a list of indices into the data matrix
@@ -105,15 +93,46 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 		initially and then switches to the lazy greedy algorithm. Must be
 		one of
 
+			'random' : randomly select elements (dummy optimizer)
+			'modular' : approximate the function using its modular upper bound
 			'naive' : the naive greedy algorithm
 			'lazy' : the lazy (or accelerated) greedy algorithm
 			'approximate-lazy' : the approximate lazy greedy algorithm
 			'two-stage' : starts with naive and switches to lazy
 			'stochastic' : the stochastic greedy algorithm
+			'sample' : randomly take a subset and perform selection on that
 			'greedi' : the GreeDi distributed algorithm
 			'bidirectional' : the bidirectional greedy algorithm
 
-		Default is 'naive'.
+		Default is 'two-stage'.
+
+	optimizer_kwds : dict or None
+		A dictionary of arguments to pass into the optimizer object. The keys
+		of this dictionary should be the names of the parameters in the optimizer
+		and the values in the dictionary should be the values that these
+		parameters take. Default is None.
+
+	n_neighbors : int or None
+		When constructing a similarity matrix, the number of nearest neighbors
+		whose similarity values will be kept. The result is a sparse similarity
+		matrix which can significantly speed up computation at the cost of
+		accuracy. Default is None.
+
+	reservoir : numpy.ndarray or None
+		The reservoir to use when calculating gains in the sieve greedy
+		streaming optimization algorithm in the `partial_fit` method.
+		Currently only used for graph-based functions. If a numpy array
+		is passed in, it will be used as the reservoir. If None is passed in,
+		will use reservoir sampling to collect a reservoir. Default is None.
+
+	max_reservoir_size : int 
+		The maximum size that the reservoir can take. If a reservoir is passed
+		in, this value is set to the size of that array. Default is 1000.
+
+	n_jobs : int
+		The number of threads to use when performing computation in parallel.
+		Currently, this parameter is exposed but does not actually do anything.
+		This will be fixed soon.
 
 	random_state : int or RandomState or None, optional
 		The random seed to use for the random selection process. Only used
@@ -143,12 +162,14 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 
 	def __init__(self, n_samples=10, metric='euclidean', alpha=0.1,
 		initial_subset=None, optimizer='two-stage', n_neighbors=None, n_jobs=1, 
-		random_state=None, optimizer_kwds={}, verbose=False):
+		random_state=None, reservoir=None, max_reservoir_size=None, 
+		optimizer_kwds={}, verbose=False):
 		self.alpha = alpha
 
 		super(SaturatedCoverageSelection, self).__init__(n_samples=n_samples, 
 			metric=metric,initial_subset=initial_subset, optimizer=optimizer, 
-			optimizer_kwds=optimizer_kwds, n_neighbors=n_neighbors, 
+			optimizer_kwds=optimizer_kwds, n_neighbors=n_neighbors,
+			reservoir=reservoir, max_reservoir_size=max_reservoir_size,
 			n_jobs=n_jobs, random_state=random_state, verbose=verbose)
 
 	def fit(self, X, y=None, sample_weight=None, sample_cost=None):
@@ -221,32 +242,23 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 
 	def _calculate_gains(self, X_pairwise, idxs=None):
 		idxs = idxs if idxs is not None else self.idxs
+		gains = numpy.zeros(idxs.shape[0], dtype='float64')
 
-		if self.cupy:
-			gains = cupy.zeros(idxs.shape[0], dtype='float64')
-			select_next_cupy(X_pairwise, gains, self.current_values,
+		if self.sparse:
+			select_next_sparse(X_pairwise.data,
+				X_pairwise.indices, X_pairwise.indptr, gains,
+				self.current_values, self.max_values, idxs)
+		else:
+			select_next(X_pairwise, gains, self.current_values,
 				self.max_values, idxs)
 			gains -= self.current_values.sum()
-		else:
-			gains = numpy.zeros(idxs.shape[0], dtype='float64')
-			if self.sparse:
-				select_next_sparse(X_pairwise.data,
-					X_pairwise.indices, X_pairwise.indptr, gains,
-					self.current_values, self.max_values, idxs)
-			else:
-				select_next(X_pairwise, gains, self.current_values,
-					self.max_values, idxs)
-				gains -= self.current_values.sum()
 
 		return gains
 
 	def _select_next(self, X_pairwise, gain, idx):
 		"""This function will add the given item to the selected set."""
 
-		if self.cupy:
-			self.current_values = cupy.minimum(self.max_values,
-				self.current_values + X_pairwise)
-		elif self.sparse:
+		if self.sparse:
 			self.current_values = numpy.minimum(self.max_values,
 				X_pairwise.toarray()[0] + self.current_values)
 		else:

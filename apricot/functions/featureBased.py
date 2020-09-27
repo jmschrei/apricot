@@ -1,111 +1,119 @@
 # featureBased.py
 # Author: Jacob Schreiber <jmschreiber91@gmail.com> 
-
-try:
-	import cupy
-except:
-	import numpy as cupy
 	
+import math
 import numpy
 
 from .base import BaseSelection
+from ..optimizers import LazyGreedy
+from ..optimizers import ApproximateLazyGreedy
 
 from tqdm import tqdm
 
-from numba import njit, jit
+from numba import njit
 from numba import prange
 
+@njit('float64[:](float64[:])', fastmath=True)
+def sigmoid(X):
+	return X / (1. + X)
+
 dtypes = 'void(float64[:,:], float64[:], float64[:], int64[:])'
-sdtypes = 'void(float64[:], int32[:], int32[:], float64[:], float64[:], float64[:], int64[:])'
+sparse_dtypes = 'void(float64[:], int32[:], int32[:], float64[:],' \
+	'float64[:], float64[:], int64[:])'
+sieve_dtypes = 'void(float64[:,:], int64, float64[:,:], int64[:,:],' \
+	'float64[:,:], float64[:], float64[:], int64[:], int64[:])' 
+sieve_sparse_dtypes = 'void(float64[:], int32[:], int32[:], int64,' \
+	'float64[:,:], int64[:,:], float64[:,:], float64[:], float64[:],' \
+	'int64[:], int64[:])'
 
-@njit(dtypes, parallel=True, fastmath=True)
-def select_sqrt_next(X, gains, current_values, idxs):
-	for i in prange(idxs.shape[0]):
-		idx = idxs[i] 
-		gains[i] = numpy.sqrt(current_values + X[idx]).sum()
+def calculate_gains(func, dtypes, parallel, fastmath, cache):
+	@njit(dtypes, parallel=parallel, fastmath=fastmath, cache=cache)
+	def calculate_gains_(X, gains, current_values, idxs):
+		for i in prange(idxs.shape[0]):
+			idx = idxs[i] 
+			gains[i] = func(current_values + X[idx]).sum()
+
+	return calculate_gains_
 
 
-@njit(dtypes, parallel=True, fastmath=True)
-def select_log_next(X, gains, current_values, idxs):
-	for i in prange(idxs.shape[0]):
-		idx = idxs[i]
-		gains[i] = numpy.log(current_values + X[idx] + 1).sum()
+def calculate_gains_sparse(func, dtypes, parallel, fastmath, cache):
+	@njit(dtypes, parallel=parallel, fastmath=fastmath, cache=cache)
+	def calculate_gains_sparse_(X_data, X_indices, X_indptr, gains, 
+		current_values, current_concave_values, idxs):
+		for i in prange(idxs.shape[0]):
+			idx = idxs[i]
+			start = X_indptr[idx]
+			end = X_indptr[idx+1]
 
-@njit(dtypes, parallel=True, fastmath=True)
-def select_inv_next(X, gains, current_values, idxs):
-	for i in prange(idxs.shape[0]):
-		idx = idxs[i]
-		gains[i] = ((current_values + X[idx]) / (1. 
-			+ current_values + X[idx])).sum()
+			for j in range(start, end):
+				k = X_indices[j]
+				gains[i] += (func(X_data[j] + current_values[k]) 
+					- current_concave_values[k])
 
-@njit(dtypes, parallel=True, fastmath=True)
-def select_min_next(X, gains, current_values, idxs):
-	for i in prange(idxs.shape[0]):
-		idx = idxs[i]
-		gains[i] = numpy.fmin(current_values + X[idx], 
-			numpy.ones(X.shape[1])).sum()
+	return calculate_gains_sparse_
 
-@njit(sdtypes, parallel=True, fastmath=True)
-def select_sqrt_next_sparse(X_data, X_indices, X_indptr, gains, current_values, 
-	current_concave_values, idxs):
-	for i in prange(idxs.shape[0]):
-		idx = idxs[i]
-		start = X_indptr[idx]
-		end = X_indptr[idx+1]
 
-		for j in range(start, end):
-			k = X_indices[j]
-			gains[i] += numpy.sqrt(X_data[j] + current_values[k]) - current_concave_values[k]
+def calculate_gains_sieve(func, dtypes, parallel, fastmath, cache):
+	@njit(dtypes, parallel=parallel, fastmath=fastmath, cache=cache)
+	def calculate_gains_sieve_(X, k, current_values, selections, gains, 
+		total_gains, max_values, n_selected, idxs):
+		n = X.shape[0]
+		d = max_values.shape[0]
 
-@njit(sdtypes, parallel=True, fastmath=True)
-def select_log_next_sparse(X_data, X_indices, X_indptr, gains, current_values, 
-	current_concave_values, idxs):
-	for i in prange(idxs.shape[0]):
-		idx = idxs[i]
-		start = X_indptr[idx]
-		end = X_indptr[idx+1]
+		for j in prange(d):
+			for i in range(n):
+				if n_selected[j] == k:
+					break
 
-		for j in range(start, end):
-			k = X_indices[j]
-			gains[i] += numpy.log(X_data[j] + current_values[k] + 1) - current_concave_values[k]
+				idx = idxs[i]
+				threshold = (max_values[j] / 2. - total_gains[j]) / (k - n_selected[j])
+				gain = func(current_values[j] + X[i]).sum() - total_gains[j]
 
-@njit(sdtypes, parallel=True, fastmath=True)
-def select_inv_next_sparse(X_data, X_indices, X_indptr, gains, current_values, 
-	current_concave_values, idxs):
-	for i in prange(idxs.shape[0]):
-		idx = idxs[i]
-		start = X_indptr[idx]
-		end = X_indptr[idx+1]
+				if gain > threshold:
+					current_values[j] += X[i]
+					total_gains[j] += gain
 
-		for j in range(start, end):
-			k = X_indices[j]
-			gains[i] += (current_values[k] + X_data[j]) / (1.
-				+ current_values[k] + X_data[j]) - current_concave_values[k]
+					selections[j, n_selected[j]] = idx
+					gains[j, n_selected[j]] = gain
+					n_selected[j] += 1
 
-@njit(sdtypes, parallel=True, fastmath=True)
-def select_min_next_sparse(X_data, X_indices, X_indptr, gains, current_values, 
-	current_concave_values, idxs):
-	for i in prange(idxs.shape[0]):
-		idx = idxs[i]
-		start = X_indptr[idx]
-		end = X_indptr[idx+1]
+	return calculate_gains_sieve_
 
-		for j in range(start, end):
-			k = X_indices[j]
-			gains[i] += min(X_data[j] + current_values[k], 1) - current_concave_values[k]
 
-def select_sqrt_next_cupy(X, gains, current_values, idxs):
-	gains[:] = cupy.sum(cupy.sqrt(current_values + X), axis=1)[idxs]
+def calculate_gains_sieve_sparse(func, dtypes, parallel, fastmath, cache):
+	@njit(dtypes, parallel=parallel, fastmath=fastmath, cache=cache)
+	def calculate_gains_sieve_sparse_(X_data, X_indices, X_indptr, k, 
+		current_values, selections, gains, total_gains, max_values, 
+		n_selected, idxs):
+		d = max_values.shape[0]
 
-def select_log_next_cupy(X, gains, current_values, idxs):
-	gains[:] = cupy.sum(cupy.log(current_values + X + 1), axis=1)[idxs]
+		for j in prange(d):
+			for i in range(idxs.shape[0]):
+				if n_selected[j] == k:
+					break
+				
+				idx = idxs[i]
+				start = X_indptr[i]
+				end = X_indptr[i+1]
+				threshold = (max_values[j] / 2. - total_gains[j]) / (k - n_selected[j])
 
-def select_inv_next_cupy(X, gains, current_values, idxs):
-	gains[:] = cupy.sum((current_values + X) / 
-		(1. + current_values + X), axis=1)[idxs]
+				gain = 0.0
+				for l in range(start, end):
+					m = X_indices[l]
+					gain += (func(current_values[j, m] + X_data[l]) - 
+						func(current_values[j, m]))
 
-def select_min_next_cupy(X, gains, current_values, idxs):
-	gains[:] = cupy.sum(cupy.min(current_values + X, 1), axis=1)[idxs]
+				if gain > threshold:
+					for l in range(start, end):
+						m = X_indices[l]
+						current_values[j, m] += X_data[l]
+
+					total_gains[j] += gain
+					selections[j, n_selected[j]] = idx
+					gains[j, n_selected[j]] = gain
+					n_selected[j] += 1
+
+	return calculate_gains_sieve_sparse_
 
 
 class FeatureBasedSelection(BaseSelection):
@@ -148,7 +156,6 @@ class FeatureBasedSelection(BaseSelection):
 
 			'log' : log(1 + X)
 			'sqrt' : sqrt(X)
-			'min' : min(X, 1)
 			'sigmoid' : X / (1 + X)
 
 	initial_subset : list, numpy.ndarray or None
@@ -177,14 +184,27 @@ class FeatureBasedSelection(BaseSelection):
 
 		Default is 'two-stage'.
 
-	optimizer_kwds : dict, optional
-		Arguments to pass into the optimizer object upon initialization.
-		Default is {}.
+	optimizer_kwds : dict or None
+		A dictionary of arguments to pass into the optimizer object. The keys
+		of this dictionary should be the names of the parameters in the optimizer
+		and the values in the dictionary should be the values that these
+		parameters take. Default is None.
 
-	n_jobs : int, optional
-		The number of cores to use for processing. This value is multiplied
-		by 2 when used to set the number of threads. If set to -1, use all
-		cores and threads. Default is -1.
+	reservoir : numpy.ndarray or None
+		The reservoir to use when calculating gains in the sieve greedy
+		streaming optimization algorithm in the `partial_fit` method.
+		Currently only used for graph-based functions. If a numpy array
+		is passed in, it will be used as the reservoir. If None is passed in,
+		will use reservoir sampling to collect a reservoir. Default is None.
+
+	max_reservoir_size : int 
+		The maximum size that the reservoir can take. If a reservoir is passed
+		in, this value is set to the size of that array. Default is 1000.
+
+	n_jobs : int
+		The number of threads to use when performing computation in parallel.
+		Currently, this parameter is exposed but does not actually do anything.
+		This will be fixed soon.
 
 	random_state : int or RandomState or None, optional
 		The random seed to use for the random selection process. Only used
@@ -211,26 +231,26 @@ class FeatureBasedSelection(BaseSelection):
 	"""
 
 	def __init__(self, n_samples, concave_func='sqrt', initial_subset=None, 
-		optimizer='two-stage', optimizer_kwds={}, n_jobs=1, random_state=None, 
+		optimizer='two-stage', optimizer_kwds={}, reservoir=None,
+		max_reservoir_size=1000, n_jobs=1, random_state=None, 
 		verbose=False):
 		self.concave_func_name = concave_func
 
 		if concave_func == 'log':
-			self.concave_func = lambda X: numpy.log(X + 1)
+			self.concave_func = numpy.log1p
 		elif concave_func == 'sqrt':
-			self.concave_func = lambda X: numpy.sqrt(X)
-		elif concave_func == 'min':
-			self.concave_func = lambda X: numpy.fmin(X, numpy.ones_like(X))
+			self.concave_func = numpy.sqrt
 		elif concave_func == 'sigmoid':
-			self.concave_func = lambda X: X / (1. + X)
+			self.concave_func = sigmoid
 		elif callable(concave_func):
 			self.concave_func = concave_func
 		else:
-			raise KeyError("Must be one of 'log', 'sqrt', 'min', 'sigmoid', or a custom function.")
+			raise KeyError("Must be one of 'log', 'sqrt', 'sigmoid', or a any other numpy, scipy, or numba-compiled function.")
 
 		super(FeatureBasedSelection, self).__init__(n_samples=n_samples, 
 			initial_subset=initial_subset, optimizer=optimizer, 
-			optimizer_kwds=optimizer_kwds, n_jobs=n_jobs, 
+			optimizer_kwds=optimizer_kwds, reservoir=reservoir,
+			max_reservoir_size=max_reservoir_size, n_jobs=n_jobs, 
 			random_state=random_state, verbose=verbose) 
 
 	def fit(self, X, y=None, sample_weight=None, sample_cost=None):
@@ -290,6 +310,24 @@ class FeatureBasedSelection(BaseSelection):
 		self.current_concave_values = self.concave_func(self.current_values)
 		self.current_concave_values_sum = self.current_concave_values.sum()
 
+		calculate_gains_ = calculate_gains_sparse if self.sparse else calculate_gains
+		dtypes_ = sparse_dtypes if self.sparse else dtypes
+
+		if self.optimizer in (LazyGreedy, ApproximateLazyGreedy):
+			self.calculate_gains_ = calculate_gains_(self.concave_func, 
+				dtypes_, False, True, False)
+		elif self.optimizer in ('lazy', 'approimate-lazy'):
+			self.calculate_gains_ = calculate_gains_(self.concave_func, 
+				dtypes_, False, True, False)
+		else: 
+			self.calculate_gains_ = calculate_gains_(self.concave_func, 
+				dtypes_, True, True, False)
+
+		calculate_sieve_gains_ = calculate_gains_sieve_sparse if self.sparse else calculate_gains_sieve
+		dtypes_ = sieve_sparse_dtypes if self.sparse else sieve_dtypes 
+		self.calculate_sieve_gains_ = calculate_sieve_gains_(self.concave_func,
+			dtypes_, True, True, False)
+
 	def _calculate_gains(self, X, idxs=None):
 		"""This function will return the gain that each example would give.
 
@@ -298,45 +336,41 @@ class FeatureBasedSelection(BaseSelection):
 		vector will be returned showing the gain for each example. When
 		a single element is passed in, it will return a singe value."""
 
-		concave_funcs = {
-			'sqrt': select_sqrt_next,
-			'sqrt_sparse': select_sqrt_next_sparse,
-			'sqrt_cupy': select_sqrt_next_cupy,
-			'log': select_log_next,
-			'log_sparse': select_log_next_sparse,
-			'log_cupy': select_log_next_cupy,
-			'sigmoid': select_inv_next,
-			'sigmoid_sparse': select_inv_next_sparse,
-			'sigmoid_cupy': select_inv_next_cupy,
-			'min': select_min_next,
-			'min_sparse': select_min_next_sparse,
-			'min_cupy': select_min_next_cupy
-		}
-
-		name = '{}{}'.format(self.concave_func_name,
-							   '_sparse' if self.sparse else
-							   '_cupy' if self.cupy else '')
-		concave_func = concave_funcs.get(name, self.concave_func)
-
 		idxs = idxs if idxs is not None else self.idxs
+		gains = numpy.zeros(idxs.shape[0], dtype='float64')
 
-		if self.cupy:
-			gains = cupy.zeros(idxs.shape[0], dtype='float64')
+		if self.sparse:
+			self.calculate_gains_(X.data, X.indices, X.indptr, gains, 
+				self.current_values, self.current_concave_values, idxs)
 		else:
-			gains = numpy.zeros(idxs.shape[0], dtype='float64')
-
-		if concave_func is not None:
-			if self.sparse:
-				concave_func(X.data, X.indices, X.indptr, gains, 
-					self.current_values, self.current_concave_values, idxs)
-			else:
-				concave_func(X, gains, self.current_values, idxs)
-				gains -= self.current_concave_values_sum
-		else:
-			select_custom_next(X, gains, self.current_values, 
-				self.mask, self.concave_func)
+			self.calculate_gains_(X, gains, self.current_values, idxs)
+			gains -= self.current_concave_values_sum
 
 		return gains
+
+	def _calculate_sieve_gains(self, X, thresholds, idxs):
+		"""This function will update the internal statistics from a stream.
+
+		This function will update the various internal statistics that are a
+		part of the sieve algorithm for streaming submodular optimization. This
+		function does not directly return gains but it updates the values
+		used by a streaming optimizer.
+		"""
+
+		super(FeatureBasedSelection, self)._calculate_sieve_gains(X,
+			thresholds, idxs)
+
+		if self.sparse:
+			self.calculate_sieve_gains_(X.data, X.indices, X.indptr, 
+				self.n_samples, self.sieve_current_values_, 
+				self.sieve_selections_, self.sieve_gains_, 
+				self.sieve_total_gains_, thresholds, 
+				self.sieve_n_selected_, idxs)
+		else:
+			self.calculate_sieve_gains_(X, self.n_samples, 
+				self.sieve_current_values_, self.sieve_selections_, 
+				self.sieve_gains_, self.sieve_total_gains_, thresholds, 
+				self.sieve_n_selected_, idxs)
 
 	def _select_next(self, X, gain, idx):
 		"""This function will add the given item to the selected set."""
