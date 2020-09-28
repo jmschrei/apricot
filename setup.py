@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='apricot-select',
-    version='0.5.0',
+    version='0.6.0',
     author='Jacob Schreiber',
     author_email='jmschreiber91@gmail.com',
     packages=['apricot', 'apricot/functions'],
