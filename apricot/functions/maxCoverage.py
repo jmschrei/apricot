@@ -135,7 +135,7 @@ class MaxCoverageSelection(BaseSelection):
 	:math:`X` is the subset and not the ground set, meaning that the time it 
 	takes to evaluate this function is proportional only to the size of the 
 	selected subset and not the size of the full data set, like it is for
-	 graph-based functions.  
+	graph-based functions.  
 
 	See https://www2.cs.duke.edu/courses/fall17/compsci632/scribing/scribe2.pdf
 	where the problem is described as maximum coverage.

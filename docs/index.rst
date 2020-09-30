@@ -40,12 +40,12 @@ You can install apricot with :code:`pip install apricot-select`.
    submodular.rst
 
 .. toctree::
-	:maxdepth: 1
-	:hidden:
-	:caption: Features
+   :maxdepth: 1
+   :hidden:
+   :caption: Features
 
-	features/sparse.rst
-	features/knapsack.rst
+   features/sparse.rst
+   features/knapsack.rst
    features/streaming.rst
 
 .. toctree::

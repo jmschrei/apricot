@@ -32,7 +32,7 @@ import sys
 import os
 import subprocess
 
-subprocess.call('pip install numpydoc', shell=True)
+#subprocess.call('pip install numpydoc', shell=True)
 subprocess.call('pip install sklearn', shell=True)
 sys.path.insert(0, os.path.abspath('../../apricot'))
 
@@ -47,7 +47,8 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
-    'numpydoc'
+    #'numpydoc'
+    'sphinx.ext.napoleon'
 ]
 
 autosummary_generate = True
