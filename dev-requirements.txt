@@ -4,4 +4,3 @@ numba >= 0.43
 tqdm >= 4.24.
 scikit-learn >= 0.20.0
 nose
-wheel
