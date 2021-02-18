@@ -173,7 +173,7 @@ class CustomSelection(BaseSelection):
 		if self.initial_subset is None:
 			self.total_gain = 0
 		else:
-			self.total_gain = self.func(self.initial_subset)
+			self.total_gain = self.function(self.initial_subset)
 
 
 	def _calculate_gains(self, X, idxs=None):
