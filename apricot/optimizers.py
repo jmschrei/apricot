@@ -1006,7 +1006,7 @@ class BidirectionalGreedy(BaseOptimizer):
 				if self.random_state.uniform(0, 1) <= p:
 					A[i] = True
 					self.function._select_next(X[i], gain_a, i)
-					if A.sum() == n:
+					if A.sum() == k:
 						return
 
 				else:
