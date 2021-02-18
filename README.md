@@ -1,6 +1,6 @@
 <img src="https://github.com/jmschrei/apricot/blob/master/docs/logos/apricot-logo.png" width=600>
 
-[![Build Status](https://travis-ci.org/jmschrei/apricot.svg?branch=master)](https://travis-ci.org/jmschrei/apricot) [![Documentation Status](https://readthedocs.org/projects/apricot-select/badge/?version=latest)](https://apricot-select.readthedocs.io/en/latest/?badge=latest)
+![build](https://github.com/jmschrei/apricot/workflows/build/badge.svg) [![Documentation Status](https://readthedocs.org/projects/apricot-select/badge/?version=latest)](https://apricot-select.readthedocs.io/en/latest/?badge=latest)
 
 Please consider citing the [manuscript](https://jmlr.org/papers/volume21/19-467/19-467.pdf) if you use apricot in your academic work!
 
