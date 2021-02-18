@@ -18,4 +18,4 @@ from .functions import CustomSelection
 from .functions import CustomGraphSelection
 
 
-__version__ = '0.6.0'
+__version__ = '0.6.1'
