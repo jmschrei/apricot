@@ -201,7 +201,6 @@ class FacilityLocationSelection(BaseGraphSelection):
 		growing subset. The first number corresponds to the gain of the first
 		added sample, the second corresponds to the gain of the second added
 		sample, and so forth.
-
 	"""
 
 	def __init__(self, n_samples, metric='euclidean', 
