@@ -45,16 +45,16 @@ class SumRedundancySelection(BaseGraphSelection):
 		The number of samples to return.
 
 	metric : str, optional
-		The method for converting a data matrix into a square symmetric matrix
+	        The method for converting a data matrix into a square symmetric matrix
 		of pairwise similarities. If a string, can be any of the metrics
-		implemented in sklearn (see https://scikit-learn.org/stable/modules/
-		generated/sklearn.metrics.pairwise_distances.html), including
-		"precomputed" if one has already generated a similarity matrix. Note
-		that sklearn calculates distance matrices whereas apricot operates on
-		similarity matrices, and so a distances.max() - distances transformation
-		is performed on the resulting distances. For backcompatibility,
-		'corr' will be read as 'correlation'. Default is 'euclidean'.
-
+		implemented in sklearn (see
+		https://scikit-learn.org/stable/modules/generated/sklearn.metrics.pairwise_distances.html),
+		including "precomputed" if one has already generated a similarity
+		matrix. Note that sklearn calculates distance matrices whereas apricot
+		operates on similarity matrices, and so a distances.max() - distances
+		transformation is performed on the resulting distances. For
+		backcompatibility, 'corr' will be read as 'correlation'. Default is
+		'euclidean'.
 
 	initial_subset : list, numpy.ndarray or None, optional
 		If provided, this should be a list of indices into the data matrix
@@ -134,6 +134,7 @@ class SumRedundancySelection(BaseGraphSelection):
 		growing subset. The first number corresponds to the gain of the first
 		added sample, the second corresponds to the gain of the second added
 		sample, and so forth.
+
 	"""
 
 	def __init__(self, n_samples=10, metric='euclidean', 
