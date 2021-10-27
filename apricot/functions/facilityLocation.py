@@ -77,7 +77,7 @@ class FacilityLocationSelection(BaseGraphSelection):
 	when maximized, choose examples that represent the space of the data well.
 	The facility location function is based on maximizing the pairwise 
 	similarities between the points in the data set and their nearest chosen 
-	point. The similarity function can be species by the user but must be 
+	point. The similarity function can be specified by the user but must be 
 	non-negative where a higher value indicates more similar. 
 
 	.. note:: 
