@@ -12,6 +12,7 @@ from tqdm import tqdm
 
 from numba import njit
 from numba import prange
+import torch
 
 @njit('float64[:](float64[:])', fastmath=True)
 def sigmoid(X):
@@ -34,7 +35,6 @@ def calculate_gains(func, dtypes, parallel, fastmath, cache):
 			gains[i] = func(current_values + X[idx]).sum()
 
 	return calculate_gains_
-
 
 def calculate_gains_sparse(func, dtypes, parallel, fastmath, cache):
 	@njit(dtypes, parallel=parallel, fastmath=fastmath, cache=cache)
@@ -313,10 +313,7 @@ class FeatureBasedSelection(BaseSelection):
 		calculate_gains_ = calculate_gains_sparse if self.sparse else calculate_gains
 		dtypes_ = sparse_dtypes if self.sparse else dtypes
 
-		if self.optimizer in (LazyGreedy, ApproximateLazyGreedy):
-			self.calculate_gains_ = calculate_gains_(self.concave_func, 
-				dtypes_, False, True, False)
-		elif self.optimizer in ('lazy', 'approimate-lazy'):
+		if self.optimizer in (LazyGreedy, ApproximateLazyGreedy, 'lazy', 'approximate-lazy'):
 			self.calculate_gains_ = calculate_gains_(self.concave_func, 
 				dtypes_, False, True, False)
 		else: 

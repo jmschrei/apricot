@@ -114,26 +114,29 @@ class NaiveGreedy(BaseOptimizer):
 
 	def select(self, X, k, sample_cost=None):
 		cost = 0.0
-		if sample_cost is None:
-			sample_cost = numpy.ones(X.shape[0], dtype='float64')
-
 		while cost < k:
-			gains = self.function._calculate_gains(X) / sample_cost[self.function.idxs]
-			idxs = numpy.lexsort((numpy.arange(gains.shape[0]), -gains))
+			gains = self.function._calculate_gains(X)
 
-			for idx in idxs:
+			if sample_cost is None:
+				idx = numpy.argmax(gains)
 				best_idx = self.function.idxs[idx]
-				if cost + sample_cost[best_idx] <= k:
-					break
+				idx_cost = 1
 			else:
-				break
+				idxs = numpy.lexsort((numpy.arange(gains.shape[0]), -gains / sample_cost[self.function.idxs]))
+				for idx in idxs:
+					best_idx = self.function.idxs[idx]
+					idx_cost = sample_cost[best_idx]
+					if cost + idx_cost <= k:
+						break
+				else:
+					break
 
-			cost += sample_cost[best_idx]
-			gain = gains[idx] * sample_cost[best_idx]
+			cost += idx_cost
+			gain = gains[idx]
 			self.function._select_next(X[best_idx], gain, best_idx)
 
 			if self.verbose == True:
-				self.function.pbar.update(round(sample_cost[best_idx], 1))
+				self.function.pbar.update(round(idx_cost, 1))
 
 
 class LazyGreedy(BaseOptimizer):
@@ -226,6 +229,7 @@ class LazyGreedy(BaseOptimizer):
 					return
 
 				prev_gain, idx = self.pq.pop()
+				#prev_gain, idx = self.pq.peek()
 				prev_gain = -prev_gain
 
 				if cost + sample_cost[idx] > k:
@@ -236,8 +240,10 @@ class LazyGreedy(BaseOptimizer):
 				
 				idxs = numpy.array([idx])
 				gain = self.function._calculate_gains(X, idxs)[0] / sample_cost[idx]
-				self.pq.add(idx, -gain)
 
+				#self.pq.swap(idx, -gain)
+				self.pq.add(idx, -gain)
+				
 				if gain > best_gain:
 					best_gain = gain
 					best_idx = idx

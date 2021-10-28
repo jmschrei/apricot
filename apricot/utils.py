@@ -13,6 +13,7 @@ import itertools
 from heapq import heappush
 from heapq import heappop
 from heapq import heapify
+from heapq import heapreplace
 
 from scipy.sparse import csr_matrix
 
@@ -49,14 +50,12 @@ class PriorityQueue(object):
 
     def __init__(self, items=None, weights=None):
         self.counter = itertools.count()
-        self.lookup = {}
         self.pq = []
 
         if items is not None and weights is not None:
             for item, weight in zip(items, weights):
                 entry = [weight, next(self.counter), item]
                 self.pq.append(entry)
-                self.lookup[item] = entry
 
             heapify(self.pq)
     
@@ -83,32 +82,11 @@ class PriorityQueue(object):
         None
         """
 
-        if item in self.lookup:
-            self.remove(item)
+        #if item in self.lookup:
+        #    self.remove(item)
         
         entry = [weight, next(self.counter), item]
-        self.lookup[item] = entry
         heappush(self.pq, entry)
-
-    def remove(self, item):
-        """Remove an element from the queue.
-
-        This is not popping the highest priority item, rather it will remove
-        an element that is present in the queue. If one attempts to remove an
-        item that is not present in the queue the function will error.
-        
-        Parameters
-        ----------
-        item : object
-            The object to be removed from the queue.
-
-        Returns
-        -------
-        None
-        """
-
-        entry = self.lookup.pop(item)
-        entry[-1] = "DELETED"
     
     def pop(self):
         """Pop the highest priority element from the queue. Runtime is O(log n).
@@ -126,16 +104,55 @@ class PriorityQueue(object):
             The weight of the element as passed in in the `add` method
 
         item : object
-            The item that was passed in during the `add` method
+            The item that was passed in in the `add` method
         """
 
-        while self.pq:
-            weight, _, item = heappop(self.pq)
-            if item != "DELETED":
-                del self.lookup[item]
-                return weight, item
-        
-        raise KeyError("No elements left in the priority queue.")
+        weight, _, item = heappop(self.pq)
+        return weight, item
+
+    def peek(self):
+        """Peek at the first element in the priority queue.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        weight : double
+            The weight of the element as passed in in the `add` method
+
+        item : object
+            The item that was passed in in the `add` method
+        """
+
+        return self.pq[0][0], self.pq[0][2]
+
+    def swap(self, item, weight):
+        """An efficient way to pop the first element and add a new element.
+
+        This is useful in our context because it allows us to pop the smallest
+        element and to add a new element, i.e., remove an element and re-add it
+        with the updated gain.
+
+        Parameters
+        ----------
+        item : object
+            The object to be encoded.
+
+        weight : double
+            The priority of the item. The lower the weight the higher the
+            priority when items get dequeued. If a higher weight is supposed
+            to correspond to a higher priority, consider reversing the sign of
+            the weight.
+
+        Returns
+        -------
+        None
+        """
+
+        entry = [weight, next(self.counter), item]
+        heapreplace(self.pq, entry)
 
 def check_random_state(seed):
     """Turn seed into a np.random.RandomState instance.
