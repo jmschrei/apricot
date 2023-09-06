@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from numba import njit
 from numba import prange
-import torch
+
 
 @njit('float64[:](float64[:])', fastmath=True)
 def sigmoid(X):
