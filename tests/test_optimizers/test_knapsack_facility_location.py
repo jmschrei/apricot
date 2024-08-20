@@ -13,7 +13,6 @@ from sklearn.datasets import load_digits
 from sklearn.metrics import pairwise_distances
 
 
-from nose.tools import assert_less_equal
 from numpy.testing import assert_almost_equal
 from numpy.testing import assert_array_equal
 from numpy.testing import assert_array_almost_equal
@@ -141,21 +140,21 @@ def test_digits_naive():
 	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
 	assert_array_equal(model.ranking, digits_ranking)
 	assert_array_almost_equal(model.gains, digits_gains, 4)
-	assert_less_equal(sum(X_digits_costs[model.ranking]), 25)
+    assert sum(X_digits_costs[model.ranking]) <= 25 
 
 def test_digits_lazy():
 	model = FacilityLocationSelection(25, 'cosine', optimizer='lazy')
 	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
 	assert_array_equal(model.ranking, digits_ranking)
 	assert_array_almost_equal(model.gains, digits_gains, 4)
-	assert_less_equal(sum(X_digits_costs[model.ranking]), 25)
+    assert sum(X_digits_costs[model.ranking]) <= 25 
 
 def test_digits_two_stage():
 	model = FacilityLocationSelection(25, 'cosine', optimizer='two-stage')
 	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
 	assert_array_equal(model.ranking[:50], digits_ranking[:50])
 	assert_array_almost_equal(model.gains[:50], digits_gains[:50], 4)
-	assert_less_equal(sum(X_digits_costs[model.ranking]), 25)
+    assert sum(X_digits_costs[model.ranking]) <= 25 
 
 def test_digits_greedi_nn():
 	model = FacilityLocationSelection(25, 'cosine', optimizer='greedi',
@@ -164,7 +163,7 @@ def test_digits_greedi_nn():
 	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
 	assert_array_equal(model.ranking, digits_greedi_ranking)
 	assert_array_almost_equal(model.gains, digits_greedi_gains, 4)
-	assert_less_equal(sum(X_digits_costs[model.ranking]), 25)
+    assert sum(X_digits_costs[model.ranking]) <= 25 
 
 def test_digits_greedi_ll():
 	model = FacilityLocationSelection(25, 'cosine', optimizer='greedi',
@@ -173,7 +172,7 @@ def test_digits_greedi_ll():
 	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
 	assert_array_equal(model.ranking, digits_greedi_ranking)
 	assert_array_almost_equal(model.gains, digits_greedi_gains, 4)
-	assert_less_equal(sum(X_digits_costs[model.ranking]), 25)
+    assert sum(X_digits_costs[model.ranking]) <= 25 
 
 def test_digits_greedi_ln():
 	model = FacilityLocationSelection(25, 'cosine', optimizer='greedi',
@@ -182,7 +181,7 @@ def test_digits_greedi_ln():
 	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
 	assert_array_equal(model.ranking, digits_greedi_ranking)
 	assert_array_almost_equal(model.gains, digits_greedi_gains, 4)
-	assert_less_equal(sum(X_digits_costs[model.ranking]), 25)
+    assert sum(X_digits_costs[model.ranking]) <= 25 
 
 def test_digits_greedi_nl():
 	model = FacilityLocationSelection(25, 'cosine', optimizer='greedi',
@@ -191,14 +190,14 @@ def test_digits_greedi_nl():
 	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
 	assert_array_equal(model.ranking, digits_greedi_ranking)
 	assert_array_almost_equal(model.gains, digits_greedi_gains, 4)
-	assert_less_equal(sum(X_digits_costs[model.ranking]), 25)
+    assert sum(X_digits_costs[model.ranking]) <= 25 
 
 def test_digits_approximate():
 	model = FacilityLocationSelection(25, 'cosine', optimizer='approximate-lazy')
 	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
 	assert_array_equal(model.ranking, digits_approx_ranking)
 	assert_array_almost_equal(model.gains, digits_approx_gains, 4)
-	assert_less_equal(sum(X_digits_costs[model.ranking]), 25)
+    assert sum(X_digits_costs[model.ranking]) <= 25 
 
 def test_digits_stochastic():
 	model = FacilityLocationSelection(25, 'cosine', optimizer='stochastic',
@@ -206,7 +205,7 @@ def test_digits_stochastic():
 	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
 	assert_array_equal(model.ranking, digits_stochastic_ranking)
 	assert_array_almost_equal(model.gains, digits_stochastic_gains, 4)
-	assert_less_equal(sum(X_digits_costs[model.ranking]), 25)
+    assert sum(X_digits_costs[model.ranking]) <= 25 
 
 def test_digits_sample():
 	model = FacilityLocationSelection(25, 'cosine', optimizer='sample',
@@ -214,7 +213,7 @@ def test_digits_sample():
 	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
 	assert_array_equal(model.ranking, digits_sample_ranking)
 	assert_array_almost_equal(model.gains, digits_sample_gains, 4)
-	assert_less_equal(sum(X_digits_costs[model.ranking]), 25)
+    assert sum(X_digits_costs[model.ranking]) <= 25 
 
 def test_digits_modular():
 	model = FacilityLocationSelection(25, 'cosine', optimizer='modular',
@@ -222,4 +221,4 @@ def test_digits_modular():
 	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
 	assert_array_equal(model.ranking, digits_modular_ranking)
 	assert_array_almost_equal(model.gains, digits_modular_gains, 4)
-	assert_less_equal(sum(X_digits_costs[model.ranking]), 25)
+    assert sum(X_digits_costs[model.ranking]) <= 25 
