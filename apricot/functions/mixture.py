@@ -150,7 +150,7 @@ class MixtureSelection(BaseSelection):
 		if weights is None:
 			self.weights = numpy.ones(self.m, dtype='float64')
 		else:
-			self.weights = numpy.array(weights, dtype='float64', copy=False)
+			self.weights = numpy.array(weights, dtype='float64')
 
 		super(MixtureSelection, self).__init__(n_samples=n_samples, 
 			initial_subset=initial_subset, optimizer=optimizer, 
