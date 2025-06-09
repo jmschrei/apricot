@@ -1,6 +1,6 @@
 numpy >= 1.14.2
 scipy >= 1.0.0
 numba >= 0.43
-tqdm >= 4.24.
+tqdm >= 4.24
 scikit-learn >= 0.20.0
 nose
