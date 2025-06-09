@@ -214,6 +214,8 @@ class FacilityLocationSelection(BaseGraphSelection):
 			reservoir=reservoir, max_reservoir_size=max_reservoir_size,
 			n_jobs=n_jobs, random_state=random_state, verbose=verbose)
 
+		self._calculate_gains_builder = None
+
 	def fit(self, X, y=None, sample_weight=None, sample_cost=None):
 		"""Run submodular optimization to select the examples.
 
@@ -277,23 +279,29 @@ class FacilityLocationSelection(BaseGraphSelection):
 				" matrix of examples or a one dimensional mask.")
 
 		self.current_values_sum = self.current_values.sum()
-		self.calculate_gains_ = calculate_gains_sparse if self.sparse else calculate_gains
-		dtypes_ = sdtypes if self.sparse else dtypes
+		if (
+			(self.sparse and self._calculate_gains_builder != calculate_gains_sparse) or
+			(not self.sparse and self._calculate_gains_builder != calculate_gains)
+		):
+			self._calculate_gains_builder = calculate_gains_sparse if self.sparse else calculate_gains
+			dtypes_ = sdtypes if self.sparse else dtypes
 
-		if self.optimizer in (LazyGreedy, ApproximateLazyGreedy):
-			self.calculate_gains_ = self.calculate_gains_(dtypes_, False, True, False)
-		elif self.optimizer in ('lazy', 'approimate-lazy'):
-			self.calculate_gains_ = self.calculate_gains_(dtypes_, False, True, False)
-		else: 
-			self.calculate_gains_ = self.calculate_gains_(dtypes_, True, True, False)
+			print(dtypes_, self._calculate_gains_builder)
 
-		#calculate_sieve_gains_ = calculate_gains_sieve_sparse if self.sparse else calculate_gains_sieve
-		#dtypes_ = sieve_sparse_dtypes if self.sparse else sieve_dtypes 
-		#self.calculate_sieve_gains_ = calculate_sieve_gains_(dtypes_, 
-		#	True, True, False)
+			if self.optimizer in (LazyGreedy, ApproximateLazyGreedy):
+				self.calculate_gains_ = self._calculate_gains_builder(dtypes_, False, True, False)
+			elif self.optimizer in ('lazy', 'approimate-lazy'):
+				self.calculate_gains_ = self._calculate_gains_builder(dtypes_, False, True, False)
+			else: 
+				self.calculate_gains_ = self._calculate_gains_builder(dtypes_, True, True, False)
 
-		self.calculate_sieve_gains_ = calculate_gains_sieve(sieve_dtypes,
-			True, True, False)
+			#calculate_sieve_gains_ = calculate_gains_sieve_sparse if self.sparse else calculate_gains_sieve
+			#dtypes_ = sieve_sparse_dtypes if self.sparse else sieve_dtypes 
+			#self.calculate_sieve_gains_ = calculate_sieve_gains_(dtypes_, 
+			#	True, True, False)
+
+			self.calculate_sieve_gains_ = calculate_gains_sieve(sieve_dtypes,
+				True, True, False)
 
 	def _calculate_gains(self, X_pairwise, idxs=None):
 		idxs = idxs if idxs is not None else self.idxs
