@@ -2,14 +2,23 @@ import scipy
 import numpy
 
 try:
-	import cupy
+    import cupy
 except:
-	import numpy as cupy
+    import numpy as cupy
 
 from apricot import MixtureSelection
 from apricot import FacilityLocationSelection
 from apricot import GraphCutSelection
-from apricot.optimizers import *
+from apricot.optimizers import (
+    NaiveGreedy,
+    LazyGreedy,
+    TwoStageGreedy,
+    GreeDi,
+    ApproximateLazyGreedy,
+    StochasticGreedy,
+    SampleGreedy,
+    ModularGreedy,
+)
 
 from sklearn.datasets import load_digits
 from sklearn.metrics import pairwise_distances
@@ -21,13 +30,11 @@ from numpy.testing import assert_array_almost_equal
 digits_data = load_digits()
 X_digits = digits_data.data
 
-X_digits_cosine_sparse = scipy.sparse.csr_matrix((1 - pairwise_distances(
-	X_digits, metric='cosine')) ** 2)
-X_digits_corr_cupy = cupy.array((1 - pairwise_distances(
-	X_digits, metric='correlation')) ** 2)
-X_digits_cosine_cupy = cupy.array((1 - pairwise_distances(
-	X_digits, metric='cosine')) ** 2)
+X_digits_cosine_sparse = scipy.sparse.csr_matrix((1 - pairwise_distances(X_digits, metric="cosine")) ** 2)
+X_digits_corr_cupy = cupy.array((1 - pairwise_distances(X_digits, metric="correlation")) ** 2)
+X_digits_cosine_cupy = cupy.array((1 - pairwise_distances(X_digits, metric="cosine")) ** 2)
 
+# fmt: off
 digits_corr_ranking = [424, 615, 452, 514, 1030, 269, 1747, 1545, 1295, 148, 
 	1363, 1327, 1766, 509, 852, 818, 890, 1774, 138, 1320, 945, 248, 255, 1709, 
 	768, 402, 823, 899, 1658, 1069, 1647, 923, 183, 1325, 459, 168, 657, 301, 
@@ -224,567 +231,706 @@ digits_cosine_modular_gains = [1464.3202, 379.668, 373.6321, 354.1949, 345.765,
 	272.9791, 268.1288, 268.6275, 268.0731, 268.5637, 267.7105, 268.0723, 
 	267.3179, 267.6352, 265.4032, 268.3584, 264.5365, 263.7466, 281.4908, 
 	265.798, 260.3703, 263.9768]
+# fmt: on
 
 # Test some similarity functions
 
+
 def test_digits_euclidean_naive():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='euclidean', optimizer='naive')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_euclidean_ranking)
-	assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(100, [model1, model2], [1.0, 0.3], metric="euclidean", optimizer="naive")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_euclidean_ranking)
+    assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_euclidean_lazy():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='euclidean', optimizer='lazy')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_euclidean_ranking)
-	assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(100, [model1, model2], [1.0, 0.3], metric="euclidean", optimizer="lazy")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_euclidean_ranking)
+    assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_euclidean_two_stage():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='euclidean', optimizer='two-stage')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_euclidean_ranking)
-	assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(100, [model1, model2], [1.0, 0.3], metric="euclidean", optimizer="two-stage")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_euclidean_ranking)
+    assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_corr_naive():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='corr', optimizer='naive')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_corr_ranking)
-	assert_array_almost_equal(model.gains, digits_corr_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(100, [model1, model2], [1.0, 0.3], metric="corr", optimizer="naive")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_corr_ranking)
+    assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_corr_lazy():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='corr', optimizer='lazy')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_corr_ranking)
-	assert_array_almost_equal(model.gains, digits_corr_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(100, [model1, model2], [1.0, 0.3], metric="corr", optimizer="lazy")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_corr_ranking)
+    assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_corr_two_stage():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='corr', optimizer='two-stage')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_corr_ranking)
-	assert_array_almost_equal(model.gains, digits_corr_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(100, [model1, model2], [1.0, 0.3], metric="corr", optimizer="two-stage")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_corr_ranking)
+    assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_naive():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer='naive')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(100, [model1, model2], [1.0, 0.3], metric="cosine", optimizer="naive")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_lazy():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer='lazy')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(100, [model1, model2], [1.0, 0.3], metric="cosine", optimizer="lazy")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_two_stage():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer='two-stage')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(100, [model1, model2], [1.0, 0.3], metric="cosine", optimizer="two-stage")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_precomputed_naive():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='precomputed', optimizer='naive')
-	model.fit(X_digits_cosine_cupy)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(100, [model1, model2], [1.0, 0.3], metric="precomputed", optimizer="naive")
+    model.fit(X_digits_cosine_cupy)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+
 
 def test_digits_precomputed_lazy():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='precomputed', optimizer='lazy')
-	model.fit(X_digits_cosine_cupy)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(100, [model1, model2], [1.0, 0.3], metric="precomputed", optimizer="lazy")
+    model.fit(X_digits_cosine_cupy)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+
 
 def test_digits_precomputed_two_stage():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='precomputed', optimizer='two-stage')
-	model.fit(X_digits_cosine_cupy)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(100, [model1, model2], [1.0, 0.3], metric="precomputed", optimizer="two-stage")
+    model.fit(X_digits_cosine_cupy)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+
 
 # Test with initialization
 
+
 def test_digits_euclidean_naive_init():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='euclidean', optimizer='naive', 
-		initial_subset=digits_euclidean_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:20], digits_euclidean_ranking[5:25])
-	assert_array_almost_equal(model.gains[:20], digits_euclidean_gains[5:25], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100,
+        [model1, model2],
+        [1.0, 0.3],
+        metric="euclidean",
+        optimizer="naive",
+        initial_subset=digits_euclidean_ranking[:5],
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:20], digits_euclidean_ranking[5:25])
+    assert_array_almost_equal(model.gains[:20], digits_euclidean_gains[5:25], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_euclidean_lazy_init():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='euclidean', optimizer='lazy', 
-		initial_subset=digits_euclidean_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_euclidean_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_euclidean_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100,
+        [model1, model2],
+        [1.0, 0.3],
+        metric="euclidean",
+        optimizer="lazy",
+        initial_subset=digits_euclidean_ranking[:5],
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_euclidean_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_euclidean_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_euclidean_two_stage_init():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='euclidean', optimizer='two-stage', 
-		initial_subset=digits_euclidean_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_euclidean_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_euclidean_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100,
+        [model1, model2],
+        [1.0, 0.3],
+        metric="euclidean",
+        optimizer="two-stage",
+        initial_subset=digits_euclidean_ranking[:5],
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_euclidean_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_euclidean_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_corr_naive_init():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='corr', optimizer='naive', 
-		initial_subset=digits_corr_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_corr_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_corr_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100, [model1, model2], [1.0, 0.3], metric="corr", optimizer="naive", initial_subset=digits_corr_ranking[:5]
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_corr_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_corr_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_corr_lazy_init():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='corr', optimizer='lazy', 
-		initial_subset=digits_corr_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_corr_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_corr_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100, [model1, model2], [1.0, 0.3], metric="corr", optimizer="lazy", initial_subset=digits_corr_ranking[:5]
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_corr_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_corr_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_corr_two_stage_init():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='corr', optimizer='two-stage', 
-		initial_subset=digits_corr_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_corr_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_corr_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100, [model1, model2], [1.0, 0.3], metric="corr", optimizer="two-stage", initial_subset=digits_corr_ranking[:5]
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_corr_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_corr_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_naive_init():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer='naive', 
-		initial_subset=digits_cosine_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100, [model1, model2], [1.0, 0.3], metric="cosine", optimizer="naive", initial_subset=digits_cosine_ranking[:5]
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_lazy_init():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer='lazy', 
-		initial_subset=digits_cosine_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100, [model1, model2], [1.0, 0.3], metric="cosine", optimizer="lazy", initial_subset=digits_cosine_ranking[:5]
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_two_stage_init():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer='two-stage', 
-		initial_subset=digits_cosine_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100,
+        [model1, model2],
+        [1.0, 0.3],
+        metric="cosine",
+        optimizer="two-stage",
+        initial_subset=digits_cosine_ranking[:5],
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_precomputed_naive_init():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='precomputed', optimizer='naive', 
-		initial_subset=digits_cosine_ranking[:5])
-	model.fit(X_digits_cosine_cupy)
-	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100,
+        [model1, model2],
+        [1.0, 0.3],
+        metric="precomputed",
+        optimizer="naive",
+        initial_subset=digits_cosine_ranking[:5],
+    )
+    model.fit(X_digits_cosine_cupy)
+    assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+
 
 def test_digits_precomputed_lazy_init():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='precomputed', optimizer='lazy', 
-		initial_subset=digits_cosine_ranking[:5])
-	model.fit(X_digits_cosine_cupy)
-	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100,
+        [model1, model2],
+        [1.0, 0.3],
+        metric="precomputed",
+        optimizer="lazy",
+        initial_subset=digits_cosine_ranking[:5],
+    )
+    model.fit(X_digits_cosine_cupy)
+    assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+
 
 def test_digits_precomputed_two_stage_init():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='precomputed', optimizer='two-stage', 
-		initial_subset=digits_cosine_ranking[:5])
-	model.fit(X_digits_cosine_cupy)
-	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100,
+        [model1, model2],
+        [1.0, 0.3],
+        metric="precomputed",
+        optimizer="two-stage",
+        initial_subset=digits_cosine_ranking[:5],
+    )
+    model.fit(X_digits_cosine_cupy)
+    assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+
 
 # Test all optimizers
 
+
 def test_digits_cosine_greedi_nn():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer='greedi', 
-		optimizer_kwds={'optimizer1': 'naive', 'optimizer2': 'naive'}, 
-		random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:50], digits_cosine_greedi_ranking[:50])
-	assert_array_almost_equal(model.gains[:50], digits_cosine_greedi_gains[:50], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100,
+        [model1, model2],
+        [1.0, 0.3],
+        metric="cosine",
+        optimizer="greedi",
+        optimizer_kwds={"optimizer1": "naive", "optimizer2": "naive"},
+        random_state=0,
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:50], digits_cosine_greedi_ranking[:50])
+    assert_array_almost_equal(model.gains[:50], digits_cosine_greedi_gains[:50], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_greedi_ll():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer='greedi', 
-		optimizer_kwds={'optimizer1': 'lazy', 'optimizer2': 'lazy'}, 
-		random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
-	assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100,
+        [model1, model2],
+        [1.0, 0.3],
+        metric="cosine",
+        optimizer="greedi",
+        optimizer_kwds={"optimizer1": "lazy", "optimizer2": "lazy"},
+        random_state=0,
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
+    assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_greedi_ln():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer='greedi', 
-		optimizer_kwds={'optimizer1': 'lazy', 'optimizer2': 'naive'}, 
-		random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100,
+        [model1, model2],
+        [1.0, 0.3],
+        metric="cosine",
+        optimizer="greedi",
+        optimizer_kwds={"optimizer1": "lazy", "optimizer2": "naive"},
+        random_state=0,
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_greedi_nl():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer='greedi', 
-		optimizer_kwds={'optimizer1': 'naive', 'optimizer2': 'lazy'}, 
-		random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
-	assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100,
+        [model1, model2],
+        [1.0, 0.3],
+        metric="cosine",
+        optimizer="greedi",
+        optimizer_kwds={"optimizer1": "naive", "optimizer2": "lazy"},
+        random_state=0,
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
+    assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_approximate():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer='approximate-lazy', random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_approx_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_approx_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100, [model1, model2], [1.0, 0.3], metric="cosine", optimizer="approximate-lazy", random_state=0
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_approx_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_approx_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_stochastic():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer='stochastic', random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_stochastic_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_stochastic_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(100, [model1, model2], [1.0, 0.3], metric="cosine", optimizer="stochastic", random_state=0)
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_stochastic_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_stochastic_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_sample():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer='sample', random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_sample_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_sample_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(100, [model1, model2], [1.0, 0.3], metric="cosine", optimizer="sample", random_state=0)
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_sample_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_sample_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_modular():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer='modular', random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_modular_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(100, [model1, model2], [1.0, 0.3], metric="cosine", optimizer="modular", random_state=0)
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_modular_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 # Using Optimizer Objects
 
+
 def test_digits_cosine_naive_object():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer=NaiveGreedy(random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(100, [model1, model2], [1.0, 0.3], metric="cosine", optimizer=NaiveGreedy(random_state=0))
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_lazy_object():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer=LazyGreedy(random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(100, [model1, model2], [1.0, 0.3], metric="cosine", optimizer=LazyGreedy(random_state=0))
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_two_stage_object():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer=TwoStageGreedy(random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100, [model1, model2], [1.0, 0.3], metric="cosine", optimizer=TwoStageGreedy(random_state=0)
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_greedi_nn_object():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer=GreeDi(optimizer1='naive', 
-			optimizer2='naive', random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100,
+        [model1, model2],
+        [1.0, 0.3],
+        metric="cosine",
+        optimizer=GreeDi(optimizer1="naive", optimizer2="naive", random_state=0),
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_greedi_ll_object():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer=GreeDi(optimizer1='lazy', 
-			optimizer2='lazy', random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
-	assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100,
+        [model1, model2],
+        [1.0, 0.3],
+        metric="cosine",
+        optimizer=GreeDi(optimizer1="lazy", optimizer2="lazy", random_state=0),
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
+    assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_greedi_ln_object():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer=GreeDi(optimizer1='lazy', 
-			optimizer2='naive', random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100,
+        [model1, model2],
+        [1.0, 0.3],
+        metric="cosine",
+        optimizer=GreeDi(optimizer1="lazy", optimizer2="naive", random_state=0),
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_greedi_nl_object():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer=GreeDi(optimizer1='naive', 
-			optimizer2='lazy', random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
-	assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100,
+        [model1, model2],
+        [1.0, 0.3],
+        metric="cosine",
+        optimizer=GreeDi(optimizer1="naive", optimizer2="lazy", random_state=0),
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
+    assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_approximate_object():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer=ApproximateLazyGreedy(random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_approx_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_approx_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100, [model1, model2], [1.0, 0.3], metric="cosine", optimizer=ApproximateLazyGreedy(random_state=0)
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_approx_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_approx_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_stochastic_object():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer=StochasticGreedy(random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_stochastic_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_stochastic_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100, [model1, model2], [1.0, 0.3], metric="cosine", optimizer=StochasticGreedy(random_state=0)
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_stochastic_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_stochastic_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_sample_object():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer=SampleGreedy(random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_sample_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_sample_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(100, [model1, model2], [1.0, 0.3], metric="cosine", optimizer=SampleGreedy(random_state=0))
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_sample_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_sample_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_sqrt_modular_object():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='cosine', optimizer=ModularGreedy(random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_modular_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100, [model1, model2], [1.0, 0.3], metric="cosine", optimizer=ModularGreedy(random_state=0)
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_modular_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 # Test all optimizers on sparse data
 
+
 def test_digits_cosine_naive_sparse():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='precomputed', optimizer='naive')
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(100, [model1, model2], [1.0, 0.3], metric="precomputed", optimizer="naive")
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+
 
 def test_digits_cosine_lazy_sparse():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='precomputed', optimizer='lazy')
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(100, [model1, model2], [1.0, 0.3], metric="precomputed", optimizer="lazy")
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+
 
 def test_digits_cosine_two_stage_sparse():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='precomputed', optimizer='two-stage')
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(100, [model1, model2], [1.0, 0.3], metric="precomputed", optimizer="two-stage")
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+
 
 def test_digits_cosine_greedi_nn_sparse():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='precomputed', optimizer='greedi', optimizer_kwds={
-		'optimizer1': 'naive', 'optimizer2': 'naive'}, random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100,
+        [model1, model2],
+        [1.0, 0.3],
+        metric="precomputed",
+        optimizer="greedi",
+        optimizer_kwds={"optimizer1": "naive", "optimizer2": "naive"},
+        random_state=0,
+    )
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
+
 
 def test_digits_cosine_greedi_ll_sparse():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='precomputed', optimizer='greedi', optimizer_kwds={
-		'optimizer1': 'lazy', 'optimizer2': 'lazy'}, random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
-	assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100,
+        [model1, model2],
+        [1.0, 0.3],
+        metric="precomputed",
+        optimizer="greedi",
+        optimizer_kwds={"optimizer1": "lazy", "optimizer2": "lazy"},
+        random_state=0,
+    )
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
+    assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
+
 
 def test_digits_cosine_greedi_ln_sparse():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='precomputed', optimizer='greedi', 
-		optimizer_kwds={'optimizer1': 'lazy', 'optimizer2': 'naive'}, 
-		random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100,
+        [model1, model2],
+        [1.0, 0.3],
+        metric="precomputed",
+        optimizer="greedi",
+        optimizer_kwds={"optimizer1": "lazy", "optimizer2": "naive"},
+        random_state=0,
+    )
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
+
 
 def test_digits_cosine_greedi_nl_sparse():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='precomputed', optimizer='greedi', 
-		optimizer_kwds={'optimizer1': 'naive', 'optimizer2': 'lazy'}, 
-		random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
-	assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100,
+        [model1, model2],
+        [1.0, 0.3],
+        metric="precomputed",
+        optimizer="greedi",
+        optimizer_kwds={"optimizer1": "naive", "optimizer2": "lazy"},
+        random_state=0,
+    )
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
+    assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
+
 
 def test_digits_cosine_approximate_sparse():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='precomputed', optimizer='approximate-lazy', 
-		random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_approx_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_approx_gains, 4)
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100, [model1, model2], [1.0, 0.3], metric="precomputed", optimizer="approximate-lazy", random_state=0
+    )
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_approx_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_approx_gains, 4)
+
 
 def test_digits_cosine_stochastic_sparse():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='precomputed', optimizer='stochastic', random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_stochastic_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_stochastic_gains, 4)
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100, [model1, model2], [1.0, 0.3], metric="precomputed", optimizer="stochastic", random_state=0
+    )
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_stochastic_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_stochastic_gains, 4)
+
 
 def test_digits_cosine_sample_sparse():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='precomputed', optimizer='sample', random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_sample_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_sample_gains, 4)
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100, [model1, model2], [1.0, 0.3], metric="precomputed", optimizer="sample", random_state=0
+    )
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_sample_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_sample_gains, 4)
+
 
 def test_digits_cosine_modular_sparse():
-	model1 = FacilityLocationSelection(100)
-	model2 = GraphCutSelection(100)
-	model = MixtureSelection(100, [model1, model2], [1.0, 0.3],
-		metric='precomputed', optimizer='modular', random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_modular_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)
+    model1 = FacilityLocationSelection(100)
+    model2 = GraphCutSelection(100)
+    model = MixtureSelection(
+        100, [model1, model2], [1.0, 0.3], metric="precomputed", optimizer="modular", random_state=0
+    )
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_modular_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)

@@ -2,12 +2,21 @@ import scipy
 import numpy
 
 try:
-	import cupy
+    import cupy
 except:
-	import numpy as cupy
+    import numpy as cupy
 
 from apricot import GraphCutSelection
-from apricot.optimizers import NaiveGreedy, LazyGreedy, TwoStageGreedy, GreeDi, ApproximateLazyGreedy, StochasticGreedy, SampleGreedy, ModularGreedy
+from apricot.optimizers import (
+    NaiveGreedy,
+    LazyGreedy,
+    TwoStageGreedy,
+    GreeDi,
+    ApproximateLazyGreedy,
+    StochasticGreedy,
+    SampleGreedy,
+    ModularGreedy,
+)
 
 from sklearn.datasets import load_digits
 from sklearn.metrics import pairwise_distances
@@ -19,13 +28,11 @@ from numpy.testing import assert_array_almost_equal
 digits_data = load_digits()
 X_digits = digits_data.data
 
-X_digits_cosine_sparse = scipy.sparse.csr_matrix((1 - pairwise_distances(
-	X_digits, metric='cosine')) ** 2)
-X_digits_corr_cupy = cupy.array((1 - pairwise_distances(
-	X_digits, metric='correlation')) ** 2)
-X_digits_cosine_cupy = cupy.array((1 - pairwise_distances(
-	X_digits, metric='cosine')) ** 2)
+X_digits_cosine_sparse = scipy.sparse.csr_matrix((1 - pairwise_distances(X_digits, metric="cosine")) ** 2)
+X_digits_corr_cupy = cupy.array((1 - pairwise_distances(X_digits, metric="correlation")) ** 2)
+X_digits_cosine_cupy = cupy.array((1 - pairwise_distances(X_digits, metric="cosine")) ** 2)
 
+# fmt: off
 digits_corr_ranking = [424, 615, 148, 1363, 1747, 1030, 1766, 1327, 818, 1295, 
 	1774, 509, 138, 945, 852, 255, 248, 402, 1709, 768, 899, 1069, 1658, 183, 
 	890, 168, 452, 823, 923, 459, 269, 1325, 657, 514, 513, 1647, 426, 1040, 
@@ -226,417 +233,465 @@ digits_cosine_modular_gains = [1125.631, 1116.4334, 1110.3619, 1107.8682,
 	904.6973, 903.5333, 902.7549, 893.5594, 894.73, 892.61, 892.637, 891.8303, 
 	889.754, 888.8964, 889.4109, 883.4413, 883.4955, 879.0293, 877.3982, 
 	887.7923, 879.2123, 867.5755, 877.9051]
-
+# fmt: on
 
 # Test some similarity functions
 
+
 def test_digits_euclidean_naive():
-	model = GraphCutSelection(100, 'euclidean', optimizer='naive')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_euclidean_ranking)
-	assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "euclidean", optimizer="naive")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_euclidean_ranking)
+    assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_euclidean_lazy():
-	model = GraphCutSelection(100, 'euclidean', optimizer='lazy')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_euclidean_ranking)
-	assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "euclidean", optimizer="lazy")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_euclidean_ranking)
+    assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_euclidean_two_stage():
-	model = GraphCutSelection(100, 'euclidean', optimizer='two-stage')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_euclidean_ranking)
-	assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "euclidean", optimizer="two-stage")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_euclidean_ranking)
+    assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_corr_naive():
-	model = GraphCutSelection(100, 'corr', optimizer='naive')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_corr_ranking)
-	assert_array_almost_equal(model.gains, digits_corr_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "corr", optimizer="naive")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_corr_ranking)
+    assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_corr_lazy():
-	model = GraphCutSelection(100, 'corr', optimizer='lazy')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_corr_ranking)
-	assert_array_almost_equal(model.gains, digits_corr_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "corr", optimizer="lazy")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_corr_ranking)
+    assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_corr_two_stage():
-	model = GraphCutSelection(100, 'corr', optimizer='two-stage')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_corr_ranking)
-	assert_array_almost_equal(model.gains, digits_corr_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "corr", optimizer="two-stage")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_corr_ranking)
+    assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_naive():
-	model = GraphCutSelection(100, 'cosine', optimizer='naive')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "cosine", optimizer="naive")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_lazy():
-	model = GraphCutSelection(100, 'cosine', optimizer='lazy')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "cosine", optimizer="lazy")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_two_stage():
-	model = GraphCutSelection(100, 'cosine', optimizer='two-stage')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "cosine", optimizer="two-stage")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_precomputed_naive():
-	model = GraphCutSelection(100, 'precomputed', optimizer='naive')
-	model.fit(X_digits_corr_cupy)
-	assert_array_equal(model.ranking, digits_corr_ranking)
-	assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+    model = GraphCutSelection(100, "precomputed", optimizer="naive")
+    model.fit(X_digits_corr_cupy)
+    assert_array_equal(model.ranking, digits_corr_ranking)
+    assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+
 
 def test_digits_precomputed_lazy():
-	model = GraphCutSelection(100, 'precomputed', optimizer='lazy')
-	model.fit(X_digits_corr_cupy)
-	assert_array_equal(model.ranking, digits_corr_ranking)
-	assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+    model = GraphCutSelection(100, "precomputed", optimizer="lazy")
+    model.fit(X_digits_corr_cupy)
+    assert_array_equal(model.ranking, digits_corr_ranking)
+    assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+
 
 def test_digits_precomputed_two_stage():
-	model = GraphCutSelection(100, 'precomputed', optimizer='two-stage')
-	model.fit(X_digits_corr_cupy)
-	assert_array_equal(model.ranking, digits_corr_ranking)
-	assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+    model = GraphCutSelection(100, "precomputed", optimizer="two-stage")
+    model.fit(X_digits_corr_cupy)
+    assert_array_equal(model.ranking, digits_corr_ranking)
+    assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+
 
 # Test with initialization
 
+
 def test_digits_euclidean_naive_init():
-	model = GraphCutSelection(100, 'euclidean', optimizer='naive', 
-		initial_subset=digits_euclidean_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:20], digits_euclidean_ranking[5:25])
-	assert_array_almost_equal(model.gains[:20], digits_euclidean_gains[5:25], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "euclidean", optimizer="naive", initial_subset=digits_euclidean_ranking[:5])
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:20], digits_euclidean_ranking[5:25])
+    assert_array_almost_equal(model.gains[:20], digits_euclidean_gains[5:25], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_euclidean_lazy_init():
-	model = GraphCutSelection(100, 'euclidean', optimizer='lazy', 
-		initial_subset=digits_euclidean_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_euclidean_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_euclidean_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "euclidean", optimizer="lazy", initial_subset=digits_euclidean_ranking[:5])
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_euclidean_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_euclidean_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_euclidean_two_stage_init():
-	model = GraphCutSelection(100, 'euclidean', optimizer='two-stage', 
-		initial_subset=digits_euclidean_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_euclidean_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_euclidean_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "euclidean", optimizer="two-stage", initial_subset=digits_euclidean_ranking[:5])
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_euclidean_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_euclidean_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_corr_naive_init():
-	model = GraphCutSelection(100, 'corr', optimizer='naive', 
-		initial_subset=digits_corr_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_corr_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_corr_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "corr", optimizer="naive", initial_subset=digits_corr_ranking[:5])
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_corr_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_corr_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_corr_lazy_init():
-	model = GraphCutSelection(100, 'corr', optimizer='lazy', 
-		initial_subset=digits_corr_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_corr_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_corr_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "corr", optimizer="lazy", initial_subset=digits_corr_ranking[:5])
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_corr_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_corr_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_corr_two_stage_init():
-	model = GraphCutSelection(100, 'corr', optimizer='two-stage', 
-		initial_subset=digits_corr_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_corr_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_corr_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "corr", optimizer="two-stage", initial_subset=digits_corr_ranking[:5])
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_corr_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_corr_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_naive_init():
-	model = GraphCutSelection(100, 'cosine', optimizer='naive', 
-		initial_subset=digits_cosine_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "cosine", optimizer="naive", initial_subset=digits_cosine_ranking[:5])
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_lazy_init():
-	model = GraphCutSelection(100, 'cosine', optimizer='lazy', 
-		initial_subset=digits_cosine_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "cosine", optimizer="lazy", initial_subset=digits_cosine_ranking[:5])
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_two_stage_init():
-	model = GraphCutSelection(100, 'cosine', optimizer='two-stage', 
-		initial_subset=digits_cosine_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "cosine", optimizer="two-stage", initial_subset=digits_cosine_ranking[:5])
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_precomputed_naive_init():
-	model = GraphCutSelection(100, 'precomputed', optimizer='naive', 
-		initial_subset=digits_cosine_ranking[:5])
-	model.fit(X_digits_cosine_cupy)
-	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+    model = GraphCutSelection(100, "precomputed", optimizer="naive", initial_subset=digits_cosine_ranking[:5])
+    model.fit(X_digits_cosine_cupy)
+    assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+
 
 def test_digits_precomputed_lazy_init():
-	model = GraphCutSelection(100, 'precomputed', optimizer='lazy', 
-		initial_subset=digits_cosine_ranking[:5])
-	model.fit(X_digits_cosine_cupy)
-	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+    model = GraphCutSelection(100, "precomputed", optimizer="lazy", initial_subset=digits_cosine_ranking[:5])
+    model.fit(X_digits_cosine_cupy)
+    assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+
 
 def test_digits_precomputed_two_stage_init():
-	model = GraphCutSelection(100, 'precomputed', optimizer='two-stage', 
-		initial_subset=digits_cosine_ranking[:5])
-	model.fit(X_digits_cosine_cupy)
-	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+    model = GraphCutSelection(100, "precomputed", optimizer="two-stage", initial_subset=digits_cosine_ranking[:5])
+    model.fit(X_digits_cosine_cupy)
+    assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+
 
 # Test all optimizers
 
+
 def test_digits_cosine_greedi_nn():
-	model = GraphCutSelection(100, 'cosine', optimizer='greedi',
-		optimizer_kwds={'optimizer1': 'naive', 'optimizer2': 'naive'}, 
-		random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:50], digits_cosine_greedi_ranking[:50])
-	assert_array_almost_equal(model.gains[:50], digits_cosine_greedi_gains[:50], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(
+        100, "cosine", optimizer="greedi", optimizer_kwds={"optimizer1": "naive", "optimizer2": "naive"}, random_state=0
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:50], digits_cosine_greedi_ranking[:50])
+    assert_array_almost_equal(model.gains[:50], digits_cosine_greedi_gains[:50], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_greedi_ll():
-	model = GraphCutSelection(100, 'cosine', optimizer='greedi',
-		optimizer_kwds={'optimizer1': 'lazy', 'optimizer2': 'lazy'}, 
-		random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
-	assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(
+        100, "cosine", optimizer="greedi", optimizer_kwds={"optimizer1": "lazy", "optimizer2": "lazy"}, random_state=0
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
+    assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_greedi_ln():
-	model = GraphCutSelection(100, 'cosine', optimizer='greedi',
-		optimizer_kwds={'optimizer1': 'lazy', 'optimizer2': 'naive'}, 
-		random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(
+        100, "cosine", optimizer="greedi", optimizer_kwds={"optimizer1": "lazy", "optimizer2": "naive"}, random_state=0
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_greedi_nl():
-	model = GraphCutSelection(100, 'cosine', optimizer='greedi',
-		optimizer_kwds={'optimizer1': 'naive', 'optimizer2': 'lazy'}, 
-		random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
-	assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(
+        100, "cosine", optimizer="greedi", optimizer_kwds={"optimizer1": "naive", "optimizer2": "lazy"}, random_state=0
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
+    assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_approximate():
-	model = GraphCutSelection(100, 'cosine', optimizer='approximate-lazy')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_approx_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_approx_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "cosine", optimizer="approximate-lazy")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_approx_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_approx_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_stochastic():
-	model = GraphCutSelection(100, 'cosine', optimizer='stochastic',
-		random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_stochastic_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_stochastic_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "cosine", optimizer="stochastic", random_state=0)
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_stochastic_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_stochastic_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_sample():
-	model = GraphCutSelection(100, 'cosine', optimizer='sample',
-		random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_sample_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_sample_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "cosine", optimizer="sample", random_state=0)
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_sample_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_sample_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_modular():
-	model = GraphCutSelection(100, 'cosine', optimizer='modular',
-		random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_modular_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "cosine", optimizer="modular", random_state=0)
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_modular_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 # Using Optimizer Objects
 
+
 def test_digits_cosine_naive_object():
-	model = GraphCutSelection(100, 'cosine', optimizer=NaiveGreedy())
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "cosine", optimizer=NaiveGreedy())
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_lazy_object():
-	model = GraphCutSelection(100, 'cosine', optimizer=LazyGreedy())
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "cosine", optimizer=LazyGreedy())
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_two_stage_object():
-	model = GraphCutSelection(100, 'cosine', optimizer=TwoStageGreedy())
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "cosine", optimizer=TwoStageGreedy())
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_greedi_nn_object():
-	model = GraphCutSelection(100, 'cosine', optimizer=GreeDi(
-		optimizer1='naive', optimizer2='naive', random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "cosine", optimizer=GreeDi(optimizer1="naive", optimizer2="naive", random_state=0))
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_greedi_ll_object():
-	model = GraphCutSelection(100, 'cosine', optimizer=GreeDi(
-		optimizer1='lazy', optimizer2='lazy', random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
-	assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "cosine", optimizer=GreeDi(optimizer1="lazy", optimizer2="lazy", random_state=0))
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
+    assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_greedi_ln_object():
-	model = GraphCutSelection(100, 'cosine', optimizer=GreeDi(
-		optimizer1='lazy', optimizer2='naive', random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "cosine", optimizer=GreeDi(optimizer1="lazy", optimizer2="naive", random_state=0))
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_greedi_nl_object():
-	model = GraphCutSelection(100, 'cosine', optimizer=GreeDi(
-		optimizer1='naive', optimizer2='lazy', random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
-	assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "cosine", optimizer=GreeDi(optimizer1="naive", optimizer2="lazy", random_state=0))
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
+    assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_approximate_object():
-	model = GraphCutSelection(100, 'cosine', 
-		optimizer=ApproximateLazyGreedy())
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_approx_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_approx_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "cosine", optimizer=ApproximateLazyGreedy())
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_approx_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_approx_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_stochastic_object():
-	model = GraphCutSelection(100, 'cosine', 
-		optimizer=StochasticGreedy(random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_stochastic_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_stochastic_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "cosine", optimizer=StochasticGreedy(random_state=0))
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_stochastic_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_stochastic_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_sample_object():
-	model = GraphCutSelection(100, 'cosine', 
-		optimizer=SampleGreedy(random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_sample_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_sample_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "cosine", optimizer=SampleGreedy(random_state=0))
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_sample_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_sample_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_sqrt_modular_object():
-	model = GraphCutSelection(100, 'cosine', 
-		optimizer=ModularGreedy(random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_modular_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = GraphCutSelection(100, "cosine", optimizer=ModularGreedy(random_state=0))
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_modular_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 # Test all optimizers on sparse data
 
+
 def test_digits_cosine_naive_sparse():
-	model = GraphCutSelection(100, 'precomputed', optimizer='naive')
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    model = GraphCutSelection(100, "precomputed", optimizer="naive")
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+
 
 def test_digits_cosine_lazy_sparse():
-	model = GraphCutSelection(100, 'precomputed', optimizer='lazy')
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    model = GraphCutSelection(100, "precomputed", optimizer="lazy")
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+
 
 def test_digits_cosine_two_stage_sparse():
-	model = GraphCutSelection(100, 'precomputed', optimizer='two-stage')
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    model = GraphCutSelection(100, "precomputed", optimizer="two-stage")
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+
 
 def test_digits_cosine_greedi_nn_sparse():
-	model = GraphCutSelection(100, 'precomputed', optimizer='greedi',
-		optimizer_kwds={'optimizer1': 'naive', 'optimizer2': 'naive'}, 
-		random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
+    model = GraphCutSelection(
+        100,
+        "precomputed",
+        optimizer="greedi",
+        optimizer_kwds={"optimizer1": "naive", "optimizer2": "naive"},
+        random_state=0,
+    )
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
+
 
 def test_digits_cosine_greedi_ll_sparse():
-	model = GraphCutSelection(100, 'precomputed', optimizer='greedi',
-		optimizer_kwds={'optimizer1': 'lazy', 'optimizer2': 'lazy'}, 
-		random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
-	assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
+    model = GraphCutSelection(
+        100,
+        "precomputed",
+        optimizer="greedi",
+        optimizer_kwds={"optimizer1": "lazy", "optimizer2": "lazy"},
+        random_state=0,
+    )
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
+    assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
+
 
 def test_digits_cosine_greedi_ln_sparse():
-	model = GraphCutSelection(100, 'precomputed', optimizer='greedi',
-		optimizer_kwds={'optimizer1': 'lazy', 'optimizer2': 'naive'}, 
-		random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
+    model = GraphCutSelection(
+        100,
+        "precomputed",
+        optimizer="greedi",
+        optimizer_kwds={"optimizer1": "lazy", "optimizer2": "naive"},
+        random_state=0,
+    )
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
+
 
 def test_digits_cosine_greedi_nl_sparse():
-	model = GraphCutSelection(100, 'precomputed', optimizer='greedi',
-		optimizer_kwds={'optimizer1': 'naive', 'optimizer2': 'lazy'}, 
-		random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
-	assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
+    model = GraphCutSelection(
+        100,
+        "precomputed",
+        optimizer="greedi",
+        optimizer_kwds={"optimizer1": "naive", "optimizer2": "lazy"},
+        random_state=0,
+    )
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking[:30], digits_cosine_greedi_ranking[:30])
+    assert_array_almost_equal(model.gains[:30], digits_cosine_greedi_gains[:30], 4)
+
 
 def test_digits_cosine_approximate_sparse():
-	model = GraphCutSelection(100, 'precomputed', optimizer='approximate-lazy')
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_approx_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_approx_gains, 4)
+    model = GraphCutSelection(100, "precomputed", optimizer="approximate-lazy")
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_approx_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_approx_gains, 4)
+
 
 def test_digits_cosine_stochastic_sparse():
-	model = GraphCutSelection(100, 'precomputed', optimizer='stochastic',
-		random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_stochastic_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_stochastic_gains, 4)
+    model = GraphCutSelection(100, "precomputed", optimizer="stochastic", random_state=0)
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_stochastic_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_stochastic_gains, 4)
+
 
 def test_digits_cosine_sample_sparse():
-	model = GraphCutSelection(100, 'precomputed', optimizer='sample',
-		random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_sample_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_sample_gains, 4)
+    model = GraphCutSelection(100, "precomputed", optimizer="sample", random_state=0)
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_sample_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_sample_gains, 4)
+
 
 def test_digits_sqrt_modular_sparse():
-	model = GraphCutSelection(100, 'precomputed', optimizer='modular',
-		random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_modular_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)
+    model = GraphCutSelection(100, "precomputed", optimizer="modular", random_state=0)
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_modular_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)

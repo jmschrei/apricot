@@ -2,9 +2,9 @@ import scipy
 import numpy
 
 try:
-	import cupy
+    import cupy
 except:
-	import numpy as cupy
+    import numpy as cupy
 
 from apricot import FacilityLocationSelection
 
@@ -16,8 +16,8 @@ from numpy.testing import assert_almost_equal
 from numpy.testing import assert_array_equal
 from numpy.testing import assert_array_almost_equal
 
-#	print("[" + ", ".join(map(str, model.ranking)) + "]")
-#	print("[" + ", ".join([str(round(gain, 4)) for gain in model.gains]) + "]")
+# print("[" + ", ".join(map(str, model.ranking)) + "]")
+# print("[" + ", ".join([str(round(gain, 4)) for gain in model.gains]) + "]")
 
 numpy.random.seed(0)
 
@@ -28,6 +28,7 @@ X_digits_costs = numpy.abs(numpy.random.randn(250))
 X_digits_sparse = scipy.sparse.csr_matrix(X_digits)
 X_digits_cupy = cupy.array(X_digits)
 
+# fmt: off
 digits_ranking = [96, 179, 219, 216, 26, 56, 206, 54, 225, 187, 163, 79, 192, 
 	17, 35, 8, 169, 64, 242, 69, 133, 195, 117, 7, 227, 87, 125, 142, 150, 92, 
 	154, 137, 27, 71, 10, 233, 114, 98, 201, 209, 30, 13, 226, 243, 57, 67, 1, 
@@ -131,93 +132,102 @@ digits_modular_gains = [132.3769, 19.3468, 5.5078, 3.8928, 3.7407, 7.4877,
 	0.141, 0.1492, 0.1259, 0.1625, 0.2601, 0.6224, 0.1378, 0.3119, 0.2467, 
 	0.3328, 0.1718, 0.064, 0.0777, 0.1232, 0.1472, 0.0928, 0.1178, 0.0607, 
 	0.2195, 0.2645, 0.1358, 0.334, 0.1326, 0.4131, 0.2004]
+# fmt: on
 
 # Test all optimizers
 
+
 def test_digits_naive():
-	model = FacilityLocationSelection(25, 'cosine', optimizer='naive')
-	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
-	assert_array_equal(model.ranking, digits_ranking)
-	assert_array_almost_equal(model.gains, digits_gains, 4)
-	assert sum(X_digits_costs[model.ranking]) <= 25
+    model = FacilityLocationSelection(25, "cosine", optimizer="naive")
+    model.fit(X_digits_cupy, sample_cost=X_digits_costs)
+    assert_array_equal(model.ranking, digits_ranking)
+    assert_array_almost_equal(model.gains, digits_gains, 4)
+    assert sum(X_digits_costs[model.ranking]) <= 25
+
 
 def test_digits_lazy():
-	model = FacilityLocationSelection(25, 'cosine', optimizer='lazy')
-	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
-	assert_array_equal(model.ranking, digits_ranking)
-	assert_array_almost_equal(model.gains, digits_gains, 4)
-	assert sum(X_digits_costs[model.ranking]) <= 25
+    model = FacilityLocationSelection(25, "cosine", optimizer="lazy")
+    model.fit(X_digits_cupy, sample_cost=X_digits_costs)
+    assert_array_equal(model.ranking, digits_ranking)
+    assert_array_almost_equal(model.gains, digits_gains, 4)
+    assert sum(X_digits_costs[model.ranking]) <= 25
+
 
 def test_digits_two_stage():
-	model = FacilityLocationSelection(25, 'cosine', optimizer='two-stage')
-	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
-	assert_array_equal(model.ranking[:50], digits_ranking[:50])
-	assert_array_almost_equal(model.gains[:50], digits_gains[:50], 4)
-	assert sum(X_digits_costs[model.ranking]) <= 25
+    model = FacilityLocationSelection(25, "cosine", optimizer="two-stage")
+    model.fit(X_digits_cupy, sample_cost=X_digits_costs)
+    assert_array_equal(model.ranking[:50], digits_ranking[:50])
+    assert_array_almost_equal(model.gains[:50], digits_gains[:50], 4)
+    assert sum(X_digits_costs[model.ranking]) <= 25
+
 
 def test_digits_greedi_nn():
-	model = FacilityLocationSelection(25, 'cosine', optimizer='greedi',
-		optimizer_kwds={'optimizer1': 'naive', 'optimizer2': 'naive'},
-		random_state=0)
-	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
-	assert_array_equal(model.ranking, digits_greedi_ranking)
-	assert_array_almost_equal(model.gains, digits_greedi_gains, 4)
-	assert sum(X_digits_costs[model.ranking]) <= 25
+    model = FacilityLocationSelection(
+        25, "cosine", optimizer="greedi", optimizer_kwds={"optimizer1": "naive", "optimizer2": "naive"}, random_state=0
+    )
+    model.fit(X_digits_cupy, sample_cost=X_digits_costs)
+    assert_array_equal(model.ranking, digits_greedi_ranking)
+    assert_array_almost_equal(model.gains, digits_greedi_gains, 4)
+    assert sum(X_digits_costs[model.ranking]) <= 25
+
 
 def test_digits_greedi_ll():
-	model = FacilityLocationSelection(25, 'cosine', optimizer='greedi',
-		optimizer_kwds={'optimizer1': 'lazy', 'optimizer2': 'lazy'},
-		random_state=0)
-	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
-	assert_array_equal(model.ranking, digits_greedi_ranking)
-	assert_array_almost_equal(model.gains, digits_greedi_gains, 4)
-	assert sum(X_digits_costs[model.ranking]) <= 25
+    model = FacilityLocationSelection(
+        25, "cosine", optimizer="greedi", optimizer_kwds={"optimizer1": "lazy", "optimizer2": "lazy"}, random_state=0
+    )
+    model.fit(X_digits_cupy, sample_cost=X_digits_costs)
+    assert_array_equal(model.ranking, digits_greedi_ranking)
+    assert_array_almost_equal(model.gains, digits_greedi_gains, 4)
+    assert sum(X_digits_costs[model.ranking]) <= 25
+
 
 def test_digits_greedi_ln():
-	model = FacilityLocationSelection(25, 'cosine', optimizer='greedi',
-		optimizer_kwds={'optimizer1': 'lazy', 'optimizer2': 'naive'},
-		random_state=0)
-	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
-	assert_array_equal(model.ranking, digits_greedi_ranking)
-	assert_array_almost_equal(model.gains, digits_greedi_gains, 4)
-	assert sum(X_digits_costs[model.ranking]) <= 25
+    model = FacilityLocationSelection(
+        25, "cosine", optimizer="greedi", optimizer_kwds={"optimizer1": "lazy", "optimizer2": "naive"}, random_state=0
+    )
+    model.fit(X_digits_cupy, sample_cost=X_digits_costs)
+    assert_array_equal(model.ranking, digits_greedi_ranking)
+    assert_array_almost_equal(model.gains, digits_greedi_gains, 4)
+    assert sum(X_digits_costs[model.ranking]) <= 25
+
 
 def test_digits_greedi_nl():
-	model = FacilityLocationSelection(25, 'cosine', optimizer='greedi',
-		optimizer_kwds={'optimizer1': 'naive', 'optimizer2': 'lazy'},
-		random_state=0)
-	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
-	assert_array_equal(model.ranking, digits_greedi_ranking)
-	assert_array_almost_equal(model.gains, digits_greedi_gains, 4)
-	assert sum(X_digits_costs[model.ranking]) <= 25
+    model = FacilityLocationSelection(
+        25, "cosine", optimizer="greedi", optimizer_kwds={"optimizer1": "naive", "optimizer2": "lazy"}, random_state=0
+    )
+    model.fit(X_digits_cupy, sample_cost=X_digits_costs)
+    assert_array_equal(model.ranking, digits_greedi_ranking)
+    assert_array_almost_equal(model.gains, digits_greedi_gains, 4)
+    assert sum(X_digits_costs[model.ranking]) <= 25
+
 
 def test_digits_approximate():
-	model = FacilityLocationSelection(25, 'cosine', optimizer='approximate-lazy')
-	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
-	assert_array_equal(model.ranking, digits_approx_ranking)
-	assert_array_almost_equal(model.gains, digits_approx_gains, 4)
-	assert sum(X_digits_costs[model.ranking]) <= 25
+    model = FacilityLocationSelection(25, "cosine", optimizer="approximate-lazy")
+    model.fit(X_digits_cupy, sample_cost=X_digits_costs)
+    assert_array_equal(model.ranking, digits_approx_ranking)
+    assert_array_almost_equal(model.gains, digits_approx_gains, 4)
+    assert sum(X_digits_costs[model.ranking]) <= 25
+
 
 def test_digits_stochastic():
-	model = FacilityLocationSelection(25, 'cosine', optimizer='stochastic',
-		random_state=0)
-	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
-	assert_array_equal(model.ranking, digits_stochastic_ranking)
-	assert_array_almost_equal(model.gains, digits_stochastic_gains, 4)
-	assert sum(X_digits_costs[model.ranking]) <= 25
+    model = FacilityLocationSelection(25, "cosine", optimizer="stochastic", random_state=0)
+    model.fit(X_digits_cupy, sample_cost=X_digits_costs)
+    assert_array_equal(model.ranking, digits_stochastic_ranking)
+    assert_array_almost_equal(model.gains, digits_stochastic_gains, 4)
+    assert sum(X_digits_costs[model.ranking]) <= 25
+
 
 def test_digits_sample():
-	model = FacilityLocationSelection(25, 'cosine', optimizer='sample',
-		random_state=0)
-	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
-	assert_array_equal(model.ranking, digits_sample_ranking)
-	assert_array_almost_equal(model.gains, digits_sample_gains, 4)
-	assert sum(X_digits_costs[model.ranking]) <= 25
+    model = FacilityLocationSelection(25, "cosine", optimizer="sample", random_state=0)
+    model.fit(X_digits_cupy, sample_cost=X_digits_costs)
+    assert_array_equal(model.ranking, digits_sample_ranking)
+    assert_array_almost_equal(model.gains, digits_sample_gains, 4)
+    assert sum(X_digits_costs[model.ranking]) <= 25
+
 
 def test_digits_modular():
-	model = FacilityLocationSelection(25, 'cosine', optimizer='modular',
-		random_state=0)
-	model.fit(X_digits_cupy, sample_cost=X_digits_costs)
-	assert_array_equal(model.ranking, digits_modular_ranking)
-	assert_array_almost_equal(model.gains, digits_modular_gains, 4)
-	assert sum(X_digits_costs[model.ranking]) <= 25
+    model = FacilityLocationSelection(25, "cosine", optimizer="modular", random_state=0)
+    model.fit(X_digits_cupy, sample_cost=X_digits_costs)
+    assert_array_equal(model.ranking, digits_modular_ranking)
+    assert_array_almost_equal(model.gains, digits_modular_gains, 4)
+    assert sum(X_digits_costs[model.ranking]) <= 25

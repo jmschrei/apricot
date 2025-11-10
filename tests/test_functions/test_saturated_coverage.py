@@ -2,12 +2,21 @@ import scipy
 import numpy
 
 try:
-	import cupy
+    import cupy
 except:
-	import numpy as cupy
+    import numpy as cupy
 
 from apricot import SaturatedCoverageSelection
-from apricot.optimizers import *
+from apricot.optimizers import (
+    NaiveGreedy,
+    LazyGreedy,
+    TwoStageGreedy,
+    GreeDi,
+    ApproximateLazyGreedy,
+    StochasticGreedy,
+    SampleGreedy,
+    ModularGreedy,
+)
 
 from sklearn.datasets import load_digits
 from sklearn.metrics import pairwise_distances
@@ -19,13 +28,11 @@ from numpy.testing import assert_array_almost_equal
 digits_data = load_digits()
 X_digits = digits_data.data
 
-X_digits_cosine_sparse = scipy.sparse.csr_matrix((1 - pairwise_distances(
-	X_digits, metric='cosine')) ** 2)
-X_digits_corr_cupy = cupy.array((1 - pairwise_distances(
-	X_digits, metric='correlation')) ** 2)
-X_digits_cosine_cupy = cupy.array((1 - pairwise_distances(
-	X_digits, metric='cosine')) ** 2)
+X_digits_cosine_sparse = scipy.sparse.csr_matrix((1 - pairwise_distances(X_digits, metric="cosine")) ** 2)
+X_digits_corr_cupy = cupy.array((1 - pairwise_distances(X_digits, metric="correlation")) ** 2)
+X_digits_cosine_cupy = cupy.array((1 - pairwise_distances(X_digits, metric="cosine")) ** 2)
 
+# fmt: off
 digits_corr_ranking = [424, 615, 148, 1363, 1747, 1030, 1766, 1327, 818, 1295, 
 	1774, 509, 138, 255, 852, 945, 248, 1709, 402, 768, 1069, 899, 1658, 183, 
 	168, 823, 890, 1325, 923, 452, 657, 426, 269, 1040, 459, 513, 1647, 742, 
@@ -231,440 +238,502 @@ digits_cosine_modular_gains = [1126.631, 1119.2491, 1114.6764, 1114.0146,
 	1022.2542, 1021.7879, 1021.4765, 1020.9766, 1020.9071, 1020.4493, 1020.3874, 
 	1018.9646, 1018.9303, 1018.9035, 1017.9999, 1017.917, 1016.8509, 1016.8133, 
 	1016.5919, 1016.1574, 1015.4388, 1015.015, 1014.406]
+# fmt: on
 
 # Test some similarity functions
 
+
 def test_digits_euclidean_naive():
-	model = SaturatedCoverageSelection(100, 'euclidean', optimizer='naive')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_euclidean_ranking)
-	assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "euclidean", optimizer="naive")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_euclidean_ranking)
+    assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_euclidean_lazy():
-	model = SaturatedCoverageSelection(100, 'euclidean', optimizer='lazy')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_euclidean_ranking)
-	assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "euclidean", optimizer="lazy")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_euclidean_ranking)
+    assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_euclidean_two_stage():
-	model = SaturatedCoverageSelection(100, 'euclidean', optimizer='two-stage')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_euclidean_ranking)
-	assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "euclidean", optimizer="two-stage")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_euclidean_ranking)
+    assert_array_almost_equal(model.gains, digits_euclidean_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_corr_naive():
-	model = SaturatedCoverageSelection(100, 'corr', optimizer='naive')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_corr_ranking)
-	assert_array_almost_equal(model.gains, digits_corr_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "corr", optimizer="naive")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_corr_ranking)
+    assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_corr_lazy():
-	model = SaturatedCoverageSelection(100, 'corr', optimizer='lazy')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_corr_ranking)
-	assert_array_almost_equal(model.gains, digits_corr_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "corr", optimizer="lazy")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_corr_ranking)
+    assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_corr_two_stage():
-	model = SaturatedCoverageSelection(100, 'corr', optimizer='two-stage')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_corr_ranking)
-	assert_array_almost_equal(model.gains, digits_corr_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "corr", optimizer="two-stage")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_corr_ranking)
+    assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_naive():
-	model = SaturatedCoverageSelection(100, 'cosine', optimizer='naive')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "cosine", optimizer="naive")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_lazy():
-	model = SaturatedCoverageSelection(100, 'cosine', optimizer='lazy')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "cosine", optimizer="lazy")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_two_stage():
-	model = SaturatedCoverageSelection(100, 'cosine', optimizer='two-stage')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "cosine", optimizer="two-stage")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_precomputed_naive():
-	model = SaturatedCoverageSelection(100, 'precomputed', optimizer='naive')
-	model.fit(X_digits_corr_cupy)
-	assert_array_equal(model.ranking, digits_corr_ranking)
-	assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+    model = SaturatedCoverageSelection(100, "precomputed", optimizer="naive")
+    model.fit(X_digits_corr_cupy)
+    assert_array_equal(model.ranking, digits_corr_ranking)
+    assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+
 
 def test_digits_precomputed_lazy():
-	model = SaturatedCoverageSelection(100, 'precomputed', optimizer='lazy')
-	model.fit(X_digits_corr_cupy)
-	assert_array_equal(model.ranking, digits_corr_ranking)
-	assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+    model = SaturatedCoverageSelection(100, "precomputed", optimizer="lazy")
+    model.fit(X_digits_corr_cupy)
+    assert_array_equal(model.ranking, digits_corr_ranking)
+    assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+
 
 def test_digits_precomputed_two_stage():
-	model = SaturatedCoverageSelection(100, 'precomputed', optimizer='two-stage')
-	model.fit(X_digits_corr_cupy)
-	assert_array_equal(model.ranking, digits_corr_ranking)
-	assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+    model = SaturatedCoverageSelection(100, "precomputed", optimizer="two-stage")
+    model.fit(X_digits_corr_cupy)
+    assert_array_equal(model.ranking, digits_corr_ranking)
+    assert_array_almost_equal(model.gains, digits_corr_gains, 4)
+
 
 # Test with initialization
 
+
 def test_digits_euclidean_naive_init():
-	model = SaturatedCoverageSelection(100, 'euclidean', optimizer='naive', 
-		initial_subset=digits_euclidean_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:20], digits_euclidean_ranking[5:25])
-	assert_array_almost_equal(model.gains[:20], digits_euclidean_gains[5:25], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "euclidean", optimizer="naive", initial_subset=digits_euclidean_ranking[:5])
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:20], digits_euclidean_ranking[5:25])
+    assert_array_almost_equal(model.gains[:20], digits_euclidean_gains[5:25], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_euclidean_lazy_init():
-	model = SaturatedCoverageSelection(100, 'euclidean', optimizer='lazy', 
-		initial_subset=digits_euclidean_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_euclidean_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_euclidean_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "euclidean", optimizer="lazy", initial_subset=digits_euclidean_ranking[:5])
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_euclidean_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_euclidean_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_euclidean_two_stage_init():
-	model = SaturatedCoverageSelection(100, 'euclidean', optimizer='two-stage', 
-		initial_subset=digits_euclidean_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_euclidean_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_euclidean_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(
+        100, "euclidean", optimizer="two-stage", initial_subset=digits_euclidean_ranking[:5]
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_euclidean_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_euclidean_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_corr_naive_init():
-	model = SaturatedCoverageSelection(100, 'corr', optimizer='naive', 
-		initial_subset=digits_corr_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_corr_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_corr_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "corr", optimizer="naive", initial_subset=digits_corr_ranking[:5])
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_corr_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_corr_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_corr_lazy_init():
-	model = SaturatedCoverageSelection(100, 'corr', optimizer='lazy', 
-		initial_subset=digits_corr_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_corr_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_corr_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "corr", optimizer="lazy", initial_subset=digits_corr_ranking[:5])
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_corr_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_corr_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_corr_two_stage_init():
-	model = SaturatedCoverageSelection(100, 'corr', optimizer='two-stage', 
-		initial_subset=digits_corr_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_corr_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_corr_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "corr", optimizer="two-stage", initial_subset=digits_corr_ranking[:5])
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_corr_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_corr_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_naive_init():
-	model = SaturatedCoverageSelection(100, 'cosine', optimizer='naive', 
-		initial_subset=digits_cosine_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "cosine", optimizer="naive", initial_subset=digits_cosine_ranking[:5])
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_lazy_init():
-	model = SaturatedCoverageSelection(100, 'cosine', optimizer='lazy', 
-		initial_subset=digits_cosine_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "cosine", optimizer="lazy", initial_subset=digits_cosine_ranking[:5])
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_two_stage_init():
-	model = SaturatedCoverageSelection(100, 'cosine', optimizer='two-stage', 
-		initial_subset=digits_cosine_ranking[:5])
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "cosine", optimizer="two-stage", initial_subset=digits_cosine_ranking[:5])
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_precomputed_naive_init():
-	model = SaturatedCoverageSelection(100, 'precomputed', optimizer='naive', 
-		initial_subset=digits_cosine_ranking[:5])
-	model.fit(X_digits_cosine_cupy)
-	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+    model = SaturatedCoverageSelection(100, "precomputed", optimizer="naive", initial_subset=digits_cosine_ranking[:5])
+    model.fit(X_digits_cosine_cupy)
+    assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+
 
 def test_digits_precomputed_lazy_init():
-	model = SaturatedCoverageSelection(100, 'precomputed', optimizer='lazy', 
-		initial_subset=digits_cosine_ranking[:5])
-	model.fit(X_digits_cosine_cupy)
-	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+    model = SaturatedCoverageSelection(100, "precomputed", optimizer="lazy", initial_subset=digits_cosine_ranking[:5])
+    model.fit(X_digits_cosine_cupy)
+    assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+
 
 def test_digits_precomputed_two_stage_init():
-	model = SaturatedCoverageSelection(100, 'precomputed', optimizer='two-stage', 
-		initial_subset=digits_cosine_ranking[:5])
-	model.fit(X_digits_cosine_cupy)
-	assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
-	assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+    model = SaturatedCoverageSelection(
+        100, "precomputed", optimizer="two-stage", initial_subset=digits_cosine_ranking[:5]
+    )
+    model.fit(X_digits_cosine_cupy)
+    assert_array_equal(model.ranking[:-5], digits_cosine_ranking[5:])
+    assert_array_almost_equal(model.gains[:-5], digits_cosine_gains[5:], 4)
+
 
 # Test all optimizers
 
+
 def test_digits_cosine_greedi_nn():
-	model = SaturatedCoverageSelection(100, 'cosine', optimizer='greedi',
-		optimizer_kwds={'optimizer1': 'naive', 'optimizer2': 'naive'}, 
-		random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(
+        100, "cosine", optimizer="greedi", optimizer_kwds={"optimizer1": "naive", "optimizer2": "naive"}, random_state=0
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_greedi_ll():
-	model = SaturatedCoverageSelection(100, 'cosine', optimizer='greedi',
-		optimizer_kwds={'optimizer1': 'lazy', 'optimizer2': 'lazy'}, 
-		random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:2], digits_cosine_greedi_ranking[:2])
-	assert_array_almost_equal(model.gains[:2], digits_cosine_greedi_gains[:2], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(
+        100, "cosine", optimizer="greedi", optimizer_kwds={"optimizer1": "lazy", "optimizer2": "lazy"}, random_state=0
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:2], digits_cosine_greedi_ranking[:2])
+    assert_array_almost_equal(model.gains[:2], digits_cosine_greedi_gains[:2], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_greedi_ln():
-	model = SaturatedCoverageSelection(100, 'cosine', optimizer='greedi',
-		optimizer_kwds={'optimizer1': 'lazy', 'optimizer2': 'naive'}, 
-		random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:2], digits_cosine_greedi_ranking[:2])
-	assert_array_almost_equal(model.gains[:2], digits_cosine_greedi_gains[:2], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(
+        100, "cosine", optimizer="greedi", optimizer_kwds={"optimizer1": "lazy", "optimizer2": "naive"}, random_state=0
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:2], digits_cosine_greedi_ranking[:2])
+    assert_array_almost_equal(model.gains[:2], digits_cosine_greedi_gains[:2], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_greedi_nl():
-	model = SaturatedCoverageSelection(100, 'cosine', optimizer='greedi',
-		optimizer_kwds={'optimizer1': 'naive', 'optimizer2': 'lazy'}, 
-		random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:2], digits_cosine_greedi_ranking[:2])
-	assert_array_almost_equal(model.gains[:2], digits_cosine_greedi_gains[:2], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(
+        100, "cosine", optimizer="greedi", optimizer_kwds={"optimizer1": "naive", "optimizer2": "lazy"}, random_state=0
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:2], digits_cosine_greedi_ranking[:2])
+    assert_array_almost_equal(model.gains[:2], digits_cosine_greedi_gains[:2], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_approximate():
-	model = SaturatedCoverageSelection(100, 'cosine', optimizer='approximate-lazy')
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_approx_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_approx_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "cosine", optimizer="approximate-lazy")
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_approx_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_approx_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_stochastic():
-	model = SaturatedCoverageSelection(100, 'cosine', optimizer='stochastic',
-		random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_stochastic_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_stochastic_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "cosine", optimizer="stochastic", random_state=0)
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_stochastic_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_stochastic_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_sample():
-	model = SaturatedCoverageSelection(100, 'cosine', optimizer='sample',
-		random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_sample_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_sample_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "cosine", optimizer="sample", random_state=0)
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_sample_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_sample_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_sqrt_modular():
-	model = SaturatedCoverageSelection(100, 'cosine', optimizer='modular',
-		random_state=0)
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_modular_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "cosine", optimizer="modular", random_state=0)
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_modular_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 # Using the partial_fit method
 
+
 def test_digits_cosine_sieve_batch():
-	return
-	model = SaturatedCoverageSelection(100, 'cosine', random_state=0, 
-		reservoir=X_digits)
-	model.partial_fit(X_digits)
-	print("[" + ", ".join(map(str, model.ranking)) + "]")
-	print("[" + ", ".join([str(round(gain, 4)) for gain in model.gains]) + "]")
-	assert_array_equal(model.ranking, digits_cosine_sieve_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_sieve_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    return
+    model = SaturatedCoverageSelection(100, "cosine", random_state=0, reservoir=X_digits)
+    model.partial_fit(X_digits)
+    print("[" + ", ".join(map(str, model.ranking)) + "]")
+    print("[" + ", ".join([str(round(gain, 4)) for gain in model.gains]) + "]")
+    assert_array_equal(model.ranking, digits_cosine_sieve_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_sieve_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_sieve_minibatch():
-	return
-	model = SaturatedCoverageSelection(100, 'cosine', random_state=0, 
-		reservoir=X_digits)
-	model.partial_fit(X_digits[:300])
-	model.partial_fit(X_digits[300:500])
-	model.partial_fit(X_digits[500:])
-	assert_array_equal(model.ranking, digits_cosine_sieve_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_sieve_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    return
+    model = SaturatedCoverageSelection(100, "cosine", random_state=0, reservoir=X_digits)
+    model.partial_fit(X_digits[:300])
+    model.partial_fit(X_digits[300:500])
+    model.partial_fit(X_digits[500:])
+    assert_array_equal(model.ranking, digits_cosine_sieve_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_sieve_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 # Using Optimizer Objects
 
+
 def test_digits_cosine_naive_object():
-	model = SaturatedCoverageSelection(100, 'cosine', optimizer=NaiveGreedy())
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "cosine", optimizer=NaiveGreedy())
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_lazy_object():
-	model = SaturatedCoverageSelection(100, 'cosine', optimizer=LazyGreedy())
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "cosine", optimizer=LazyGreedy())
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_two_stage_object():
-	model = SaturatedCoverageSelection(100, 'cosine', optimizer=TwoStageGreedy())
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "cosine", optimizer=TwoStageGreedy())
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_greedi_nn_object():
-	model = SaturatedCoverageSelection(100, 'cosine', optimizer=GreeDi(
-		optimizer1='naive', optimizer2='naive', random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(
+        100, "cosine", optimizer=GreeDi(optimizer1="naive", optimizer2="naive", random_state=0)
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_greedi_ll_object():
-	model = SaturatedCoverageSelection(100, 'cosine', optimizer=GreeDi(
-		optimizer1='lazy', optimizer2='lazy', random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:2], digits_cosine_greedi_ranking[:2])
-	assert_array_almost_equal(model.gains[:2], digits_cosine_greedi_gains[:2], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(
+        100, "cosine", optimizer=GreeDi(optimizer1="lazy", optimizer2="lazy", random_state=0)
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:2], digits_cosine_greedi_ranking[:2])
+    assert_array_almost_equal(model.gains[:2], digits_cosine_greedi_gains[:2], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_greedi_ln_object():
-	model = SaturatedCoverageSelection(100, 'cosine', optimizer=GreeDi(
-		optimizer1='lazy', optimizer2='naive', random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:2], digits_cosine_greedi_ranking[:2])
-	assert_array_almost_equal(model.gains[:2], digits_cosine_greedi_gains[:2], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(
+        100, "cosine", optimizer=GreeDi(optimizer1="lazy", optimizer2="naive", random_state=0)
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:2], digits_cosine_greedi_ranking[:2])
+    assert_array_almost_equal(model.gains[:2], digits_cosine_greedi_gains[:2], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_greedi_nl_object():
-	model = SaturatedCoverageSelection(100, 'cosine', optimizer=GreeDi(
-		optimizer1='naive', optimizer2='lazy', random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking[:2], digits_cosine_greedi_ranking[:2])
-	assert_array_almost_equal(model.gains[:2], digits_cosine_greedi_gains[:2], 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(
+        100, "cosine", optimizer=GreeDi(optimizer1="naive", optimizer2="lazy", random_state=0)
+    )
+    model.fit(X_digits)
+    assert_array_equal(model.ranking[:2], digits_cosine_greedi_ranking[:2])
+    assert_array_almost_equal(model.gains[:2], digits_cosine_greedi_gains[:2], 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_approximate_object():
-	model = SaturatedCoverageSelection(100, 'cosine', 
-		optimizer=ApproximateLazyGreedy())
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_approx_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_approx_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "cosine", optimizer=ApproximateLazyGreedy())
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_approx_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_approx_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_stochastic_object():
-	model = SaturatedCoverageSelection(100, 'cosine', 
-		optimizer=StochasticGreedy(random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_stochastic_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_stochastic_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "cosine", optimizer=StochasticGreedy(random_state=0))
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_stochastic_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_stochastic_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_cosine_sample_object():
-	model = SaturatedCoverageSelection(100, 'cosine', 
-		optimizer=SampleGreedy(random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_sample_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_sample_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "cosine", optimizer=SampleGreedy(random_state=0))
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_sample_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_sample_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 def test_digits_sqrt_modular_object():
-	model = SaturatedCoverageSelection(100, 'cosine', 
-		optimizer=ModularGreedy(random_state=0))
-	model.fit(X_digits)
-	assert_array_equal(model.ranking, digits_cosine_modular_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+    model = SaturatedCoverageSelection(100, "cosine", optimizer=ModularGreedy(random_state=0))
+    model.fit(X_digits)
+    assert_array_equal(model.ranking, digits_cosine_modular_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)
+    assert_array_almost_equal(model.subset, X_digits[model.ranking])
+
 
 # Test all optimizers on sparse data
 
+
 def test_digits_cosine_naive_sparse():
-	model = SaturatedCoverageSelection(100, 'precomputed', optimizer='naive')
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    model = SaturatedCoverageSelection(100, "precomputed", optimizer="naive")
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+
 
 def test_digits_cosine_lazy_sparse():
-	model = SaturatedCoverageSelection(100, 'precomputed', optimizer='lazy')
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    model = SaturatedCoverageSelection(100, "precomputed", optimizer="lazy")
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+
 
 def test_digits_cosine_two_stage_sparse():
-	model = SaturatedCoverageSelection(100, 'precomputed', optimizer='two-stage')
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+    model = SaturatedCoverageSelection(100, "precomputed", optimizer="two-stage")
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_gains, 4)
+
 
 def test_digits_cosine_greedi_nn_sparse():
-	model = SaturatedCoverageSelection(100, 'precomputed', optimizer='greedi',
-		optimizer_kwds={'optimizer1': 'naive', 'optimizer2': 'naive'}, 
-		random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
+    model = SaturatedCoverageSelection(
+        100,
+        "precomputed",
+        optimizer="greedi",
+        optimizer_kwds={"optimizer1": "naive", "optimizer2": "naive"},
+        random_state=0,
+    )
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_greedi_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_greedi_gains, 4)
+
 
 def test_digits_cosine_greedi_ll_sparse():
-	model = SaturatedCoverageSelection(100, 'precomputed', optimizer='greedi',
-		optimizer_kwds={'optimizer1': 'lazy', 'optimizer2': 'lazy'}, 
-		random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking[:2], digits_cosine_greedi_ranking[:2])
-	assert_array_almost_equal(model.gains[:2], digits_cosine_greedi_gains[:2], 4)
+    model = SaturatedCoverageSelection(
+        100,
+        "precomputed",
+        optimizer="greedi",
+        optimizer_kwds={"optimizer1": "lazy", "optimizer2": "lazy"},
+        random_state=0,
+    )
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking[:2], digits_cosine_greedi_ranking[:2])
+    assert_array_almost_equal(model.gains[:2], digits_cosine_greedi_gains[:2], 4)
+
 
 def test_digits_cosine_greedi_ln_sparse():
-	model = SaturatedCoverageSelection(100, 'precomputed', optimizer='greedi',
-		optimizer_kwds={'optimizer1': 'lazy', 'optimizer2': 'naive'}, 
-		random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking[:2], digits_cosine_greedi_ranking[:2])
-	assert_array_almost_equal(model.gains[:2], digits_cosine_greedi_gains[:2], 4)
+    model = SaturatedCoverageSelection(
+        100,
+        "precomputed",
+        optimizer="greedi",
+        optimizer_kwds={"optimizer1": "lazy", "optimizer2": "naive"},
+        random_state=0,
+    )
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking[:2], digits_cosine_greedi_ranking[:2])
+    assert_array_almost_equal(model.gains[:2], digits_cosine_greedi_gains[:2], 4)
+
 
 def test_digits_cosine_greedi_nl_sparse():
-	model = SaturatedCoverageSelection(100, 'precomputed', optimizer='greedi',
-		optimizer_kwds={'optimizer1': 'naive', 'optimizer2': 'lazy'}, 
-		random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking[:2], digits_cosine_greedi_ranking[:2])
-	assert_array_almost_equal(model.gains[:2], digits_cosine_greedi_gains[:2], 4)
+    model = SaturatedCoverageSelection(
+        100,
+        "precomputed",
+        optimizer="greedi",
+        optimizer_kwds={"optimizer1": "naive", "optimizer2": "lazy"},
+        random_state=0,
+    )
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking[:2], digits_cosine_greedi_ranking[:2])
+    assert_array_almost_equal(model.gains[:2], digits_cosine_greedi_gains[:2], 4)
+
 
 def test_digits_cosine_approximate_sparse():
-	model = SaturatedCoverageSelection(100, 'precomputed', optimizer='approximate-lazy')
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_approx_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_approx_gains, 4)
+    model = SaturatedCoverageSelection(100, "precomputed", optimizer="approximate-lazy")
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_approx_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_approx_gains, 4)
+
 
 def test_digits_cosine_stochastic_sparse():
-	model = SaturatedCoverageSelection(100, 'precomputed', optimizer='stochastic',
-		random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_stochastic_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_stochastic_gains, 4)
+    model = SaturatedCoverageSelection(100, "precomputed", optimizer="stochastic", random_state=0)
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_stochastic_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_stochastic_gains, 4)
+
 
 def test_digits_cosine_sample_sparse():
-	model = SaturatedCoverageSelection(100, 'precomputed', optimizer='sample',
-		random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_sample_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_sample_gains, 4)
+    model = SaturatedCoverageSelection(100, "precomputed", optimizer="sample", random_state=0)
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_sample_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_sample_gains, 4)
+
 
 def test_digits_sqrt_modular_sparse():
-	model = SaturatedCoverageSelection(100, 'precomputed', optimizer='modular',
-		random_state=0)
-	model.fit(X_digits_cosine_sparse)
-	assert_array_equal(model.ranking, digits_cosine_modular_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)
+    model = SaturatedCoverageSelection(100, "precomputed", optimizer="modular", random_state=0)
+    model.fit(X_digits_cosine_sparse)
+    assert_array_equal(model.ranking, digits_cosine_modular_ranking)
+    assert_array_almost_equal(model.gains, digits_cosine_modular_gains, 4)
