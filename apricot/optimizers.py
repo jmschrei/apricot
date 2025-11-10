@@ -71,7 +71,8 @@ class NaiveGreedy(BaseOptimizer):
 
             from apricot import FeatureBasedSelection
 
-            X = numpy.random.randint(10, size=(10000, 100))
+            rng = numpy.random.RandomState(0)
+            X = rng.randint(10, size=(10000, 100))
 
             selector = FeatureBasedSelection(100, 'sqrt', optimizer='naive')
             selector.fit(X)
@@ -166,7 +167,8 @@ class LazyGreedy(BaseOptimizer):
 
             from apricot import FeatureBasedSelection
 
-            X = numpy.random.randint(10, size=(10000, 100))
+            rng = numpy.random.RandomState(0)
+            X = rng.randint(10, size=(10000, 100))
 
             selector = FeatureBasedSelection(100, 'sqrt', optimizer='lazy')
             selector.fit(X)
@@ -268,7 +270,8 @@ class ApproximateLazyGreedy(BaseOptimizer):
 
             from apricot import FeatureBasedSelection
 
-            X = numpy.random.randint(10, size=(10000, 100))
+            rng = numpy.random.RandomState(0)
+            X = rng.randint(10, size=(10000, 100))
 
             selector = FeatureBasedSelection(100, 'sqrt', optimizer='approximate-lazy')
             selector.fit(X)
@@ -369,7 +372,8 @@ class TwoStageGreedy(BaseOptimizer):
 
             from apricot import FeatureBasedSelection
 
-            X = numpy.random.randint(10, size=(10000, 100))
+            rng = numpy.random.RandomState(0)
+            X = rng.randint(10, size=(10000, 100))
 
             selector = FeatureBasedSelection(100, 'sqrt', optimizer='two-stage')
             selector.fit(X)
@@ -458,7 +462,8 @@ class StochasticGreedy(BaseOptimizer):
 
             from apricot import FeatureBasedSelection
 
-            X = numpy.random.randint(10, size=(10000, 100))
+            rng = numpy.random.RandomState(0)
+            X = rng.randint(10, size=(10000, 100))
 
             selector = FeatureBasedSelection(100, 'sqrt', optimizer='stochastic')
             selector.fit(X)
@@ -547,7 +552,8 @@ class SampleGreedy(BaseOptimizer):
 
             from apricot import FeatureBasedSelection
 
-            X = numpy.random.randint(10, size=(10000, 100))
+            rng = numpy.random.RandomState(0)
+            X = rng.randint(10, size=(10000, 100))
 
             selector = FeatureBasedSelection(100, 'sqrt', optimizer='sample')
             selector.fit(X)
@@ -636,7 +642,8 @@ class GreeDi(BaseOptimizer):
 
             from apricot import FeatureBasedSelection
 
-            X = numpy.random.randint(10, size=(10000, 100))
+            rng = numpy.random.RandomState(0)
+            X = rng.randint(10, size=(10000, 100))
 
             selector = FeatureBasedSelection(100, 'sqrt', optimizer='greedi')
             selector.fit(X)
@@ -837,7 +844,8 @@ class ModularGreedy(BaseOptimizer):
 
             from apricot import FeatureBasedSelection
 
-            X = numpy.random.randint(10, size=(10000, 100))
+            rng = numpy.random.RandomState(0)
+            X = rng.randint(10, size=(10000, 100))
 
             selector = FeatureBasedSelection(100, 'sqrt', optimizer='modular')
             selector.fit(X)
@@ -924,7 +932,8 @@ class BidirectionalGreedy(BaseOptimizer):
 
             from apricot import FeatureBasedSelection
 
-            X = numpy.random.randint(10, size=(10000, 100))
+            rng = numpy.random.RandomState(0)
+            X = rng.randint(10, size=(10000, 100))
 
             selector = FeatureBasedSelection(100, 'sqrt', optimizer='bidirectional')
             selector.fit(X)
@@ -1021,7 +1030,8 @@ class SieveGreedy(BaseOptimizer):
 
             from apricot import FeatureBasedSelection
 
-            X = numpy.random.randint(10, size=(10000, 100))
+            rng = numpy.random.RandomState(0)
+            X = rng.randint(10, size=(10000, 100))
 
             selector = FeatureBasedSelection(100, 'sqrt', optimizer='bidirectional')
             selector.fit(X)

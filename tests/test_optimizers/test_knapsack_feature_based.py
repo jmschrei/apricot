@@ -13,11 +13,11 @@ from apricot import FeatureBasedSelection
 # print("[" + ", ".join(map(str, model.ranking)) + "]")
 # print("[" + ", ".join([str(round(gain, 4)) for gain in model.gains]) + "]")
 
-numpy.random.seed(0)
+rng = numpy.random.RandomState(0)
 
 digits_data = load_digits()
 X_digits = digits_data.data[:500]
-X_digits_costs = numpy.abs(numpy.random.randn(500))
+X_digits_costs = numpy.abs(rng.randn(500))
 
 # fmt: off
 digits_ranking = [361, 437, 96, 364, 179, 216, 206, 54, 133, 26, 263, 488, 459,
