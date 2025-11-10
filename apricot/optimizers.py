@@ -902,7 +902,10 @@ class ModularGreedy(BaseOptimizer):
 			sample_cost = numpy.ones(X.shape[0], dtype='float64')
 
 		gains = self.function._calculate_gains(X) / sample_cost[self.function.idxs]
-		idxs = gains.argsort()[::-1]
+		# idxs = gains.argsort()[::-1] does the same as what's below
+		# but is not stable. It requires numpy >= 2 to have the "stable"
+		# parameter in np.argort.
+		idxs = numpy.lexsort((numpy.arange(gains.shape[0]), -gains))
 
 		for idx in idxs:
 			if cost + sample_cost[idx] > k:
