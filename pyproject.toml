@@ -13,8 +13,16 @@ extend-exclude = '''
   | \.venv
   | build
   | dist
+  | tutorials
 )/
 '''
+
+[tool.isort]
+profile = "black"
+line_length = 120
+known_first_party = ["apricot"]
+skip_gitignore = true
+extend_skip = [".eggs", ".tox", ".venv", "build", "dist", "tutorials"]
 
 [tool.ruff]
 # Same line length as Black
@@ -49,6 +57,7 @@ exclude = [
     ".venv",
     "build",
     "dist",
+    "tutorials",
 ]
 
 [tool.ruff.format]
@@ -60,4 +69,3 @@ line-ending = "auto"
 
 [tool.ruff.isort]
 known-first-party = ["apricot"]
-
