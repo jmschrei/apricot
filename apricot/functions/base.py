@@ -117,7 +117,7 @@ class BaseSelection:
 
         if not isinstance(optimizer, BaseOptimizer):
             if optimizer not in OPTIMIZERS.keys():
-                raise ValueError("Optimizer must be an optimizer object or " f"a str in {str(OPTIMIZERS.keys())}.")
+                raise ValueError(f"Optimizer must be an optimizer object or a str in {str(OPTIMIZERS.keys())}.")
 
         if isinstance(optimizer, BaseOptimizer):
             optimizer.function = self
@@ -189,13 +189,13 @@ class BaseSelection:
         allowed_dtypes = list, numpy.ndarray, csr_matrix
 
         if not isinstance(X, allowed_dtypes):
-            raise ValueError("X must be either a list of lists, a 2D numpy " "array, or a scipy.sparse.csr_matrix.")
+            raise ValueError("X must be either a list of lists, a 2D numpy array, or a scipy.sparse.csr_matrix.")
         if isinstance(X, numpy.ndarray) and len(X.shape) != 2:
             raise ValueError("X must have exactly two dimensions.")
         if numpy.min(X) < 0.0 and numpy.max(X) > 0.0:
-            raise ValueError("X cannot contain negative values or must be entirely " "negative values.")
+            raise ValueError("X cannot contain negative values or must be entirely negative values.")
         if self.n_samples > X.shape[0]:
-            raise ValueError("Cannot select more examples than the number in" " the data set.")
+            raise ValueError("Cannot select more examples than the number in the data set.")
 
         if not self.sparse:
             if X.dtype != "float64":
@@ -216,7 +216,7 @@ class BaseSelection:
 
         optimizer.select(X, self.n_samples, sample_cost=sample_cost)
 
-        if self.verbose == True:
+        if self.verbose:
             self.pbar.close()
 
         self.ranking = numpy.array(self.ranking)
@@ -227,7 +227,7 @@ class BaseSelection:
         allowed_dtypes = list, numpy.ndarray, csr_matrix
 
         if not isinstance(X, allowed_dtypes):
-            raise ValueError("X must be either a list of lists, a 2D numpy " "array, or a scipy.sparse.csr_matrix.")
+            raise ValueError("X must be either a list of lists, a 2D numpy array, or a scipy.sparse.csr_matrix.")
         if isinstance(X, numpy.ndarray) and len(X.shape) != 2:
             raise ValueError("X must have exactly two dimensions.")
 
@@ -248,7 +248,7 @@ class BaseSelection:
 
         self.optimizer.select(X, self.n_samples, sample_cost=sample_cost)
 
-        if self.verbose == True:
+        if self.verbose:
             self.pbar.close()
 
         self.ranking = numpy.array(self.ranking)
@@ -385,8 +385,7 @@ class BaseSelection:
                     )
                 elif self.initial_subset.min() < 0:
                     raise ValueError(
-                        "When passing in an integer mask for the initial subset"
-                        " the minimum value cannot be negative."
+                        "When passing in an integer mask for the initial subset the minimum value cannot be negative."
                     )
 
                 self.mask[self.initial_subset] = 1
@@ -397,7 +396,6 @@ class BaseSelection:
         raise NotImplementedError
 
     def _calculate_sieve_gains(self, X, thresholds, idxs):
-        n = X.shape[0]
         d = X.shape[1] if self.reservoir is None else self.max_reservoir_size
         l = len(thresholds)
 
@@ -561,7 +559,7 @@ class BaseGraphSelection(BaseSelection):
         random_state=None,
         verbose=False,
     ):
-        super(BaseGraphSelection, self).__init__(
+        super().__init__(
             n_samples=n_samples,
             initial_subset=initial_subset,
             optimizer=optimizer,
@@ -615,16 +613,14 @@ class BaseGraphSelection(BaseSelection):
         """
 
         if isinstance(X, csr_matrix) and self.metric not in ("precomputed", "ignore"):
-            raise ValueError("Must passed in a precomputed sparse " "similarity matrix or a dense feature matrix.")
+            raise ValueError("Must passed in a precomputed sparse similarity matrix or a dense feature matrix.")
         if self.metric == "precomputed" and X.shape[0] != X.shape[1]:
-            raise ValueError("Precomputed similarity matrices " "must be square and symmetric.")
+            raise ValueError("Precomputed similarity matrices must be square and symmetric.")
 
         X_pairwise = _calculate_pairwise_distances(X, metric=self.metric, n_neighbors=self.n_neighbors)
 
         self._X = X
-        return super(BaseGraphSelection, self).fit(
-            X_pairwise, y=y, sample_weight=sample_weight, sample_cost=sample_cost
-        )
+        return super().fit(X_pairwise, y=y, sample_weight=sample_weight, sample_cost=sample_cost)
 
     def partial_fit(self, X, y=None, sample_weight=None, sample_cost=None):
         if self.reservoir is None:
@@ -644,21 +640,19 @@ class BaseGraphSelection(BaseSelection):
         X_pairwise = _calculate_pairwise_distances(X, Y=self.reservoir[: self.reservoir_size], metric=self.metric)
 
         self._X = X
-        super(BaseGraphSelection, self).partial_fit(
-            X_pairwise, y=y, sample_weight=sample_weight, sample_cost=sample_cost
-        )
+        super().partial_fit(X_pairwise, y=y, sample_weight=sample_weight, sample_cost=sample_cost)
 
         self.current_values = numpy.zeros(self.reservoir_size, dtype="float64")
         self.n_seen_ += X.shape[0]
 
     def _initialize(self, X_pairwise, idxs=None):
-        super(BaseGraphSelection, self)._initialize(X_pairwise, idxs=idxs)
+        super()._initialize(X_pairwise, idxs=idxs)
 
     def _calculate_gains(self, X_pairwise):
-        super(BaseGraphSelection, self)._calculate_gains(X_pairwise)
+        super()._calculate_gains(X_pairwise)
 
     def _calculate_sieve_gains(self, X, thresholds, idxs):
-        super(BaseGraphSelection, self)._calculate_sieve_gains(X, thresholds, idxs)
+        super()._calculate_sieve_gains(X, thresholds, idxs)
 
     def _select_next(self, X_pairwise, gain, idx):
-        super(BaseGraphSelection, self)._select_next(X_pairwise, gain, idx)
+        super()._select_next(X_pairwise, gain, idx)

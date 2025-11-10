@@ -14,9 +14,9 @@ def sigmoid(X):
 
 
 dtypes = "void(float64[:,:], float64[:], float64[:], int64[:])"
-sparse_dtypes = "void(float64[:], int32[:], int32[:], float64[:]," "float64[:], float64[:], int64[:])"
+sparse_dtypes = "void(float64[:], int32[:], int32[:], float64[:],float64[:], float64[:], int64[:])"
 sieve_dtypes = (
-    "void(float64[:,:], int64, float64[:,:], int64[:,:]," "float64[:,:], float64[:], float64[:], int64[:], int64[:])"
+    "void(float64[:,:], int64, float64[:,:], int64[:,:],float64[:,:], float64[:], float64[:], int64[:], int64[:])"
 )
 sieve_sparse_dtypes = (
     "void(float64[:], int32[:], int32[:], int64,"
@@ -253,7 +253,7 @@ class FeatureBasedSelection(BaseSelection):
                 "Must be one of 'log', 'sqrt', 'sigmoid', or a any other numpy, scipy, or numba-compiled function."
             )
 
-        super(FeatureBasedSelection, self).__init__(
+        super().__init__(
             n_samples=n_samples,
             initial_subset=initial_subset,
             optimizer=optimizer,
@@ -303,10 +303,10 @@ class FeatureBasedSelection(BaseSelection):
                 The fit step returns this selector object.
         """
 
-        return super(FeatureBasedSelection, self).fit(X, y=y, sample_weight=sample_weight, sample_cost=sample_cost)
+        return super().fit(X, y=y, sample_weight=sample_weight, sample_cost=sample_cost)
 
     def _initialize(self, X):
-        super(FeatureBasedSelection, self)._initialize(X)
+        super()._initialize(X)
 
         if self.initial_subset is None:
             pass
@@ -316,7 +316,7 @@ class FeatureBasedSelection(BaseSelection):
             self.current_values = X[self.initial_subset].sum(axis=0).astype("float64")
         else:
             raise ValueError(
-                "The initial subset must be either a two dimensional" " matrix of examples or a one dimensional mask."
+                "The initial subset must be either a two dimensional matrix of examples or a one dimensional mask."
             )
 
         self.current_concave_values = self.concave_func(self.current_values)
@@ -364,7 +364,7 @@ class FeatureBasedSelection(BaseSelection):
         used by a streaming optimizer.
         """
 
-        super(FeatureBasedSelection, self)._calculate_sieve_gains(X, thresholds, idxs)
+        super()._calculate_sieve_gains(X, thresholds, idxs)
 
         if self.sparse:
             self.calculate_sieve_gains_(
@@ -404,4 +404,4 @@ class FeatureBasedSelection(BaseSelection):
         self.current_concave_values = self.concave_func(self.current_values)
         self.current_concave_values_sum = self.current_concave_values.sum()
 
-        super(FeatureBasedSelection, self)._select_next(X, gain, idx)
+        super()._select_next(X, gain, idx)

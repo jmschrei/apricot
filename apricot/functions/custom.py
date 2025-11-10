@@ -111,13 +111,13 @@ class CustomSelection(BaseSelection):
         random_state=None,
         verbose=False,
     ):
-        if callable(function) == False:
+        if not callable(function):
             raise ValueError("Passed in function must be callable.")
 
         self.function = function
         self.function_kwds = function_kwds
 
-        super(CustomSelection, self).__init__(
+        super().__init__(
             n_samples=n_samples,
             initial_subset=initial_subset,
             optimizer=optimizer,
@@ -165,23 +165,21 @@ class CustomSelection(BaseSelection):
                 The fit step returns this selector object.
         """
 
-        return super(CustomSelection, self).fit(X, y=y, sample_weight=sample_weight, sample_cost=sample_cost)
+        return super().fit(X, y=y, sample_weight=sample_weight, sample_cost=sample_cost)
 
     def _initialize(self, X):
-        super(CustomSelection, self)._initialize(X)
+        super()._initialize(X)
 
         if self.initial_subset is None:
             pass
         elif self.initial_subset.ndim == 2:
             if self.initial_subset.shape[1] != X.shape[1]:
-                raise ValueError(
-                    "The number of columns in the initial subset must " "match the number of columns in X."
-                )
+                raise ValueError("The number of columns in the initial subset must match the number of columns in X.")
         elif self.initial_subset.ndim == 1:
             self.initial_subset = X[self.initial_subset]
         else:
             raise ValueError(
-                "The initial subset must be either a two dimensional" " matrix of examples or a one dimensional mask."
+                "The initial subset must be either a two dimensional matrix of examples or a one dimensional mask."
             )
 
         if self.initial_subset is None:
@@ -222,7 +220,7 @@ class CustomSelection(BaseSelection):
         used by a streaming optimizer.
         """
 
-        super(CustomSelection, self)._calculate_sieve_gains(X, thresholds, idxs)
+        super()._calculate_sieve_gains(X, thresholds, idxs)
 
         raise NotImplementedError
 
@@ -231,7 +229,7 @@ class CustomSelection(BaseSelection):
 
         self.total_gain += gain
 
-        super(CustomSelection, self)._select_next(X, gain, idx)
+        super()._select_next(X, gain, idx)
 
 
 class CustomGraphSelection(BaseGraphSelection):
@@ -335,13 +333,13 @@ class CustomGraphSelection(BaseGraphSelection):
         random_state=None,
         verbose=False,
     ):
-        if callable(function) == False:
+        if not callable(function):
             raise ValueError("Passed in function must be callable.")
 
         self.function = function
         self.function_kwds = function_kwds
 
-        super(CustomGraphSelection, self).__init__(
+        super().__init__(
             n_samples=n_samples,
             metric=metric,
             initial_subset=initial_subset,
@@ -390,23 +388,21 @@ class CustomGraphSelection(BaseGraphSelection):
                 The fit step returns this selector object.
         """
 
-        return super(CustomGraphSelection, self).fit(X, y=y, sample_weight=sample_weight, sample_cost=sample_cost)
+        return super().fit(X, y=y, sample_weight=sample_weight, sample_cost=sample_cost)
 
     def _initialize(self, X):
-        super(CustomGraphSelection, self)._initialize(X)
+        super()._initialize(X)
 
         if self.initial_subset is None:
             pass
         elif self.initial_subset.ndim == 2:
             if self.initial_subset.shape[1] != X.shape[1]:
-                raise ValueError(
-                    "The number of columns in the initial subset must " "match the number of columns in X."
-                )
+                raise ValueError("The number of columns in the initial subset must match the number of columns in X.")
         elif self.initial_subset.ndim == 1:
             self.initial_subset = X[self.initial_subset]
         else:
             raise ValueError(
-                "The initial subset must be either a two dimensional" " matrix of examples or a one dimensional mask."
+                "The initial subset must be either a two dimensional matrix of examples or a one dimensional mask."
             )
 
         if self.initial_subset is None:
@@ -447,7 +443,7 @@ class CustomGraphSelection(BaseGraphSelection):
         used by a streaming optimizer.
         """
 
-        super(CustomGraphSelection, self)._calculate_sieve_gains(X, thresholds, idxs)
+        super()._calculate_sieve_gains(X, thresholds, idxs)
 
         raise NotImplementedError
 
@@ -456,4 +452,4 @@ class CustomGraphSelection(BaseGraphSelection):
 
         self.total_gain += gain
 
-        super(CustomGraphSelection, self)._select_next(X, gain, idx)
+        super()._select_next(X, gain, idx)

@@ -229,7 +229,7 @@ class MaxCoverageSelection(BaseSelection):
     ):
         self.threshold = threshold
 
-        super(MaxCoverageSelection, self).__init__(
+        super().__init__(
             n_samples=n_samples,
             initial_subset=initial_subset,
             optimizer=optimizer,
@@ -277,10 +277,10 @@ class MaxCoverageSelection(BaseSelection):
                 The fit step returns this selector object.
         """
 
-        return super(MaxCoverageSelection, self).fit(X, y=y, sample_weight=sample_weight, sample_cost=sample_cost)
+        return super().fit(X, y=y, sample_weight=sample_weight, sample_cost=sample_cost)
 
     def _initialize(self, X):
-        super(MaxCoverageSelection, self)._initialize(X)
+        super()._initialize(X)
 
         if self.initial_subset is None:
             self.current_values = numpy.zeros(X.shape[1], dtype="float64")
@@ -290,7 +290,7 @@ class MaxCoverageSelection(BaseSelection):
             self.current_values = numpy.fmin(self.threshold, X[self.initial_subset].sum(axis=0).astype("float64"))
         else:
             raise ValueError(
-                "The initial subset must be either a two dimensional" " matrix of examples or a one dimensional mask."
+                "The initial subset must be either a two dimensional matrix of examples or a one dimensional mask."
             )
 
         self.current_values_sum = self.current_values.sum()
@@ -337,7 +337,7 @@ class MaxCoverageSelection(BaseSelection):
         used by a streaming optimizer.
         """
 
-        super(MaxCoverageSelection, self)._calculate_sieve_gains(X, thresholds, idxs)
+        super()._calculate_sieve_gains(X, thresholds, idxs)
 
         if self.sparse:
             self.calculate_sieve_gains_(
@@ -378,4 +378,4 @@ class MaxCoverageSelection(BaseSelection):
 
         self.current_values_sum = self.current_values.sum()
 
-        super(MaxCoverageSelection, self)._select_next(X, gain, idx)
+        super()._select_next(X, gain, idx)

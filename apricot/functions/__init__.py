@@ -1,6 +1,9 @@
 # __init__.py
 # Author: Jacob Schreiber <jmschreiber91@gmail.com>
 
+# ruff: noqa: F401
+
+
 from .base import BaseGraphSelection, BaseSelection
 from .custom import CustomGraphSelection, CustomSelection
 from .facilityLocation import FacilityLocationSelection

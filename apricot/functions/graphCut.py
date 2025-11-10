@@ -185,7 +185,7 @@ class GraphCutSelection(BaseGraphSelection):
     ):
         self.alpha = alpha
 
-        super(GraphCutSelection, self).__init__(
+        super().__init__(
             n_samples=n_samples,
             metric=metric,
             initial_subset=initial_subset,
@@ -237,10 +237,10 @@ class GraphCutSelection(BaseGraphSelection):
                 The fit step returns this selector object.
         """
 
-        return super(GraphCutSelection, self).fit(X, y=y, sample_weight=sample_weight, sample_cost=sample_cost)
+        return super().fit(X, y=y, sample_weight=sample_weight, sample_cost=sample_cost)
 
     def _initialize(self, X_pairwise):
-        super(GraphCutSelection, self)._initialize(X_pairwise)
+        super()._initialize(X_pairwise)
 
         if self.reservoir is not None:
             X_pairwise = _calculate_pairwise_distances(self._X, metric=self.metric)
@@ -255,7 +255,7 @@ class GraphCutSelection(BaseGraphSelection):
         if self.initial_subset is None:
             pass
         elif self.initial_subset.ndim == 2:
-            raise ValueError("When using graph-cut, the initial subset" " must be a one dimensional array of indices.")
+            raise ValueError("When using graph-cut, the initial subset must be a one dimensional array of indices.")
         elif self.initial_subset.ndim == 1:
             if self.sparse:
                 for i in self.initial_subset:
@@ -265,7 +265,7 @@ class GraphCutSelection(BaseGraphSelection):
                     self.current_values += X_pairwise[i] * 2
         else:
             raise ValueError(
-                "The initial subset must be either a two dimensional" " matrix of examples or a one dimensional mask."
+                "The initial subset must be either a two dimensional matrix of examples or a one dimensional mask."
             )
 
         self.calculate_sieve_gains_ = calculate_gains_sieve(sieve_dtypes, True, True, False)
@@ -284,9 +284,9 @@ class GraphCutSelection(BaseGraphSelection):
         used by a streaming optimizer.
         """
 
-        super(GraphCutSelection, self)._calculate_sieve_gains(X_pairwise, thresholds, idxs)
+        super()._calculate_sieve_gains(X_pairwise, thresholds, idxs)
 
-        n, m = X_pairwise.shape[0], len(thresholds)
+        _, m = X_pairwise.shape[0], len(thresholds)
         row_sums = self.alpha * X_pairwise.mean(axis=1)
         sieve_current_values_ = numpy.tile(
             numpy.diag(_calculate_pairwise_distances(self._X, metric=self.metric)), (m, 1)
@@ -337,4 +337,4 @@ class GraphCutSelection(BaseGraphSelection):
         else:
             self.current_values += X_pairwise * 2
 
-        super(GraphCutSelection, self)._select_next(X_pairwise, gain, idx)
+        super()._select_next(X_pairwise, gain, idx)

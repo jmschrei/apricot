@@ -175,7 +175,7 @@ class SaturatedCoverageSelection(BaseGraphSelection):
     ):
         self.alpha = alpha
 
-        super(SaturatedCoverageSelection, self).__init__(
+        super().__init__(
             n_samples=n_samples,
             metric=metric,
             initial_subset=initial_subset,
@@ -227,10 +227,10 @@ class SaturatedCoverageSelection(BaseGraphSelection):
                 The fit step returns this selector object.
         """
 
-        return super(SaturatedCoverageSelection, self).fit(X, y=y, sample_weight=sample_weight, sample_cost=sample_cost)
+        return super().fit(X, y=y, sample_weight=sample_weight, sample_cost=sample_cost)
 
     def _initialize(self, X_pairwise):
-        super(SaturatedCoverageSelection, self)._initialize(X_pairwise)
+        super()._initialize(X_pairwise)
 
         if self.sparse:
             self.max_values = self.alpha * numpy.array(X_pairwise.sum(axis=1))[:, 0]
@@ -241,7 +241,7 @@ class SaturatedCoverageSelection(BaseGraphSelection):
             return
         elif self.initial_subset.ndim == 2:
             raise ValueError(
-                "When using saturated coverage, the initial subset" " must be a one dimensional array of indices."
+                "When using saturated coverage, the initial subset must be a one dimensional array of indices."
             )
         elif self.initial_subset.ndim == 1:
             if not self.sparse:
@@ -254,7 +254,7 @@ class SaturatedCoverageSelection(BaseGraphSelection):
                     )
         else:
             raise ValueError(
-                "The initial subset must be either a two dimensional" " matrix of examples or a one dimensional mask."
+                "The initial subset must be either a two dimensional matrix of examples or a one dimensional mask."
             )
 
     def _calculate_gains(self, X_pairwise, idxs=None):
@@ -285,4 +285,4 @@ class SaturatedCoverageSelection(BaseGraphSelection):
         else:
             self.current_values = numpy.minimum(self.max_values, self.current_values + X_pairwise)
 
-        super(SaturatedCoverageSelection, self)._select_next(X_pairwise, gain, idx)
+        super()._select_next(X_pairwise, gain, idx)

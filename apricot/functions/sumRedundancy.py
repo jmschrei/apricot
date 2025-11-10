@@ -1,4 +1,3 @@
-# sumRedundancy.py
 # Author: Jacob Schreiber <jmschreiber91@gmail.com>
 
 import numpy
@@ -149,7 +148,7 @@ class SumRedundancySelection(BaseGraphSelection):
         optimizer_kwds={},
         verbose=False,
     ):
-        super(SumRedundancySelection, self).__init__(
+        super().__init__(
             n_samples=n_samples,
             metric=metric,
             initial_subset=initial_subset,
@@ -201,10 +200,10 @@ class SumRedundancySelection(BaseGraphSelection):
                 The fit step returns this selector object.
         """
 
-        return super(SumRedundancySelection, self).fit(X, y=y, sample_weight=sample_weight, sample_cost=sample_cost)
+        return super().fit(X, y=y, sample_weight=sample_weight, sample_cost=sample_cost)
 
     def _initialize(self, X_pairwise, idxs=None):
-        super(SumRedundancySelection, self)._initialize(X_pairwise, idxs=idxs)
+        super()._initialize(X_pairwise, idxs=idxs)
         idxs = idxs if idxs is not None else numpy.arange(X_pairwise.shape[0])
 
         for i, idx in enumerate(idxs):
@@ -214,7 +213,7 @@ class SumRedundancySelection(BaseGraphSelection):
             return
         elif self.initial_subset.ndim == 2:
             raise ValueError(
-                "When using saturated coverage, the initial subset" " must be a one dimensional array of indices."
+                "When using saturated coverage, the initial subset must be a one dimensional array of indices."
             )
         elif self.initial_subset.ndim == 1:
             if not self.sparse:
@@ -225,7 +224,7 @@ class SumRedundancySelection(BaseGraphSelection):
                     self.current_values += X_pairwise[i].toarray()[0] * 2
         else:
             raise ValueError(
-                "The initial subset must be either a two dimensional" " matrix of examples or a one dimensional mask."
+                "The initial subset must be either a two dimensional matrix of examples or a one dimensional mask."
             )
 
     def _calculate_gains(self, X_pairwise, idxs=None):
@@ -240,4 +239,4 @@ class SumRedundancySelection(BaseGraphSelection):
         else:
             self.current_values += X_pairwise * 2
 
-        super(SumRedundancySelection, self)._select_next(X_pairwise, gain, idx)
+        super()._select_next(X_pairwise, gain, idx)

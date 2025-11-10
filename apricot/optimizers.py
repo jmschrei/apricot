@@ -103,7 +103,7 @@ class NaiveGreedy(BaseOptimizer):
     """
 
     def __init__(self, function=None, random_state=None, n_jobs=None, verbose=False):
-        super(NaiveGreedy, self).__init__(function=function, random_state=random_state, n_jobs=n_jobs, verbose=verbose)
+        super().__init__(function=function, random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
     def select(self, X, k, sample_cost=None):
         cost = 0.0
@@ -128,7 +128,7 @@ class NaiveGreedy(BaseOptimizer):
             gain = gains[idx]
             self.function._select_next(X[best_idx], gain, best_idx)
 
-            if self.verbose == True:
+            if self.verbose:
                 self.function.pbar.update(round(idx_cost, 1))
 
 
@@ -201,7 +201,7 @@ class LazyGreedy(BaseOptimizer):
     """
 
     def __init__(self, function=None, random_state=None, n_jobs=None, verbose=False):
-        super(LazyGreedy, self).__init__(function=function, random_state=random_state, n_jobs=n_jobs, verbose=verbose)
+        super().__init__(function=function, random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
     def select(self, X, k, sample_cost=None):
         cost = 0.0
@@ -247,7 +247,7 @@ class LazyGreedy(BaseOptimizer):
             best_gain *= sample_cost[best_idx]
             self.function._select_next(X[best_idx], best_gain, best_idx)
 
-            if self.verbose == True:
+            if self.verbose:
                 self.function.pbar.update(1)
 
 
@@ -304,9 +304,7 @@ class ApproximateLazyGreedy(BaseOptimizer):
 
     def __init__(self, function=None, beta=0.9, random_state=None, n_jobs=None, verbose=False):
         self.beta = beta
-        super(ApproximateLazyGreedy, self).__init__(
-            function=function, random_state=random_state, n_jobs=n_jobs, verbose=verbose
-        )
+        super().__init__(function=function, random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
     def select(self, X, k, sample_cost=None):
         cost = 0.0
@@ -341,7 +339,7 @@ class ApproximateLazyGreedy(BaseOptimizer):
             best_gain *= sample_cost[best_idx]
             self.function._select_next(X[best_idx], best_gain, best_idx)
 
-            if self.verbose == True:
+            if self.verbose:
                 self.function.pbar.update(1)
 
 
@@ -416,22 +414,20 @@ class TwoStageGreedy(BaseOptimizer):
         self.n_first_selections = n_first_selections
         self.optimizer1 = optimizer1
         self.optimizer2 = optimizer2
-        super(TwoStageGreedy, self).__init__(
-            function=function, random_state=random_state, n_jobs=n_jobs, verbose=verbose
-        )
+        super().__init__(function=function, random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
     def select(self, X, k, sample_cost=None):
         if isinstance(self.optimizer1, str):
             optimizer1 = OPTIMIZERS[self.optimizer1](function=self.function, verbose=self.verbose)
         elif not isinstance(self.optimizer1, BaseOptimizer):
-            raise ValueError("optimizer1 must be either a string or an " / "optimized object.")
+            raise ValueError("optimizer1 must be either a string or an optimized object.")
         else:
             optimizer1 = self.optimizer1
 
         if isinstance(self.optimizer2, str):
             optimizer2 = OPTIMIZERS[self.optimizer2](function=self.function, verbose=self.verbose)
         elif not isinstance(self.optimizer2, BaseOptimizer):
-            raise ValueError("optimizer1 must be either a string or an " / "optimized object.")
+            raise ValueError("optimizer1 must be either a string or an optimized object.")
         else:
             optimizer2 = self.optimizer2
 
@@ -503,9 +499,7 @@ class StochasticGreedy(BaseOptimizer):
 
     def __init__(self, function=None, epsilon=0.9, random_state=None, n_jobs=None, verbose=False):
         self.epsilon = epsilon
-        super(StochasticGreedy, self).__init__(
-            function=function, random_state=random_state, n_jobs=n_jobs, verbose=verbose
-        )
+        super().__init__(function=function, random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
     def select(self, X, k, sample_cost=None):
         cost = 0.0
@@ -534,7 +528,7 @@ class StochasticGreedy(BaseOptimizer):
             cost += sample_cost[best_idx]
             self.function._select_next(X[best_idx], gains[idx], best_idx)
 
-            if self.verbose == True:
+            if self.verbose:
                 self.function.pbar.update(1)
 
 
@@ -594,7 +588,7 @@ class SampleGreedy(BaseOptimizer):
     def __init__(self, function=None, epsilon=0.9, optimizer="lazy", random_state=None, n_jobs=None, verbose=False):
         self.epsilon = epsilon
         self.optimizer = optimizer
-        super(SampleGreedy, self).__init__(function=function, random_state=random_state, n_jobs=n_jobs, verbose=verbose)
+        super().__init__(function=function, random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
     def select(self, X, k, sample_cost=None):
         n = X.shape[0]
@@ -714,7 +708,7 @@ class GreeDi(BaseOptimizer):
         self.l = l
         self.optimizer1 = optimizer1
         self.optimizer2 = optimizer2
-        super(GreeDi, self).__init__(function=function, random_state=random_state, n_jobs=n_jobs, verbose=verbose)
+        super().__init__(function=function, random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
     def select(self, X, k, sample_cost=None):
         if self.m is None and self.l is None:
@@ -807,7 +801,6 @@ class RandomGreedy(BaseOptimizer):
         if sample_cost is None:
             sample_cost = numpy.ones(X.shape[0], dtype="float64")
 
-        i = 0
         while cost < k:
             idx = self.random_state.choice(self.random.idxs)
 
@@ -819,7 +812,7 @@ class RandomGreedy(BaseOptimizer):
 
             self.function._select_next(X[idx], gain, idx)
 
-            if self.verbose == True:
+            if self.verbose:
                 self.function.pbar.update(round(sample_cost[idx], 2))
 
 
@@ -884,9 +877,7 @@ class ModularGreedy(BaseOptimizer):
     """
 
     def __init__(self, function=None, random_state=None, n_jobs=None, verbose=False):
-        super(ModularGreedy, self).__init__(
-            function=function, random_state=random_state, n_jobs=n_jobs, verbose=verbose
-        )
+        super().__init__(function=function, random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
     def select(self, X, k, sample_cost=None):
         """Select elements in a naive greedy manner."""
@@ -910,7 +901,7 @@ class ModularGreedy(BaseOptimizer):
 
             self.function._select_next(X[idx], gain, idx)
 
-            if self.verbose == True:
+            if self.verbose:
                 self.function.pbar.update(1)
 
 
@@ -965,14 +956,11 @@ class BidirectionalGreedy(BaseOptimizer):
     """
 
     def __init__(self, function=None, random_state=None, n_jobs=None, verbose=False):
-        super(BidirectionalGreedy, self).__init__(
-            function=function, random_state=random_state, n_jobs=n_jobs, verbose=verbose
-        )
+        super().__init__(function=function, random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
     def select(self, X, k, sample_cost=None):
         """Select elements in a naive greedy manner."""
 
-        cost = 0.0
         if sample_cost is None:
             sample_cost = numpy.ones(X.shape[0], dtype="float64")
 
@@ -981,11 +969,10 @@ class BidirectionalGreedy(BaseOptimizer):
 
         idxs = numpy.arange(X.shape[0])
         self.random_state.shuffle(idxs)
-        gains = numpy.zeros(X.shape[0])
 
         while True:
             for i in idxs:
-                if A[i] == True:
+                if A[i]:
                     continue
 
                 self.function.initial_subset = A
@@ -1071,7 +1058,7 @@ class SieveGreedy(BaseOptimizer):
         self.thresholds = [1]
         self.max_gain = -1
 
-        super(SieveGreedy, self).__init__(function=function, random_state=random_state, n_jobs=n_jobs, verbose=verbose)
+        super().__init__(function=function, random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
     def select(self, X, k, sample_cost=None):
         """Select elements in a naive greedy manner."""

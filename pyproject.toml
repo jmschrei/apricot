@@ -48,6 +48,9 @@ ignore = [
     "E722",  # Do not use bare `except`
     "N803",  # Argument name should be lowercase
     "N806",  # Variable in function should be lowercase
+    "E741",  # Ambiguous variable name
+    "N999",  # Invalide module name
+    "B006",  # Do not use mutable data structures for argument defaults
 ]
 
 # Exclude the same directories as black

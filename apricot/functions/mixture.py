@@ -161,7 +161,7 @@ class MixtureSelection(BaseSelection):
         else:
             self.weights = numpy.array(weights, dtype="float64")
 
-        super(MixtureSelection, self).__init__(
+        super().__init__(
             n_samples=n_samples,
             initial_subset=initial_subset,
             optimizer=optimizer,
@@ -225,10 +225,10 @@ class MixtureSelection(BaseSelection):
         self._X = X
         X = _calculate_pairwise_distances(X, metric=self.metric, n_neighbors=self.n_neighbors)
 
-        return super(MixtureSelection, self).fit(X, y=y, sample_weight=sample_weight, sample_cost=sample_cost)
+        return super().fit(X, y=y, sample_weight=sample_weight, sample_cost=sample_cost)
 
     def _initialize(self, X):
-        super(MixtureSelection, self)._initialize(X)
+        super()._initialize(X)
 
         for function in self.functions:
             function._initialize(X)
@@ -250,7 +250,7 @@ class MixtureSelection(BaseSelection):
         return gains
 
     def _calculate_sieve_gains(self, X, thresholds, idxs):
-        super(MixtureSelection, self)._calculate_sieve_gains(X, thresholds, idxs)
+        super()._calculate_sieve_gains(X, thresholds, idxs)
 
         for function in self.functions:
             super(function.__class__, function)._calculate_sieve_gains(X, thresholds, idxs)
@@ -285,8 +285,6 @@ class MixtureSelection(BaseSelection):
                     self.sieve_gains_[l, self.sieve_n_selected_[l]] = gain[l, self.sieve_n_selected_[l]]
                     self.sieve_n_selected_[l] += 1
                 else:
-                    v = self.sieve_n_selected_[l]
-
                     for i, function in enumerate(self.functions):
                         vi = function.sieve_n_selected_[l]
                         if vi != self.sieve_n_selected_[l]:
@@ -304,4 +302,4 @@ class MixtureSelection(BaseSelection):
         for function in self.functions:
             function._select_next(X, gain, idx)
 
-        super(MixtureSelection, self)._select_next(X, gain, idx)
+        super()._select_next(X, gain, idx)

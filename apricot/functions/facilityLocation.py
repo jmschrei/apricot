@@ -10,7 +10,7 @@ from .base import BaseGraphSelection
 dtypes = "void(float64[:,:], float64[:], float64[:], int64[:])"
 sdtypes = "void(float64[:], int32[:], int32[:], float64[:], float64[:], int64[:])"
 sieve_dtypes = (
-    "void(float64[:,:], int64, float64[:,:], int64[:,:]," "float64[:,:], float64[:], float64[:], int64[:], int64[:])"
+    "void(float64[:,:], int64, float64[:,:], int64[:,:],float64[:,:], float64[:], float64[:], int64[:], int64[:])"
 )
 
 
@@ -214,7 +214,7 @@ class FacilityLocationSelection(BaseGraphSelection):
         random_state=None,
         verbose=False,
     ):
-        super(FacilityLocationSelection, self).__init__(
+        super().__init__(
             n_samples=n_samples,
             metric=metric,
             initial_subset=initial_subset,
@@ -266,16 +266,16 @@ class FacilityLocationSelection(BaseGraphSelection):
                 The fit step returns this selector object.
         """
 
-        return super(FacilityLocationSelection, self).fit(X, y=y, sample_weight=sample_weight, sample_cost=sample_cost)
+        return super().fit(X, y=y, sample_weight=sample_weight, sample_cost=sample_cost)
 
     def _initialize(self, X_pairwise):
-        super(FacilityLocationSelection, self)._initialize(X_pairwise)
+        super()._initialize(X_pairwise)
 
         if self.initial_subset is None:
             pass
         elif self.initial_subset.ndim == 2:
             raise ValueError(
-                "When using facility location, the initial subset" " must be a one dimensional array of indices."
+                "When using facility location, the initial subset must be a one dimensional array of indices."
             )
         elif self.initial_subset.ndim == 1:
             if not self.sparse:
@@ -288,7 +288,7 @@ class FacilityLocationSelection(BaseGraphSelection):
                     )
         else:
             raise ValueError(
-                "The initial subset must be either a two dimensional" " matrix of examples or a one dimensional mask."
+                "The initial subset must be either a two dimensional matrix of examples or a one dimensional mask."
             )
 
         self.current_values_sum = self.current_values.sum()
@@ -332,7 +332,7 @@ class FacilityLocationSelection(BaseGraphSelection):
         used by a streaming optimizer.
         """
 
-        super(FacilityLocationSelection, self)._calculate_sieve_gains(X_pairwise, thresholds, idxs)
+        super()._calculate_sieve_gains(X_pairwise, thresholds, idxs)
 
         if self.sparse:
             self.calculate_sieve_gains_(
@@ -371,4 +371,4 @@ class FacilityLocationSelection(BaseGraphSelection):
 
         self.current_values_sum = self.current_values.sum()
 
-        super(FacilityLocationSelection, self)._select_next(X_pairwise, gain, idx)
+        super()._select_next(X_pairwise, gain, idx)
