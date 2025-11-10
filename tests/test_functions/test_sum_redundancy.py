@@ -7,7 +7,7 @@ except:
 	import numpy as cupy
 
 from apricot import SumRedundancySelection
-from apricot.optimizers import *
+from apricot.optimizers import NaiveGreedy, LazyGreedy, TwoStageGreedy, GreeDi, StochasticGreedy, SampleGreedy, ModularGreedy
 
 from sklearn.datasets import load_digits
 from sklearn.metrics import pairwise_distances
@@ -449,25 +449,25 @@ def test_digits_sqrt_modular():
 
 def test_digits_cosine_sieve_batch():
 	return
-	model = SumRedundancySelection(100, 'cosine', random_state=0, 
-		reservoir=X_digits)
-	model.partial_fit(X_digits)
-	print("[" + ", ".join(map(str, model.ranking)) + "]")
-	print("[" + ", ".join([str(round(gain, 4)) for gain in model.gains]) + "]")
-	assert_array_equal(model.ranking, digits_cosine_sieve_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_sieve_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+	# model = SumRedundancySelection(100, 'cosine', random_state=0, 
+	# 	reservoir=X_digits)
+	# model.partial_fit(X_digits)
+	# print("[" + ", ".join(map(str, model.ranking)) + "]")
+	# print("[" + ", ".join([str(round(gain, 4)) for gain in model.gains]) + "]")
+	# assert_array_equal(model.ranking, digits_cosine_sieve_ranking)
+	# assert_array_almost_equal(model.gains, digits_cosine_sieve_gains, 4)
+	# assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 def test_digits_cosine_sieve_minibatch():
 	return
-	model = SumRedundancySelection(100, 'cosine', random_state=0, 
-		reservoir=X_digits)
-	model.partial_fit(X_digits[:300])
-	model.partial_fit(X_digits[300:500])
-	model.partial_fit(X_digits[500:])
-	assert_array_equal(model.ranking, digits_cosine_sieve_ranking)
-	assert_array_almost_equal(model.gains, digits_cosine_sieve_gains, 4)
-	assert_array_almost_equal(model.subset, X_digits[model.ranking])
+	# model = SumRedundancySelection(100, 'cosine', random_state=0, 
+	# 	reservoir=X_digits)
+	# model.partial_fit(X_digits[:300])
+	# model.partial_fit(X_digits[300:500])
+	# model.partial_fit(X_digits[500:])
+	# assert_array_equal(model.ranking, digits_cosine_sieve_ranking)
+	# assert_array_almost_equal(model.gains, digits_cosine_sieve_gains, 4)
+	# assert_array_almost_equal(model.subset, X_digits[model.ranking])
 
 # Using Optimizer Objects
 
