@@ -22,7 +22,7 @@ profile = "black"
 line_length = 120
 known_first_party = ["apricot"]
 skip_gitignore = true
-extend_skip = [".eggs", ".tox", ".venv", "build", "dist", "tutorials"]
+extend_skip = [".eggs", ".tox", ".venv", "build", "dist", "tutorials", "docs"]
 
 [tool.ruff]
 # Same line length as Black
@@ -45,6 +45,9 @@ select = [
 ignore = [
     "E501",  # Line too long (handled by black)
     "B008",  # Do not perform function call in argument defaults
+    "E722",  # Do not use bare `except`
+    "N803",  # Argument name should be lowercase
+    "N806",  # Variable in function should be lowercase
 ]
 
 # Exclude the same directories as black
@@ -58,6 +61,7 @@ exclude = [
     "build",
     "dist",
     "tutorials",
+    "docs",
 ]
 
 [tool.ruff.format]
