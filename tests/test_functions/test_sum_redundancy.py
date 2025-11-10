@@ -7,7 +7,7 @@ except:
 	import numpy as cupy
 
 from apricot import SumRedundancySelection
-from apricot.optimizers import *
+from apricot.optimizers import NaiveGreedy, LazyGreedy, TwoStageGreedy, GreeDi, StochasticGreedy, SampleGreedy, ModularGreedy
 
 from sklearn.datasets import load_digits
 from sklearn.metrics import pairwise_distances
