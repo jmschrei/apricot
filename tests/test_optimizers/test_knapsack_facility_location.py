@@ -7,7 +7,6 @@ except:
 	import numpy as cupy
 
 from apricot import FacilityLocationSelection
-from apricot.optimizers import *
 
 from sklearn.datasets import load_digits
 from sklearn.metrics import pairwise_distances
