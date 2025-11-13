@@ -6,21 +6,17 @@ This code contains utility functions to support the main functionality of
 the code.
 """
 
-import numbers
-import numpy
 import itertools
+import numbers
+from heapq import heapify, heappop, heappush, heapreplace
 
-from heapq import heappush
-from heapq import heappop
-from heapq import heapify
-from heapq import heapreplace
-
+import numpy
 from scipy.sparse import csr_matrix
-
 from sklearn.metrics import pairwise_distances
 from sklearn.neighbors import KNeighborsTransformer
 
-class PriorityQueue(object):
+
+class PriorityQueue:
     """A priority queue implementation.
 
     This is an implemented of a priority queue using a heap implemtnation. It
@@ -58,7 +54,7 @@ class PriorityQueue(object):
                 self.pq.append(entry)
 
             heapify(self.pq)
-    
+
     def add(self, item, weight):
         """Add an element to the priority queue. Runtime is O(log n).
 
@@ -82,12 +78,12 @@ class PriorityQueue(object):
         None
         """
 
-        #if item in self.lookup:
+        # if item in self.lookup:
         #    self.remove(item)
-        
+
         entry = [weight, next(self.counter), item]
         heappush(self.pq, entry)
-    
+
     def pop(self):
         """Pop the highest priority element from the queue. Runtime is O(log n).
 
@@ -154,6 +150,7 @@ class PriorityQueue(object):
         entry = [weight, next(self.counter), item]
         heapreplace(self.pq, entry)
 
+
 def check_random_state(seed):
     """Turn seed into a np.random.RandomState instance.
 
@@ -176,20 +173,20 @@ def check_random_state(seed):
         return numpy.random.RandomState(seed)
     if isinstance(seed, numpy.random.RandomState):
         return seed
-    raise ValueError('%r cannot be used to seed a numpy.random.RandomState'
-                     ' instance' % seed)
+    raise ValueError(f"{seed!r} cannot be used to seed a numpy.random.RandomState instance")
 
-def _calculate_pairwise_distances(X, Y=None, metric='precomputed', n_neighbors=None):
-    if metric in ('precomputed', 'ignore'):
+
+def _calculate_pairwise_distances(X, Y=None, metric="precomputed", n_neighbors=None):
+    if metric in ("precomputed", "ignore"):
         return X
 
     if n_neighbors is None:
-        if metric == 'euclidean':
+        if metric == "euclidean":
             X_pairwise = pairwise_distances(X, Y=Y, metric=metric, squared=True)
-        elif metric == 'correlation' or metric == 'cosine':
+        elif metric == "correlation" or metric == "cosine":
             # An in-place version of:
             # X_pairwise = 1 - (1 - pairwise_distances(X, metric=metric)) ** 2
-            
+
             X_pairwise = pairwise_distances(X, Y=Y, metric=metric)
             X_pairwise = numpy.subtract(1, X_pairwise, out=X_pairwise)
             X_pairwise = numpy.square(X_pairwise, out=X_pairwise)
@@ -197,7 +194,7 @@ def _calculate_pairwise_distances(X, Y=None, metric='precomputed', n_neighbors=N
         else:
             X_pairwise = pairwise_distances(X, Y=Y, metric=metric)
     else:
-        if metric == 'correlation' or metric == 'cosine':
+        if metric == "correlation" or metric == "cosine":
             # An in-place version of:
             # X = 1 - (1 - pairwise_distances(X, metric=metric)) ** 2
 
@@ -205,29 +202,23 @@ def _calculate_pairwise_distances(X, Y=None, metric='precomputed', n_neighbors=N
             X = numpy.subtract(1, X, out=X)
             X = numpy.square(X, out=X)
             X = numpy.subtract(1, X, out=X)
-            metric = 'precomputed'
+            metric = "precomputed"
 
         if isinstance(n_neighbors, int):
-            X_pairwise = KNeighborsTransformer(
-                n_neighbors=n_neighbors, metric=metric
-                ).fit_transform(X)
+            X_pairwise = KNeighborsTransformer(n_neighbors=n_neighbors, metric=metric).fit_transform(X)
 
         elif isinstance(n_neighbors, KNeighborsTransformer):
             X_pairwise = n_neighbors.fit_transform(X)
 
-    if metric == 'correlation' or metric == 'cosine':
+    if metric == "correlation" or metric == "cosine":
         if isinstance(X_pairwise, csr_matrix):
-            X_pairwise.data = numpy.subtract(1, X_pairwise.data, 
-                out=X_pairwise.data)
+            X_pairwise.data = numpy.subtract(1, X_pairwise.data, out=X_pairwise.data)
         else:
-            X_pairwise = numpy.subtract(1, X_pairwise,
-                out=X_pairwise)
+            X_pairwise = numpy.subtract(1, X_pairwise, out=X_pairwise)
     else:
         if isinstance(X_pairwise, csr_matrix):
-            X_pairwise.data = numpy.subtract(X_pairwise.max(),
-                X_pairwise.data, out=X_pairwise.data)
+            X_pairwise.data = numpy.subtract(X_pairwise.max(), X_pairwise.data, out=X_pairwise.data)
         else:
-            X_pairwise = numpy.subtract(X_pairwise.max(), X_pairwise,
-                out=X_pairwise)
+            X_pairwise = numpy.subtract(X_pairwise.max(), X_pairwise, out=X_pairwise)
 
     return X_pairwise

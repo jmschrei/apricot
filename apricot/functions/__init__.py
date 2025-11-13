@@ -1,18 +1,15 @@
 # __init__.py
 # Author: Jacob Schreiber <jmschreiber91@gmail.com>
 
-from .featureBased import FeatureBasedSelection
-from .maxCoverage import MaxCoverageSelection
+# ruff: noqa: F401
 
+
+from .base import BaseGraphSelection, BaseSelection
+from .custom import CustomGraphSelection, CustomSelection
 from .facilityLocation import FacilityLocationSelection
+from .featureBased import FeatureBasedSelection
+from .graphCut import GraphCutSelection
+from .maxCoverage import MaxCoverageSelection
+from .mixture import MixtureSelection
 from .saturatedCoverage import SaturatedCoverageSelection
 from .sumRedundancy import SumRedundancySelection
-from .graphCut import GraphCutSelection
-
-from .mixture import MixtureSelection
-
-from .custom import CustomSelection
-from .custom import CustomGraphSelection
-
-from .base import BaseSelection
-from .base import BaseGraphSelection
