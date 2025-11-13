@@ -14,8 +14,8 @@ from numpy.testing import assert_array_almost_equal
 #print("[" + ", ".join(map(str, model.ranking)) + "]")
 #print("[" + ", ".join([str(round(gain, 4)) for gain in model.gains]) + "]")
 
-numpy.random.seed(0)
-X_digits = numpy.random.choice(2, size=(300, 1000), p=[0.99, 0.01])
+rng = numpy.random.RandomState(0)
+X_digits = rng.choice(2, size=(300, 1000), p=[0.99, 0.01])
 X_digits = numpy.array(X_digits, dtype='float64')
 
 X_digits_sparse = scipy.sparse.csr_matrix(X_digits)
