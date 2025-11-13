@@ -5,21 +5,20 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
 import numpy
-numpy.random.seed(0)
 
 import seaborn; seaborn.set_style('whitegrid')
 from apricot import FacilityLocationSelection
 
-numpy.random.seed(0)
-X = numpy.concatenate([numpy.random.normal((1, 1), 0.5, size=(15, 2)),
-                       numpy.random.normal((6, 3), 0.5, size=(25, 2)),
-                       numpy.random.normal((5, 7), 0.5, size=(40, 2)),
-                       numpy.random.normal((1, 7), 0.5, size=(30, 2)),
-                       numpy.random.normal((10, 4), 0.5, size=(15, 2)),
-                       numpy.random.normal((3, 4), 0.5, size=(15, 2))])
+rng = numpy.random.RandomState(0)
+X = numpy.concatenate([rng.normal((1, 1), 0.5, size=(15, 2)),
+                       rng.normal((6, 3), 0.5, size=(25, 2)),
+                       rng.normal((5, 7), 0.5, size=(40, 2)),
+                       rng.normal((1, 7), 0.5, size=(30, 2)),
+                       rng.normal((10, 4), 0.5, size=(15, 2)),
+                       rng.normal((3, 4), 0.5, size=(15, 2))])
 
 Xi = FacilityLocationSelection(6, 'euclidean').fit_transform(X)
-Xr = numpy.random.choice(numpy.arange(X.shape[0]), size=6)
+Xr = rng.choice(numpy.arange(X.shape[0]), size=6)
 Xr = X[Xr]
 
 fig = plt.figure(figsize=(8, 6))

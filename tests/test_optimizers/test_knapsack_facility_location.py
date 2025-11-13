@@ -21,11 +21,11 @@ from numpy.testing import assert_array_almost_equal
 #	print("[" + ", ".join(map(str, model.ranking)) + "]")
 #	print("[" + ", ".join([str(round(gain, 4)) for gain in model.gains]) + "]")
 
-numpy.random.seed(0)
+rng = numpy.random.RandomState(0)
 
 digits_data = load_digits()
 X_digits = digits_data.data[:250]
-X_digits_costs = numpy.abs(numpy.random.randn(250))
+X_digits_costs = numpy.abs(rng.randn(250))
 
 X_digits_sparse = scipy.sparse.csr_matrix(X_digits)
 X_digits_cupy = cupy.array(X_digits)
