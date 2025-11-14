@@ -107,9 +107,9 @@ class NaiveGreedy(BaseOptimizer):
 		evaluated.
 	"""
 
-	def __init__(self, function=None, random_state=None, n_jobs=None, 
+	def __init__(self, function=None, random_state=None, n_jobs=None,
 		verbose=False):
-		super(NaiveGreedy, self).__init__(function=function, 
+		super().__init__(function=function,
 			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
 	def select(self, X, k, sample_cost=None):
@@ -207,9 +207,9 @@ class LazyGreedy(BaseOptimizer):
 		evaluated.
 	"""
 
-	def __init__(self, function=None, random_state=None, n_jobs=None, 
+	def __init__(self, function=None, random_state=None, n_jobs=None,
 		verbose=False):
-		super(LazyGreedy, self).__init__(function=function, 
+		super().__init__(function=function,
 			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
 	def select(self, X, k, sample_cost=None):
@@ -313,7 +313,7 @@ class ApproximateLazyGreedy(BaseOptimizer):
 	def __init__(self, function=None, beta=0.9, random_state=None, 
 		n_jobs=None, verbose=False):
 		self.beta = beta
-		super(ApproximateLazyGreedy, self).__init__(function=function, 
+		super().__init__(function=function, 
 			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
 	def select(self, X, k, sample_cost=None):
@@ -418,7 +418,7 @@ class TwoStageGreedy(BaseOptimizer):
 		self.n_first_selections = n_first_selections
 		self.optimizer1 = optimizer1
 		self.optimizer2 = optimizer2
-		super(TwoStageGreedy, self).__init__(function=function, 
+		super().__init__(function=function, 
 			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
 	def select(self, X, k, sample_cost=None):
@@ -509,7 +509,7 @@ class StochasticGreedy(BaseOptimizer):
 	def __init__(self, function=None, epsilon=0.9, random_state=None, 
 		n_jobs=None, verbose=False):
 		self.epsilon = epsilon
-		super(StochasticGreedy, self).__init__(function=function, 
+		super().__init__(function=function, 
 			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
 	def select(self, X, k, sample_cost=None):
@@ -600,7 +600,7 @@ class SampleGreedy(BaseOptimizer):
 		random_state=None, n_jobs=None, verbose=False):
 		self.epsilon = epsilon
 		self.optimizer = optimizer
-		super(SampleGreedy, self).__init__(function=function, 
+		super().__init__(function=function, 
 			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
 	def select(self, X, k, sample_cost=None):
@@ -715,7 +715,7 @@ class GreeDi(BaseOptimizer):
 		self.l = l
 		self.optimizer1 = optimizer1
 		self.optimizer2 = optimizer2
-		super(GreeDi, self).__init__(function=function, 
+		super().__init__(function=function, 
 			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
 	def select(self, X, k, sample_cost=None):
@@ -805,7 +805,7 @@ class RandomGreedy(BaseOptimizer):
 
 	def __init__(self, function=None, random_state=None, n_jobs=None, 
 		verbose=False):
-		super(NaiveGreedy, self).__init__(function=function, 
+		super().__init__(function=function, 
 			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
 	def select(self, X, k, sample_cost=None):
@@ -891,7 +891,7 @@ class ModularGreedy(BaseOptimizer):
 
 	def __init__(self, function=None, random_state=None, n_jobs=None, 
 		verbose=False):
-		super(ModularGreedy, self).__init__(function=function, 
+		super().__init__(function=function, 
 			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
 	def select(self, X, k, sample_cost=None):
@@ -972,7 +972,7 @@ class BidirectionalGreedy(BaseOptimizer):
 
 	def __init__(self, function=None, random_state=None, n_jobs=None, 
 		verbose=False):
-		super(BidirectionalGreedy, self).__init__(function=function, 
+		super().__init__(function=function, 
 			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
 	def select(self, X, k, sample_cost=None):
@@ -1079,7 +1079,7 @@ class SieveGreedy(BaseOptimizer):
 		self.thresholds = [1]
 		self.max_gain = -1
 
-		super(SieveGreedy, self).__init__(function=function, 
+		super().__init__(function=function, 
 			random_state=random_state, n_jobs=n_jobs, verbose=verbose)
 
 	def select(self, X, k, sample_cost=None):

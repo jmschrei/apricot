@@ -176,8 +176,7 @@ def check_random_state(seed):
         return numpy.random.RandomState(seed)
     if isinstance(seed, numpy.random.RandomState):
         return seed
-    raise ValueError('%r cannot be used to seed a numpy.random.RandomState'
-                     ' instance' % seed)
+    raise ValueError(f"{seed!r} cannot be used to seed a numpy.random.RandomState instance")
 
 def _calculate_pairwise_distances(X, Y=None, metric='precomputed', n_neighbors=None):
     if metric in ('precomputed', 'ignore'):

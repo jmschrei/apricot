@@ -246,7 +246,7 @@ class FeatureBasedSelection(BaseSelection):
 		else:
 			raise KeyError("Must be one of 'log', 'sqrt', 'sigmoid', or a any other numpy, scipy, or numba-compiled function.")
 
-		super(FeatureBasedSelection, self).__init__(n_samples=n_samples, 
+		super().__init__(n_samples=n_samples, 
 			initial_subset=initial_subset, optimizer=optimizer, 
 			optimizer_kwds=optimizer_kwds, reservoir=reservoir,
 			max_reservoir_size=max_reservoir_size, n_jobs=n_jobs, 
@@ -290,11 +290,11 @@ class FeatureBasedSelection(BaseSelection):
 			The fit step returns this selector object.
 		"""
 
-		return super(FeatureBasedSelection, self).fit(X, y=y, 
+		return super().fit(X, y=y, 
 			sample_weight=sample_weight, sample_cost=sample_cost)
 
 	def _initialize(self, X):
-		super(FeatureBasedSelection, self)._initialize(X)
+		super()._initialize(X)
 
 		if self.initial_subset is None:
 			pass
@@ -353,7 +353,7 @@ class FeatureBasedSelection(BaseSelection):
 		used by a streaming optimizer.
 		"""
 
-		super(FeatureBasedSelection, self)._calculate_sieve_gains(X,
+		super()._calculate_sieve_gains(X,
 			thresholds, idxs)
 
 		if self.sparse:
@@ -379,6 +379,6 @@ class FeatureBasedSelection(BaseSelection):
 		self.current_concave_values = self.concave_func(self.current_values)
 		self.current_concave_values_sum = self.current_concave_values.sum()
 
-		super(FeatureBasedSelection, self)._select_next(
+		super()._select_next(
 			X, gain, idx)
 

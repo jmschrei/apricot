@@ -177,7 +177,7 @@ class GraphCutSelection(BaseGraphSelection):
 		n_jobs=1, random_state=None, verbose=False):
 		self.alpha = alpha
 
-		super(GraphCutSelection, self).__init__(n_samples=n_samples, 
+		super().__init__(n_samples=n_samples, 
 			metric=metric, initial_subset=initial_subset, optimizer=optimizer,  
 			n_neighbors=n_neighbors, reservoir=reservoir, 
 			max_reservoir_size=max_reservoir_size, n_jobs=n_jobs, 
@@ -221,11 +221,11 @@ class GraphCutSelection(BaseGraphSelection):
 			The fit step returns this selector object.
 		"""
 
-		return super(GraphCutSelection, self).fit(X, y=y, 
+		return super().fit(X, y=y, 
 			sample_weight=sample_weight, sample_cost=sample_cost)
 
 	def _initialize(self, X_pairwise):
-		super(GraphCutSelection, self)._initialize(X_pairwise)
+		super()._initialize(X_pairwise)
 
 		if self.reservoir is not None:
 			X_pairwise = _calculate_pairwise_distances(self._X, 
@@ -271,7 +271,7 @@ class GraphCutSelection(BaseGraphSelection):
 		used by a streaming optimizer.
 		"""
 
-		super(GraphCutSelection, self)._calculate_sieve_gains(X_pairwise,
+		super()._calculate_sieve_gains(X_pairwise,
 			thresholds, idxs)
 
 		n, m = X_pairwise.shape[0], len(thresholds)
@@ -309,5 +309,5 @@ class GraphCutSelection(BaseGraphSelection):
 		else:
 			self.current_values += X_pairwise * 2
 
-		super(GraphCutSelection, self)._select_next(
+		super()._select_next(
 			X_pairwise, gain, idx)

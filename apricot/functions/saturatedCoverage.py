@@ -167,7 +167,7 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 		optimizer_kwds={}, verbose=False):
 		self.alpha = alpha
 
-		super(SaturatedCoverageSelection, self).__init__(n_samples=n_samples, 
+		super().__init__(n_samples=n_samples, 
 			metric=metric,initial_subset=initial_subset, optimizer=optimizer, 
 			optimizer_kwds=optimizer_kwds, n_neighbors=n_neighbors,
 			reservoir=reservoir, max_reservoir_size=max_reservoir_size,
@@ -211,11 +211,11 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 			The fit step returns this selector object.
 		"""
 
-		return super(SaturatedCoverageSelection, self).fit(X, y=y, 
+		return super().fit(X, y=y, 
 			sample_weight=sample_weight, sample_cost=sample_cost)
 
 	def _initialize(self, X_pairwise):
-		super(SaturatedCoverageSelection, self)._initialize(X_pairwise)
+		super()._initialize(X_pairwise)
 
 		if self.sparse:
 			self.max_values = self.alpha * numpy.array(
@@ -266,5 +266,5 @@ class SaturatedCoverageSelection(BaseGraphSelection):
 			self.current_values = numpy.minimum(self.max_values,
 				self.current_values + X_pairwise)
 
-		super(SaturatedCoverageSelection, self)._select_next(
+		super()._select_next(
 			X_pairwise, gain, idx)

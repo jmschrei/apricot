@@ -209,7 +209,7 @@ class MaxCoverageSelection(BaseSelection):
 		verbose=False):
 		self.threshold = threshold
 
-		super(MaxCoverageSelection, self).__init__(n_samples=n_samples, 
+		super().__init__(n_samples=n_samples, 
 			initial_subset=initial_subset, optimizer=optimizer, 
 			optimizer_kwds=optimizer_kwds, n_jobs=n_jobs, 
 			random_state=random_state, verbose=verbose) 
@@ -252,11 +252,11 @@ class MaxCoverageSelection(BaseSelection):
 			The fit step returns this selector object.
 		"""
 
-		return super(MaxCoverageSelection, self).fit(X, y=y, 
+		return super().fit(X, y=y, 
 			sample_weight=sample_weight, sample_cost=sample_cost)
 
 	def _initialize(self, X):
-		super(MaxCoverageSelection, self)._initialize(X)
+		super()._initialize(X)
 
 		if self.initial_subset is None:
 			self.current_values = numpy.zeros(X.shape[1], dtype='float64')
@@ -317,7 +317,7 @@ class MaxCoverageSelection(BaseSelection):
 		used by a streaming optimizer.
 		"""
 
-		super(MaxCoverageSelection, self)._calculate_sieve_gains(X,
+		super()._calculate_sieve_gains(X,
 			thresholds, idxs)
 
 		if self.sparse:
@@ -344,5 +344,5 @@ class MaxCoverageSelection(BaseSelection):
 
 		self.current_values_sum = self.current_values.sum()
 
-		super(MaxCoverageSelection, self)._select_next(
+		super()._select_next(
 			X, gain, idx)

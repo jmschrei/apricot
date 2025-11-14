@@ -208,7 +208,7 @@ class FacilityLocationSelection(BaseGraphSelection):
 		n_neighbors=None, reservoir=None, max_reservoir_size=1000,
 		n_jobs=1, random_state=None, verbose=False):
 
-		super(FacilityLocationSelection, self).__init__(n_samples=n_samples, 
+		super().__init__(n_samples=n_samples, 
 			metric=metric, initial_subset=initial_subset, optimizer=optimizer, 
 			optimizer_kwds=optimizer_kwds, n_neighbors=n_neighbors, 
 			reservoir=reservoir, max_reservoir_size=max_reservoir_size,
@@ -252,11 +252,11 @@ class FacilityLocationSelection(BaseGraphSelection):
 			The fit step returns this selector object.
 		"""
 
-		return super(FacilityLocationSelection, self).fit(X, y=y, 
+		return super().fit(X, y=y, 
 			sample_weight=sample_weight, sample_cost=sample_cost)
 
 	def _initialize(self, X_pairwise):
-		super(FacilityLocationSelection, self)._initialize(X_pairwise)
+		super()._initialize(X_pairwise)
 
 		if self.initial_subset is None:
 			pass
@@ -317,7 +317,7 @@ class FacilityLocationSelection(BaseGraphSelection):
 		used by a streaming optimizer.
 		"""
 
-		super(FacilityLocationSelection, self)._calculate_sieve_gains(
+		super()._calculate_sieve_gains(
 			X_pairwise,thresholds, idxs)
 
 		if self.sparse:
@@ -344,5 +344,5 @@ class FacilityLocationSelection(BaseGraphSelection):
 
 		self.current_values_sum = self.current_values.sum()
 
-		super(FacilityLocationSelection, self)._select_next(
+		super()._select_next(
 			X_pairwise, gain, idx)
