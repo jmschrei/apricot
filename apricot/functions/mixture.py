@@ -273,8 +273,6 @@ class MixtureSelection(BaseSelection):
 					self.sieve_gains_[l, self.sieve_n_selected_[l]] = gain[l, self.sieve_n_selected_[l]]
 					self.sieve_n_selected_[l] += 1
 				else:
-					v = self.sieve_n_selected_[l]
-
 					for i, function in enumerate(self.functions):
 						vi = function.sieve_n_selected_[l]
 						if vi != self.sieve_n_selected_[l]:

@@ -224,7 +224,7 @@ class BaseSelection(object):
 
 		optimizer.select(X, self.n_samples, sample_cost=sample_cost)
 
-		if self.verbose == True:
+		if self.verbose:
 			self.pbar.close()
 
 		self.ranking = numpy.array(self.ranking)
@@ -257,7 +257,7 @@ class BaseSelection(object):
 
 		self.optimizer.select(X, self.n_samples, sample_cost=sample_cost)
 
-		if self.verbose == True:
+		if self.verbose:
 			self.pbar.close()
 
 		self.ranking = numpy.array(self.ranking)
