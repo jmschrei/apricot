@@ -103,7 +103,7 @@ class CustomSelection(BaseSelection):
 		optimizer='two-stage', optimizer_kwds={}, function_kwds={},
 		n_jobs=1, random_state=None, verbose=False):
 
-		if callable(function) == False:
+		if not callable(function):
 			raise ValueError("Passed in function must be callable.")
 
 		self.function = function
@@ -315,7 +315,7 @@ class CustomGraphSelection(BaseGraphSelection):
 		initial_subset=None, optimizer='two-stage', optimizer_kwds={}, 
 		function_kwds={}, n_jobs=1, random_state=None, verbose=False):
 
-		if callable(function) == False:
+		if not callable(function):
 			raise ValueError("Passed in function must be callable.")
 
 		self.function = function
