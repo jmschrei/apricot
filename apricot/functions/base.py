@@ -564,7 +564,7 @@ class BaseGraphSelection(BaseSelection):
 		n_neighbors=None, reservoir=None, max_reservoir_size=1000, 
 		n_jobs=1, random_state=None, verbose=False):
 
-		super(BaseGraphSelection, self).__init__(n_samples=n_samples, 
+		super().__init__(n_samples=n_samples, 
 			initial_subset=initial_subset, optimizer=optimizer, 
 			optimizer_kwds=optimizer_kwds, reservoir=reservoir, 
 			max_reservoir_size=max_reservoir_size, n_jobs=n_jobs, 
@@ -623,7 +623,7 @@ class BaseGraphSelection(BaseSelection):
 			n_neighbors=self.n_neighbors)
 	
 		self._X = X
-		return super(BaseGraphSelection, self).fit(X_pairwise, y=y,
+		return super().fit(X_pairwise, y=y,
 			sample_weight=sample_weight, sample_cost=sample_cost)
 
 	def partial_fit(self, X, y=None, sample_weight=None, sample_cost=None):
@@ -645,7 +645,7 @@ class BaseGraphSelection(BaseSelection):
 			Y=self.reservoir[:self.reservoir_size], metric=self.metric)
 
 		self._X = X
-		super(BaseGraphSelection, self).partial_fit(X_pairwise, y=y, 
+		super().partial_fit(X_pairwise, y=y, 
 			sample_weight=sample_weight, sample_cost=sample_cost)
 
 		self.current_values = numpy.zeros(self.reservoir_size, 
@@ -653,14 +653,14 @@ class BaseGraphSelection(BaseSelection):
 		self.n_seen_ += X.shape[0]
 
 	def _initialize(self, X_pairwise, idxs=None):
-		super(BaseGraphSelection, self)._initialize(X_pairwise, idxs=idxs)
+		super()._initialize(X_pairwise, idxs=idxs)
 
 	def _calculate_gains(self, X_pairwise):
-		super(BaseGraphSelection, self)._calculate_gains(X_pairwise)
+		super()._calculate_gains(X_pairwise)
 
 	def _calculate_sieve_gains(self, X, thresholds, idxs):
-		super(BaseGraphSelection, self)._calculate_sieve_gains(X, thresholds,
+		super()._calculate_sieve_gains(X, thresholds,
 			idxs)
 
 	def _select_next(self, X_pairwise, gain, idx):
-		super(BaseGraphSelection, self)._select_next(X_pairwise, gain, idx)
+		super()._select_next(X_pairwise, gain, idx)

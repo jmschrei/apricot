@@ -141,7 +141,7 @@ class SumRedundancySelection(BaseGraphSelection):
 		reservoir=None, max_reservoir_size=1000, n_jobs=1, 
 		random_state=None, optimizer_kwds={}, verbose=False):
 
-		super(SumRedundancySelection, self).__init__(n_samples=n_samples, 
+		super().__init__(n_samples=n_samples, 
 			metric=metric, initial_subset=initial_subset, optimizer=optimizer, 
 			n_neighbors=n_neighbors, reservoir=reservoir, 
 			max_reservoir_size=max_reservoir_size, n_jobs=n_jobs, 
@@ -186,11 +186,11 @@ class SumRedundancySelection(BaseGraphSelection):
 			The fit step returns this selector object.
 		"""
 
-		return super(SumRedundancySelection, self).fit(X, y=y, 
+		return super().fit(X, y=y, 
 			sample_weight=sample_weight, sample_cost=sample_cost)
 
 	def _initialize(self, X_pairwise, idxs=None):
-		super(SumRedundancySelection, self)._initialize(X_pairwise, idxs=idxs)
+		super()._initialize(X_pairwise, idxs=idxs)
 		idxs = idxs if idxs is not None else numpy.arange(X_pairwise.shape[0])
 
 		for i, idx in enumerate(idxs):
@@ -224,5 +224,5 @@ class SumRedundancySelection(BaseGraphSelection):
 		else:
 			self.current_values += X_pairwise * 2
 
-		super(SumRedundancySelection, self)._select_next(
+		super()._select_next(
 			X_pairwise, gain, idx)

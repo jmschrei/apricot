@@ -109,7 +109,7 @@ class CustomSelection(BaseSelection):
 		self.function = function
 		self.function_kwds = function_kwds
 
-		super(CustomSelection, self).__init__(n_samples=n_samples, 
+		super().__init__(n_samples=n_samples, 
 			initial_subset=initial_subset, optimizer=optimizer, 
 			optimizer_kwds=optimizer_kwds, n_jobs=n_jobs, 
 			random_state=random_state, verbose=verbose) 
@@ -152,11 +152,11 @@ class CustomSelection(BaseSelection):
 			The fit step returns this selector object.
 		"""
 
-		return super(CustomSelection, self).fit(X, y=y, 
+		return super().fit(X, y=y, 
 			sample_weight=sample_weight, sample_cost=sample_cost)
 
 	def _initialize(self, X):
-		super(CustomSelection, self)._initialize(X)
+		super()._initialize(X)
 
 		if self.initial_subset is None:
 			pass
@@ -209,7 +209,7 @@ class CustomSelection(BaseSelection):
 		used by a streaming optimizer.
 		"""
 
-		super(CustomSelection, self)._calculate_sieve_gains(X,
+		super()._calculate_sieve_gains(X,
 			thresholds, idxs)
 
 		raise NotImplementedError
@@ -219,7 +219,7 @@ class CustomSelection(BaseSelection):
 
 		self.total_gain += gain
 
-		super(CustomSelection, self)._select_next(
+		super()._select_next(
 			X, gain, idx)
 
 
@@ -321,7 +321,7 @@ class CustomGraphSelection(BaseGraphSelection):
 		self.function = function
 		self.function_kwds = function_kwds
 
-		super(CustomGraphSelection, self).__init__(n_samples=n_samples, 
+		super().__init__(n_samples=n_samples, 
 			metric=metric, initial_subset=initial_subset, optimizer=optimizer, 
 			optimizer_kwds=optimizer_kwds, n_jobs=n_jobs, 
 			random_state=random_state, verbose=verbose) 
@@ -364,11 +364,11 @@ class CustomGraphSelection(BaseGraphSelection):
 			The fit step returns this selector object.
 		"""
 
-		return super(CustomGraphSelection, self).fit(X, y=y, 
+		return super().fit(X, y=y, 
 			sample_weight=sample_weight, sample_cost=sample_cost)
 
 	def _initialize(self, X):
-		super(CustomGraphSelection, self)._initialize(X)
+		super()._initialize(X)
 
 		if self.initial_subset is None:
 			pass
@@ -421,7 +421,7 @@ class CustomGraphSelection(BaseGraphSelection):
 		used by a streaming optimizer.
 		"""
 
-		super(CustomGraphSelection, self)._calculate_sieve_gains(X,
+		super()._calculate_sieve_gains(X,
 			thresholds, idxs)
 
 		raise NotImplementedError
@@ -431,5 +431,5 @@ class CustomGraphSelection(BaseGraphSelection):
 
 		self.total_gain += gain
 
-		super(CustomGraphSelection, self)._select_next(
+		super()._select_next(
 			X, gain, idx)
