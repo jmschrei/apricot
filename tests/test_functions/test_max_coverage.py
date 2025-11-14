@@ -2,7 +2,16 @@ import scipy
 import numpy
 
 from apricot import MaxCoverageSelection
-from apricot.optimizers import *
+from apricot.optimizers import (
+    NaiveGreedy,
+    LazyGreedy,
+    TwoStageGreedy,
+    GreeDi,
+    ApproximateLazyGreedy,
+    StochasticGreedy,
+    SampleGreedy,
+    ModularGreedy,
+)
 
 from sklearn.datasets import load_digits
 from sklearn.metrics import pairwise_distances
