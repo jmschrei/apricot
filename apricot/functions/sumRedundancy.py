@@ -8,7 +8,7 @@ from .base import BaseGraphSelection
 from tqdm import tqdm
 
 class SumRedundancySelection(BaseGraphSelection):
-	"""A selector based off a sum redundancy submodular function.
+	r"""A selector based off a sum redundancy submodular function.
 	
 	The sum redundancy function is a graph-based function that penalizes 
 	redundancy among the selected set. This approach is straightforward, 
